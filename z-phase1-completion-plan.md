@@ -3,9 +3,9 @@
 This document outlines the remaining tasks to complete Phase 1 of the Actual Budget extensibility project.
 
 ## 1. Transaction Management Enhancements
-- **Search & Filtering**: Add a search box above the transactions table to filter by payee, category, or amount
-- **Sorting**: Allow column header clicks to sort transactions by date, amount, etc.
-- **Batch Operations**: Enable selecting multiple transactions for batch editing/deletion
+- 🚀 **Search & Filtering**: Add a search box above the transactions table to filter by payee, category, or amount
+- 🚀 **Sorting**: Allow column header clicks to sort transactions by date, amount, etc.
+- 🚀 **Batch Operations**: Enable selecting multiple transactions for batch editing/deletion
 - **Transaction Splits**: Implement the ability to split transactions across multiple categories
 
 ## 2. Basic Reporting
@@ -24,7 +24,7 @@ This document outlines the remaining tasks to complete Phase 1 of the Actual Bud
 
 ## 5. UX Improvements
 - **Keyboard Shortcuts**: Add basic keyboard navigation
-- **Confirmation Dialogs**: Add confirmation for destructive operations
+- 🚀 **Confirmation Dialogs**: Add confirmation for destructive operations
 - **Success/Error Messages**: Improve feedback for all operations
 
 ## Implementation Priority
