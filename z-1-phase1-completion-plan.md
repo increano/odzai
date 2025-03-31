@@ -14,6 +14,9 @@ This document outlines the remaining tasks to complete Phase 1 of the Actual Bud
 - ✅ **Account Balance History**: Show account balance changes over time
 
 ## 3. Core Financial Features
+- ⏳ **Transaction**: Implement the ability to edit existing transactions
+- ⏳ **Budget**: Add functionality to create new budgets
+- ⏳ **Budget Editing**: Enable editing of existing budgets
 - ⏳ **Scheduled Transactions**: Add support for recurring transactions
 - ⏳ **Account Reconciliation**: Implement the ability to reconcile accounts with statements
 - ⏳ **Budget Copy**: Allow copying budget amounts from previous months
