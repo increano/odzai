@@ -6,7 +6,7 @@ This document outlines the remaining tasks to complete Phase 1 of the Actual Bud
 - 🚀 **Search & Filtering**: Add a search box above the transactions table to filter by payee, category, or amount
 - 🚀 **Sorting**: Allow column header clicks to sort transactions by date, amount, etc.
 - 🚀 **Batch Operations**: Enable selecting multiple transactions for batch editing/deletion
-- **Transaction Splits**: Implement the ability to split transactions across multiple categories
+- 🚀 **Transaction Splits**: Implement the ability to split transactions across multiple categories
 
 ## 2. Basic Reporting
 - **Spending by Category**: Create a simple view showing total spending by category
