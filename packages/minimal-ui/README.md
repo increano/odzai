@@ -19,11 +19,21 @@ This package provides a minimal UI for Actual Budget, demonstrating the separati
    ```
    yarn install
    ```
-3. Start the minimal UI:
+3. Start the minimal UI with the path to your Actual Budget data directory:
    ```
-   yarn start:minimal-ui
+   ACTUAL_DATA_DIR=/path/to/your/actual/data yarn start:minimal-ui
+   ```
+   
+   For example:
+   ```
+   ACTUAL_DATA_DIR=/Users/yourusername/Desktop/Dev/actual/data/Actual yarn start:minimal-ui
    ```
 4. Visit http://localhost:3000 in your browser
+
+## Important Notes
+
+- Make sure to point the `ACTUAL_DATA_DIR` environment variable to the same data directory used by your full Actual Budget application to ensure you can access the same budgets.
+- The minimal UI will read and write to the same budget files as the full application.
 
 ## Architecture
 

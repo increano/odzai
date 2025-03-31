@@ -113,6 +113,33 @@
         .error-message.active {
             display: block;
         }
+        .no-budgets-message {
+            text-align: center;
+            margin: 2rem 0;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .sample-budget-btn {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 1rem auto;
+            padding: 0.75rem 1rem;
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .sample-budget-btn:hover {
+            background-color: #1b5e20;
+        }
+        .loading {
+            text-align: center;
+            margin: 2rem 0;
+        }
     </style>
 </head>
 <body>
@@ -137,6 +164,12 @@
         <!-- Budgets Section -->
         <section id="budgets-section">
             <h2>Budgets</h2>
+            <div id="budgets-loading" class="loading">Loading budgets...</div>
+            <div id="no-budgets-message" class="no-budgets-message hidden">
+                <p>No budgets found. Please use the full Actual application to create a budget first, then return here.</p>
+                <p><strong>Important:</strong> Make sure both applications use the same data directory!</p>
+                <p>Current data directory: <code id="current-data-dir"></code></p>
+            </div>
             <table id="budgets-table">
                 <thead>
                     <tr>
@@ -157,7 +190,6 @@
                     <tr>
                         <th>Name</th>
                         <th>Balance</th>
-                        <th>Type</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -171,13 +203,9 @@
                     <input type="text" id="account-name" required>
                 </div>
                 <div>
-                    <label for="account-type">Type</label>
-                    <select id="account-type" required>
-                        <option value="checking">Checking</option>
-                        <option value="savings">Savings</option>
-                        <option value="credit">Credit Card</option>
-                        <option value="investment">Investment</option>
-                    </select>
+                    <label for="offbudget">
+                        <input type="checkbox" id="offbudget"> Off Budget (excluded from budget calculations)
+                    </label>
                 </div>
                 <div>
                     <label for="initial-balance">Initial Balance</label>
@@ -282,6 +310,18 @@
             return data;
         }
         
+        // Get and display the data directory
+        async function getDataDirectory() {
+            try {
+                const response = await fetch('/api/data-directory');
+                const data = await handleApiResponse(response);
+                document.getElementById('current-data-dir').textContent = data.dataDir;
+            } catch (error) {
+                console.error('Failed to get data directory:', error);
+                document.getElementById('current-data-dir').textContent = 'Unknown';
+            }
+        }
+        
         // Check budget status on page load
         async function checkBudgetStatus() {
             try {
@@ -357,16 +397,27 @@
         // Load Budgets
         async function loadBudgets() {
             try {
+                // Show loading
+                document.getElementById('budgets-loading').classList.remove('hidden');
+                document.getElementById('budgets-table').classList.add('hidden');
+                document.getElementById('no-budgets-message').classList.add('hidden');
+                
                 const response = await fetch('/api/budgets');
                 const budgets = await handleApiResponse(response);
+                
+                // Hide loading
+                document.getElementById('budgets-loading').classList.add('hidden');
                 
                 const tbody = document.getElementById('budgets-body');
                 tbody.innerHTML = '';
                 
                 if (budgets.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3">No budgets found. Create a new one to get started.</td></tr>';
+                    document.getElementById('no-budgets-message').classList.remove('hidden');
+                    document.getElementById('budgets-table').classList.add('hidden');
                     return;
                 }
+                
+                document.getElementById('budgets-table').classList.remove('hidden');
                 
                 budgets.forEach(budget => {
                     const tr = document.createElement('tr');
@@ -379,6 +430,8 @@
                 });
             } catch (error) {
                 console.error('Failed to load budgets:', error);
+                document.getElementById('budgets-loading').classList.add('hidden');
+                document.getElementById('no-budgets-message').classList.remove('hidden');
             }
         }
         
@@ -416,6 +469,9 @@
                 const response = await fetch('/api/accounts');
                 const accounts = await handleApiResponse(response);
                 
+                // Debug log to see account structure
+                console.log("Account data:", accounts);
+                
                 const tbody = document.getElementById('accounts-body');
                 tbody.innerHTML = '';
                 
@@ -426,8 +482,7 @@
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
                             <td>${account.name}</td>
-                            <td>${formatCurrency(account.balance)}</td>
-                            <td>${account.type || 'N/A'}</td>
+                            <td>${formatCurrency(account.calculated_balance)}</td>
                             <td><button onclick="viewTransactions('${account.id}')">View Transactions</button></td>
                         `;
                         tbody.appendChild(tr);
@@ -472,7 +527,7 @@
             }
             
             const name = document.getElementById('account-name').value;
-            const type = document.getElementById('account-type').value;
+            const offBudget = document.getElementById('offbudget').checked;
             const initialBalance = parseFloat(document.getElementById('initial-balance').value) || 0;
             
             try {
@@ -482,15 +537,18 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        account: { name, type },
-                        initialBalance
+                        account: { name, offBudget },
+                        initialBalance: Math.round(initialBalance * 100) // Convert to cents
                     })
                 });
                 
                 const result = await handleApiResponse(response);
                 if (result.success) {
                     document.getElementById('add-account-form').reset();
-                    loadAccounts();
+                    // Wait a moment for the initial balance transaction to be processed
+                    setTimeout(() => {
+                        loadAccounts();
+                    }, 500);
                 }
             } catch (error) {
                 console.error('Failed to add account:', error);
@@ -616,7 +674,7 @@
                         transaction: {
                             date,
                             payee_name: payee,
-                            category_id: categoryId,
+                            category: categoryId,
                             amount: Math.round(amount * 100), // Convert to cents
                             notes
                         }
@@ -773,6 +831,7 @@
         // Initialize
         checkBudgetStatus().then(() => {
             showSection('budgets');
+            getDataDirectory();
         });
     </script>
 </body>

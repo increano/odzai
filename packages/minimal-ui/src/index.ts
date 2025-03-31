@@ -3,6 +3,8 @@ import expressWs from 'express-ws';
 import path from 'path';
 import * as actualAPI from '@actual-app/api';
 import { Application } from 'express';
+import fs from 'fs';
+import cors from 'cors';
 
 // Initialize Express app with WebSocket support
 const app = express();
@@ -14,22 +16,60 @@ const port = process.env.PORT || 3000;
 let budgetLoaded = false;
 
 // Serve static files from the public directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// Middleware to log requests for debugging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - User-Agent: ${req.headers['user-agent']}`);
+  next();
+});
+
+// Redirect root to index.html
+app.get('/', (req, res) => {
+  res.redirect('/public/index.html');
+});
+
 // Initialize the Actual API
-async function initActual() {
+(async function initActual() {
+  console.log('Initializing Actual Budget engine...');
+  
   try {
-    console.log('Initializing Actual Budget engine...');
+    // Set data directory from environment variable
+    const dataDir = process.env.ACTUAL_DATA_DIR || path.join(__dirname, '..', '..', '..', 'data');
+    console.log(`Using data directory: ${dataDir}`);
+    
+    // Check if data directory exists
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+      console.log('Created data directory');
+    } else {
+      console.log('Data directory exists');
+      // List files in the data directory
+      const files = fs.readdirSync(dataDir);
+      console.log('Files in data directory:', files);
+    }
+  
+    // Initialize the Actual API
     await actualAPI.init({
-      dataDir: path.join(__dirname, '..', '..', '..', 'data'),
+      dataDir
     });
+    
     console.log('Actual Budget engine initialized successfully');
+    
+    // Check if there are any budgets
+    const budgets = await actualAPI.getBudgets();
+    console.log(`Existing budgets: ${JSON.stringify(budgets)}`);
+    
+    // Start the server
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+      console.log(`Minimal Actual UI server running at http://localhost:${port}`);
+    });
   } catch (error) {
     console.error('Failed to initialize Actual Budget engine:', error);
-    process.exit(1);
   }
-}
+})();
 
 // Middleware to check if budget is loaded for protected routes
 const ensureBudgetLoaded = (req, res, next) => {
@@ -45,7 +85,9 @@ const ensureBudgetLoaded = (req, res, next) => {
 // API Routes
 app.get('/api/budgets', async (req, res) => {
   try {
+    console.log('Fetching budgets...');
     const budgets = await actualAPI.getBudgets();
+    console.log('Budgets found:', JSON.stringify(budgets, null, 2));
     res.json(budgets);
   } catch (error) {
     console.error('Failed to get budgets:', error);
@@ -63,29 +105,63 @@ app.post('/api/budgets/load', async (req, res) => {
       return res.status(400).json({ error: 'Budget ID is required' });
     }
     
-    const result = await actualAPI.loadBudget(budgetId);
-    budgetLoaded = true;  // Mark budget as loaded
-    res.json({ success: true, result });
+    // Load the budget
+    await actualAPI.loadBudget(budgetId);
+    
+    // Update global state
+    budgetLoaded = true;
+    
+    return res.json({ success: true });
   } catch (error) {
-    console.error('Failed to load budget:', error);
+    console.error('Error loading budget:', error);
     budgetLoaded = false;
-    res.status(500).json({ 
-      error: 'Failed to load budget',
-      message: error.message || 'Unknown error'
-    });
+    return res.status(500).json({ error: error.message });
   }
 });
 
-// Check budget loaded status
-app.get('/api/budget-status', (req, res) => {
-  res.json({ budgetLoaded });
+// Set up API routes
+app.get('/api/budget-status', async (req, res) => {
+  try {
+    // Get the current loaded budget status
+    res.json({ budgetLoaded });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add an endpoint to expose the data directory
+app.get('/api/data-directory', (req, res) => {
+  const dataDir = process.env.ACTUAL_DATA_DIR || 'Not set';
+  res.json({ dataDir });
 });
 
 // Apply budget loaded check to all budget-related endpoints
 app.get('/api/accounts', ensureBudgetLoaded, async (req, res) => {
   try {
     const accounts = await actualAPI.getAccounts();
-    res.json(accounts);
+    console.log('Accounts found:', accounts.length);
+    
+    // Enhance accounts with current balances
+    const enhancedAccounts = await Promise.all(accounts.map(async (account) => {
+      try {
+        // Get transactions for this account to calculate balance
+        const transactions = await actualAPI.getTransactions(account.id, undefined, undefined);
+        const balance = transactions.reduce((sum, trans) => sum + trans.amount, 0);
+        
+        return {
+          ...account,
+          calculated_balance: balance
+        };
+      } catch (error) {
+        console.error(`Error fetching transactions for account ${account.id}:`, error);
+        return {
+          ...account,
+          calculated_balance: 0
+        };
+      }
+    }));
+    
+    res.json(enhancedAccounts);
   } catch (error) {
     console.error('Failed to get accounts:', error);
     res.status(500).json({ 
@@ -102,8 +178,16 @@ app.post('/api/accounts', ensureBudgetLoaded, async (req, res) => {
       return res.status(400).json({ error: 'Account details are required' });
     }
     
-    const result = await actualAPI.createAccount(account, initialBalance);
-    res.json({ success: true, id: result });
+    // Convert offBudget boolean to the format expected by Actual API (0/1)
+    if (account.offBudget !== undefined) {
+      account.offbudget = account.offBudget ? true : false;
+      delete account.offBudget; // Remove the original property
+    }
+    
+    // Create the account and get its ID
+    const accountId = await actualAPI.createAccount(account, initialBalance);
+    
+    res.json({ success: true, id: accountId });
   } catch (error) {
     console.error('Failed to create account:', error);
     res.status(500).json({ 
@@ -123,8 +207,34 @@ app.get('/api/transactions/:accountId', ensureBudgetLoaded, async (req, res) => 
       startDate as string | undefined,
       endDate as string | undefined
     );
+
+    // Get categories and payees to resolve names
+    const categories = await actualAPI.getCategories();
+    const payees = await actualAPI.getPayees();
     
-    res.json(transactions);
+    // Create lookup maps for faster access
+    const categoryMap = categories.reduce((map, cat) => {
+      map[cat.id] = cat.name;
+      return map;
+    }, {});
+    
+    const payeeMap = payees.reduce((map, payee) => {
+      map[payee.id] = payee.name;
+      return map;
+    }, {});
+    
+    // Enhance transactions with resolved names
+    const enhancedTransactions = transactions.map(transaction => {
+      return {
+        ...transaction,
+        // Use payee_name if it exists, otherwise resolve from payee ID
+        payee: transaction.payee_name || (transaction.payee && payeeMap[transaction.payee]) || 'N/A',
+        // Resolve category name from category ID
+        category: (transaction.category && categoryMap[transaction.category]) || 'N/A'
+      };
+    });
+    
+    res.json(enhancedTransactions);
   } catch (error) {
     console.error('Failed to get transactions:', error);
     res.status(500).json({ 
@@ -208,18 +318,4 @@ app.post('/api/budget/set-amount', ensureBudgetLoaded, async (req, res) => {
       message: error.message || 'Unknown error'
     });
   }
-});
-
-// Start the server
-async function startServer() {
-  await initActual();
-  
-  app.listen(port, () => {
-    console.log(`Minimal Actual UI server running at http://localhost:${port}`);
-  });
-}
-
-startServer().catch(error => {
-  console.error('Failed to start server:', error);
-  process.exit(1);
 }); 
