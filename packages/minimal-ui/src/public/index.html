@@ -190,6 +190,7 @@
                     <tr>
                         <th>Name</th>
                         <th>Balance</th>
+                        <th>Category</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -483,6 +484,7 @@
                         tr.innerHTML = `
                             <td>${account.name}</td>
                             <td>${formatCurrency(account.calculated_balance)}</td>
+                            <td>${account.budget_category}</td>
                             <td><button onclick="viewTransactions('${account.id}')">View Transactions</button></td>
                         `;
                         tbody.appendChild(tr);

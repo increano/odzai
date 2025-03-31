@@ -150,13 +150,16 @@ app.get('/api/accounts', ensureBudgetLoaded, async (req, res) => {
         
         return {
           ...account,
-          calculated_balance: balance
+          calculated_balance: balance,
+          // Add a budget_category field to show if it's on or off budget
+          budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
         };
       } catch (error) {
         console.error(`Error fetching transactions for account ${account.id}:`, error);
         return {
           ...account,
-          calculated_balance: 0
+          calculated_balance: 0,
+          budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
         };
       }
     }));
