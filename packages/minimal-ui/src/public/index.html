@@ -140,6 +140,157 @@
             text-align: center;
             margin: 2rem 0;
         }
+        .transaction-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+        }
+        .search-box input, .search-box select {
+            margin-right: 0.5rem;
+        }
+        .transaction-actions {
+            display: flex;
+            align-items: center;
+        }
+        .transaction-actions button {
+            margin-left: 0.5rem;
+        }
+        .sortable {
+            cursor: pointer;
+        }
+        .sort-icon {
+            margin-left: 0.5rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: black;
+        }
+        
+        .split-header {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .split-header input {
+            width: 100%;
+            padding: 8px;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .split-summary {
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .balanced {
+            color: #28a745;
+        }
+        
+        .unbalanced {
+            color: #dc3545;
+        }
+        
+        .split-item {
+            background-color: #f9f9f9;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #eaeaea;
+        }
+        
+        .split-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr auto;
+            gap: 10px;
+            align-items: end;
+        }
+        
+        .split-amount input,
+        .split-category-container select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .remove-split {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+        }
+        
+        .split-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        
+        .parent-transaction {
+            background-color: #f0f7ff;
+            font-weight: bold;
+        }
+        
+        .child-transaction {
+            background-color: #f7f7f7;
+            font-size: 0.95em;
+        }
+        
+        .child-transaction td.indent {
+            padding-left: 20px;
+            color: #999;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -224,13 +375,33 @@
                 <select id="account-select"></select>
             </div>
             
+            <!-- Add transaction search and filter controls -->
+            <div class="transaction-controls">
+                <div class="search-box">
+                    <input type="text" id="transaction-search" placeholder="Search transactions...">
+                    <select id="search-filter-type">
+                        <option value="all">All Fields</option>
+                        <option value="payee">Payee</option>
+                        <option value="category">Category</option>
+                        <option value="amount">Amount</option>
+                        <option value="notes">Notes</option>
+                    </select>
+                    <button id="clear-search">Clear</button>
+                </div>
+                <div class="transaction-actions">
+                    <button id="select-all-transactions">Select All</button>
+                    <button id="batch-delete" disabled>Delete Selected</button>
+                </div>
+            </div>
+            
             <table id="transactions-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Payee</th>
-                        <th>Category</th>
-                        <th>Amount</th>
+                        <th><input type="checkbox" id="select-all-checkbox"></th>
+                        <th class="sortable" data-sort="date">Date <span class="sort-icon">↕</span></th>
+                        <th class="sortable" data-sort="payee">Payee <span class="sort-icon">↕</span></th>
+                        <th class="sortable" data-sort="category">Category <span class="sort-icon">↕</span></th>
+                        <th class="sortable" data-sort="amount">Amount <span class="sort-icon">↕</span></th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -284,11 +455,64 @@
                 <tbody id="budget-body"></tbody>
             </table>
         </section>
+
+        <!-- Split Transaction Modal -->
+        <div id="split-transaction-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="document.getElementById('split-transaction-modal').style.display='none'">&times;</span>
+                <h3>Split Transaction</h3>
+                
+                <form id="split-transaction-form" onsubmit="submitSplitTransaction(event)">
+                    <input type="hidden" id="split-transaction-id">
+                    
+                    <div class="split-header">
+                        <div>
+                            <label>Date</label>
+                            <input type="date" id="split-transaction-date" disabled>
+                        </div>
+                        <div>
+                            <label>Payee</label>
+                            <input type="text" id="split-transaction-payee" disabled>
+                        </div>
+                        <div>
+                            <label>Total Amount</label>
+                            <input type="text" id="split-transaction-total" disabled>
+                        </div>
+                    </div>
+                    
+                    <div class="split-summary">
+                        <div>Remaining: <span id="split-remaining">$0.00</span></div>
+                    </div>
+                    
+                    <div id="split-items-container">
+                        <!-- Split items will be added here dynamically -->
+                    </div>
+                    
+                    <div class="split-actions">
+                        <button type="button" onclick="addSplitItem()">Add Split</button>
+                        <button type="submit" id="submit-split" disabled>Save Split</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
     
     <script>
+        // Add missing updateBatchDeleteButton function
+        function updateBatchDeleteButton() {
+            const selectedCount = document.querySelectorAll('.transaction-checkbox:checked').length;
+            const batchDeleteBtn = document.getElementById('batch-delete');
+            
+            batchDeleteBtn.disabled = selectedCount === 0;
+            batchDeleteBtn.textContent = selectedCount > 0 
+                ? `Delete Selected (${selectedCount})` 
+                : 'Delete Selected';
+        }
+
         // Global state
         let isBudgetLoaded = false;
+        let currentTransactions = []; // Store transactions for filtering/sorting
+        let currentSort = { field: 'date', direction: 'desc' }; // Default sort
         
         // Helper to show errors
         function showError(message) {
@@ -582,31 +806,343 @@
                 const response = await fetch(`/api/transactions/${accountId}`);
                 const transactions = await handleApiResponse(response);
                 
-                const tbody = document.getElementById('transactions-body');
-                tbody.innerHTML = '';
+                // Store transactions globally for filtering/sorting
+                currentTransactions = transactions;
                 
-                if (transactions.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5">No transactions found for this account.</td></tr>';
-                    return;
-                }
+                // Apply current sort order
+                sortTransactions();
                 
-                transactions.forEach(transaction => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${formatDate(transaction.date)}</td>
-                        <td>${transaction.payee || 'N/A'}</td>
-                        <td>${transaction.category || 'N/A'}</td>
-                        <td>${formatCurrency(transaction.amount)}</td>
-                        <td><button onclick="editTransaction('${transaction.id}')">Edit</button></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                // Display the transactions
+                displayTransactions();
             } catch (error) {
                 console.error('Failed to load transactions:', error);
                 if (error.message && error.message.includes('No budget file is open')) {
                     updateBudgetStatus(false);
                     showSection('budgets');
                 }
+            }
+        }
+        
+        // Sort transactions based on current sort settings
+        function sortTransactions() {
+            const { field, direction } = currentSort;
+            
+            currentTransactions.sort((a, b) => {
+                let valueA, valueB;
+                
+                // Extract values based on field
+                if (field === 'date') {
+                    valueA = a.date;
+                    valueB = b.date;
+                } else if (field === 'amount') {
+                    valueA = a.amount;
+                    valueB = b.amount;
+                } else {
+                    valueA = a[field] || '';
+                    valueB = b[field] || '';
+                }
+                
+                // Compare values based on type
+                let result;
+                if (field === 'amount') {
+                    result = valueA - valueB; // Numeric comparison
+                } else if (field === 'date') {
+                    result = new Date(valueA) - new Date(valueB); // Date comparison
+                } else {
+                    result = String(valueA).localeCompare(String(valueB)); // String comparison
+                }
+                
+                // Apply sort direction
+                return direction === 'asc' ? result : -result;
+            });
+        }
+        
+        // Filter transactions based on search term
+        function filterTransactions(searchTerm, filterType) {
+            if (!searchTerm) return currentTransactions;
+            
+            searchTerm = searchTerm.toLowerCase();
+            
+            return currentTransactions.filter(transaction => {
+                // Default to searching all fields
+                if (filterType === 'all') {
+                    return (
+                        (transaction.payee || '').toLowerCase().includes(searchTerm) ||
+                        (transaction.category || '').toLowerCase().includes(searchTerm) ||
+                        String(transaction.amount).includes(searchTerm) ||
+                        (transaction.notes || '').toLowerCase().includes(searchTerm)
+                    );
+                }
+                
+                // Search specific field
+                if (filterType === 'amount') {
+                    return String(transaction.amount).includes(searchTerm);
+                }
+                
+                // For text fields
+                return (transaction[filterType] || '').toLowerCase().includes(searchTerm);
+            });
+        }
+        
+        // Display transactions based on current filters and sort
+        function displayTransactions() {
+            const tbody = document.getElementById('transactions-body');
+            tbody.innerHTML = '';
+            
+            // Get search settings
+            const searchTerm = document.getElementById('transaction-search').value.trim();
+            const filterType = document.getElementById('search-filter-type').value;
+            
+            // Filter transactions
+            const filtered = searchTerm ? filterTransactions(searchTerm, filterType) : currentTransactions;
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No transactions found for this account.</td></tr>';
+                return;
+            }
+            
+            // Group transactions by parent-child relationships
+            const organizedTransactions = organizeTransactionsByParent(filtered);
+            
+            // Display the organized transactions
+            organizedTransactions.forEach(transaction => {
+                if (transaction.is_child) return; // Skip child transactions as they'll be displayed with parents
+                
+                // Create parent transaction row
+                const tr = document.createElement('tr');
+                tr.dataset.id = transaction.id;
+                tr.className = transaction.is_parent ? 'parent-transaction' : '';
+                
+                // Show checkbox only for transactions that aren't parents (can't delete parent without children)
+                const checkboxCell = transaction.is_parent ? 
+                    '<td></td>' : 
+                    `<td><input type="checkbox" class="transaction-checkbox" data-id="${transaction.id}"></td>`;
+                
+                tr.innerHTML = `
+                    ${checkboxCell}
+                    <td>${formatDate(transaction.date)}</td>
+                    <td>${transaction.payee || 'N/A'}</td>
+                    <td>${transaction.category || 'N/A'}</td>
+                    <td>${formatCurrency(transaction.amount)}</td>
+                    <td>
+                        <button onclick="editTransaction('${transaction.id}')">Edit</button>
+                        ${!transaction.is_parent ? `<button onclick="splitTransaction('${transaction.id}')">Split</button>` : ''}
+                        ${!transaction.is_parent ? `<button onclick="deleteTransaction('${transaction.id}')">Delete</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+                
+                // If this is a parent transaction, also display its children
+                if (transaction.is_parent && transaction.children && transaction.children.length > 0) {
+                    transaction.children.forEach(child => {
+                        const childRow = document.createElement('tr');
+                        childRow.className = 'child-transaction';
+                        childRow.dataset.id = child.id;
+                        childRow.dataset.parentId = transaction.id;
+                        
+                        childRow.innerHTML = `
+                            <td><input type="checkbox" class="transaction-checkbox" data-id="${child.id}"></td>
+                            <td class="indent">↳</td>
+                            <td>${child.payee || 'N/A'}</td>
+                            <td>${child.category || 'N/A'}</td>
+                            <td>${formatCurrency(child.amount)}</td>
+                            <td>
+                                <button onclick="editTransaction('${child.id}')">Edit</button>
+                                <button onclick="deleteTransaction('${child.id}')">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(childRow);
+                    });
+                }
+            });
+            
+            // Update the batch delete button based on selections
+            updateBatchDeleteButton();
+        }
+        
+        // Organize transactions into parent-child hierarchy
+        function organizeTransactionsByParent(transactions) {
+            const result = [];
+            const transactionsMap = {};
+            const childrenIds = new Set();
+            
+            // First pass: create a map of all transactions
+            transactions.forEach(transaction => {
+                transactionsMap[transaction.id] = { ...transaction, children: [] };
+            });
+            
+            // Second pass: organize parents and children
+            transactions.forEach(transaction => {
+                const transactionCopy = transactionsMap[transaction.id];
+                
+                // Check if this is a child transaction
+                if (transaction.parent_id) {
+                    transactionCopy.is_child = true;
+                    childrenIds.add(transaction.id);
+                    
+                    // Add to parent's children if parent exists
+                    if (transactionsMap[transaction.parent_id]) {
+                        const parent = transactionsMap[transaction.parent_id];
+                        parent.is_parent = true;
+                        parent.children.push(transactionCopy);
+                    } else {
+                        // Parent not in filtered set, treat as regular transaction
+                        result.push(transactionCopy);
+                    }
+                } else {
+                    // This is a regular transaction or a parent
+                    result.push(transactionCopy);
+                }
+            });
+            
+            // Mark any transactions with children as parents
+            transactions.forEach(transaction => {
+                if (transaction.split && transaction.split.length > 0) {
+                    transactionsMap[transaction.id].is_parent = true;
+                }
+            });
+            
+            return result;
+        }
+        
+        // Split transaction
+        function splitTransaction(id) {
+            // Find the transaction
+            const transaction = currentTransactions.find(t => t.id === id);
+            if (!transaction) {
+                showError('Transaction not found');
+                return;
+            }
+            
+            // Show split transaction modal
+            const modal = document.getElementById('split-transaction-modal');
+            const form = document.getElementById('split-transaction-form');
+            
+            // Set transaction details in the form
+            document.getElementById('split-transaction-id').value = transaction.id;
+            document.getElementById('split-transaction-date').value = transaction.date;
+            document.getElementById('split-transaction-payee').value = transaction.payee || '';
+            document.getElementById('split-transaction-total').value = formatCurrency(transaction.amount);
+            document.getElementById('split-transaction-total').dataset.amount = transaction.amount;
+            
+            // Initialize the splits container with one split item
+            const splitsContainer = document.getElementById('split-items-container');
+            splitsContainer.innerHTML = '';
+            
+            // Add first split item (same category as original)
+            addSplitItem(transaction.amount, transaction.category || '');
+            
+            // Show the modal
+            modal.style.display = 'block';
+        }
+        
+        // Add a new split item to the form
+        function addSplitItem(amount = 0, categoryId = '') {
+            const container = document.getElementById('split-items-container');
+            const splitItem = document.createElement('div');
+            splitItem.className = 'split-item';
+            
+            // Get next index
+            const itemIndex = container.children.length;
+            
+            // Create category dropdown clone
+            const categorySelect = document.createElement('select');
+            categorySelect.className = 'split-category';
+            categorySelect.name = `category-${itemIndex}`;
+            categorySelect.innerHTML = document.getElementById('transaction-category').innerHTML;
+            
+            // Set selected category if provided
+            if (categoryId) {
+                categorySelect.value = categoryId;
+            }
+            
+            splitItem.innerHTML = `
+                <div class="split-row">
+                    <div class="split-amount">
+                        <label for="amount-${itemIndex}">Amount</label>
+                        <input type="number" id="amount-${itemIndex}" class="split-amount-input" 
+                            value="${amount/100}" step="0.01" required oninput="updateSplitTotal()">
+                    </div>
+                    <div class="split-category-container">
+                        <label for="category-${itemIndex}">Category</label>
+                    </div>
+                    <button type="button" class="remove-split" onclick="removeSplitItem(this)">×</button>
+                </div>
+            `;
+            
+            // Insert the category select element
+            const categoryContainer = splitItem.querySelector('.split-category-container');
+            categoryContainer.appendChild(categorySelect);
+            
+            container.appendChild(splitItem);
+            updateSplitTotal();
+        }
+        
+        // Remove a split item
+        function removeSplitItem(button) {
+            const item = button.closest('.split-item');
+            item.remove();
+            updateSplitTotal();
+        }
+        
+        // Update split total and check if it matches the transaction amount
+        function updateSplitTotal() {
+            const totalAmount = parseInt(document.getElementById('split-transaction-total').dataset.amount);
+            let currentTotal = 0;
+            
+            document.querySelectorAll('.split-amount-input').forEach(input => {
+                currentTotal += Math.round(parseFloat(input.value || 0) * 100);
+            });
+            
+            const difference = totalAmount - currentTotal;
+            const remainingEl = document.getElementById('split-remaining');
+            remainingEl.textContent = formatCurrency(difference);
+            
+            // Highlight if not balanced
+            remainingEl.className = difference === 0 ? 'balanced' : 'unbalanced';
+            document.getElementById('submit-split').disabled = difference !== 0;
+        }
+        
+        // Submit split transaction
+        async function submitSplitTransaction(e) {
+            e.preventDefault();
+            
+            const transactionId = document.getElementById('split-transaction-id').value;
+            const splits = [];
+            
+            // Collect all split items
+            document.querySelectorAll('.split-item').forEach(item => {
+                const amountInput = item.querySelector('.split-amount-input');
+                const categorySelect = item.querySelector('.split-category');
+                
+                splits.push({
+                    amount: Math.round(parseFloat(amountInput.value) * 100),
+                    category: categorySelect.value
+                });
+            });
+            
+            try {
+                const response = await fetch(`/api/transactions/${transactionId}/split`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ splits })
+                });
+                
+                const result = await handleApiResponse(response);
+                if (result.success) {
+                    document.getElementById('split-transaction-modal').style.display = 'none';
+                    
+                    // Reload transactions
+                    const accountId = document.getElementById('account-select').value;
+                    if (accountId) {
+                        loadTransactions(accountId);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to split transaction:', error);
+                showError('Failed to split transaction: ' + error.message);
             }
         }
         
@@ -830,11 +1366,177 @@
             return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long' }).format(new Date(parseInt(year), parseInt(month) - 1));
         }
         
-        // Initialize
-        checkBudgetStatus().then(() => {
-            showSection('budgets');
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
             getDataDirectory();
+            checkBudgetStatus().then(() => {
+                showSection('budgets');
+            });
+            
+            // Initialize date input with current date
+            document.getElementById('transaction-date').valueAsDate = new Date();
+            
+            // Initialize search and filter functionality
+            initializeTransactionControls();
         });
+        
+        // Initialize transaction controls
+        function initializeTransactionControls() {
+            // Search input handler
+            const searchInput = document.getElementById('transaction-search');
+            const filterTypeSelect = document.getElementById('search-filter-type');
+            
+            searchInput.addEventListener('input', () => {
+                displayTransactions();
+            });
+            
+            filterTypeSelect.addEventListener('change', () => {
+                displayTransactions();
+            });
+            
+            // Clear search button
+            document.getElementById('clear-search').addEventListener('click', () => {
+                searchInput.value = '';
+                filterTypeSelect.value = 'all';
+                displayTransactions();
+            });
+            
+            // Sort headers
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const field = th.dataset.sort;
+                    
+                    // Toggle direction if already sorting by this field
+                    if (currentSort.field === field) {
+                        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        currentSort.field = field;
+                        currentSort.direction = 'asc';
+                    }
+                    
+                    // Update sort icons
+                    updateSortIcons();
+                    
+                    // Sort and display
+                    sortTransactions();
+                    displayTransactions();
+                });
+            });
+            
+            // Select all checkbox
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            selectAllCheckbox.addEventListener('change', () => {
+                const isChecked = selectAllCheckbox.checked;
+                document.querySelectorAll('.transaction-checkbox').forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+                updateBatchDeleteButton();
+            });
+            
+            // Select all button
+            document.getElementById('select-all-transactions').addEventListener('click', () => {
+                selectAllCheckbox.checked = true;
+                document.querySelectorAll('.transaction-checkbox').forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                updateBatchDeleteButton();
+            });
+            
+            // Batch delete button
+            document.getElementById('batch-delete').addEventListener('click', batchDeleteTransactions);
+            
+            // Add delegation for checkbox changes
+            document.getElementById('transactions-body').addEventListener('change', event => {
+                if (event.target.classList.contains('transaction-checkbox')) {
+                    updateBatchDeleteButton();
+                }
+            });
+        }
+        
+        // Update sort icons to reflect current sort state
+        function updateSortIcons() {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                const field = th.dataset.sort;
+                const iconSpan = th.querySelector('.sort-icon');
+                
+                if (field === currentSort.field) {
+                    iconSpan.textContent = currentSort.direction === 'asc' ? '↑' : '↓';
+                    iconSpan.style.opacity = '1';
+                } else {
+                    iconSpan.textContent = '↕';
+                    iconSpan.style.opacity = '0.3';
+                }
+            });
+        }
+        
+        // Delete a single transaction
+        async function deleteTransaction(id) {
+            if (!confirm('Are you sure you want to delete this transaction?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/transactions/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await handleApiResponse(response);
+                if (result.success) {
+                    // Remove from current transactions
+                    currentTransactions = currentTransactions.filter(t => t.id !== id);
+                    
+                    // Update display
+                    displayTransactions();
+                }
+            } catch (error) {
+                console.error('Failed to delete transaction:', error);
+                showError('Failed to delete transaction');
+            }
+        }
+        
+        // Batch delete selected transactions
+        async function batchDeleteTransactions() {
+            const selected = Array.from(document.querySelectorAll('.transaction-checkbox:checked'))
+                .map(checkbox => checkbox.dataset.id);
+            
+            if (selected.length === 0) return;
+            
+            if (!confirm(`Are you sure you want to delete ${selected.length} transaction(s)?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/transactions/batch-delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ids: selected })
+                });
+                
+                const result = await handleApiResponse(response);
+                if (result.success) {
+                    // Remove from current transactions
+                    currentTransactions = currentTransactions.filter(t => !selected.includes(t.id));
+                    
+                    // Reset select all checkbox
+                    document.getElementById('select-all-checkbox').checked = false;
+                    
+                    // Update display
+                    displayTransactions();
+                }
+            } catch (error) {
+                console.error('Failed to delete transactions:', error);
+                showError('Failed to delete transactions');
+            }
+        }
+        
+        // Edit transaction
+        function editTransaction(id) {
+            // For now, just display an alert
+            alert(`Edit transaction ${id} - This feature will be implemented soon`);
+            // TODO: Implement transaction editing
+        }
     </script>
 </body>
 </html> 

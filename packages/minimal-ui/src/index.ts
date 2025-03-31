@@ -321,4 +321,129 @@ app.post('/api/budget/set-amount', ensureBudgetLoaded, async (req, res) => {
       message: error.message || 'Unknown error'
     });
   }
+});
+
+app.delete('/api/transactions/:transactionId', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    if (!transactionId) {
+      return res.status(400).json({ error: 'Transaction ID is required' });
+    }
+    
+    await actualAPI.deleteTransaction(transactionId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete transaction:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete transaction',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+app.post('/api/transactions/batch-delete', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Transaction IDs array is required' });
+    }
+    
+    // Delete each transaction in sequence
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          await actualAPI.deleteTransaction(id);
+          return { id, success: true };
+        } catch (error) {
+          console.error(`Failed to delete transaction ${id}:`, error);
+          return { id, success: false, error: error.message };
+        }
+      })
+    );
+    
+    // Check if all deletions were successful
+    const allSuccessful = results.every(result => result.success);
+    
+    if (allSuccessful) {
+      res.json({ success: true, count: ids.length });
+    } else {
+      // Some deletions failed
+      const failedIds = results.filter(r => !r.success).map(r => r.id);
+      res.status(207).json({ 
+        success: false, 
+        message: `Failed to delete some transactions: ${failedIds.join(', ')}`,
+        results
+      });
+    }
+  } catch (error) {
+    console.error('Failed to process batch delete:', error);
+    res.status(500).json({ 
+      error: 'Failed to process batch delete',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+app.post('/api/transactions/:transactionId/split', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const { splits } = req.body;
+    
+    if (!transactionId) {
+      return res.status(400).json({ error: 'Transaction ID is required' });
+    }
+    
+    if (!splits || !Array.isArray(splits) || splits.length < 2) {
+      return res.status(400).json({ error: 'At least two splits are required' });
+    }
+    
+    // Get all transactions to find the one we need
+    const transactions = await actualAPI.getTransactions(null, null, null);
+    const transaction = transactions.find(t => t.id === transactionId);
+    
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    
+    // Verify that split amounts sum to the original amount
+    const totalSplitAmount = splits.reduce((sum, split) => sum + split.amount, 0);
+    if (totalSplitAmount !== transaction.amount) {
+      return res.status(400).json({ 
+        error: 'Split amounts must sum to the original transaction amount',
+        expected: transaction.amount,
+        received: totalSplitAmount
+      });
+    }
+    
+    // Since Actual doesn't have a direct splitTransaction API,
+    // we'll implement splitting by:
+    // 1. Update the original transaction to be the parent
+    // 2. Create child transactions for each split
+    
+    // First mark the transaction as a parent
+    await actualAPI.updateTransaction(transactionId, { is_parent: true });
+    
+    // Then create child transactions for each split
+    for (const split of splits) {
+      await actualAPI.addTransactions(transaction.account, [{
+        date: transaction.date,
+        amount: split.amount,
+        payee: transaction.payee,
+        notes: split.notes || transaction.notes,
+        category: split.category,
+        parent_id: transactionId,
+        // Copy other relevant fields from the parent
+        cleared: transaction.cleared,
+        imported_payee: transaction.imported_payee
+      }]);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to split transaction:', error);
+    res.status(500).json({ 
+      error: 'Failed to split transaction',
+      message: error.message || 'Unknown error'
+    });
+  }
 }); 
