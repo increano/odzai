@@ -2,10 +2,12 @@ import express from 'express';
 import expressWs from 'express-ws';
 import path from 'path';
 import * as actualAPI from '@actual-app/api';
+import { Application } from 'express';
 
 // Initialize Express app with WebSocket support
 const app = express();
-const wsApp = expressWs(app);
+// Fix type incompatibility with a type assertion
+const wsApp = expressWs(app as unknown as expressWs.Application);
 const port = process.env.PORT || 3000;
 
 // Serve static files from the public directory
