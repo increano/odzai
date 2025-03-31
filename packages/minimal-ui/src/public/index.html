@@ -5,12 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Minimal Actual Budget</title>
     <style>
+        /* Core styles */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
             margin: 0;
             padding: 0;
-            color: #333;
+            background-color: #f9f9f9;
         }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        
         header {
             background-color: #2e7d32;
             color: white;
@@ -52,11 +62,6 @@
             background-color: #f5f5f5;
             color: #aaa;
             cursor: not-allowed;
-        }
-        .container {
-            padding: 1rem;
-            max-width: 1200px;
-            margin: 0 auto;
         }
         .hidden {
             display: none;
@@ -174,18 +179,18 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.6);
+            overflow: auto;
         }
         
         .modal-content {
-            background-color: #fefefe;
-            margin: 10% auto;
+            background-color: #fff;
+            margin: 5% auto;
             padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 600px;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 80%;
+            max-width: 800px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         
         .close {
@@ -197,101 +202,491 @@
         }
         
         .close:hover {
-            color: black;
+            color: #333;
         }
         
         .split-header {
             display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
         }
         
         .split-header input {
             width: 100%;
             padding: 8px;
-            background-color: #f0f0f0;
             border: 1px solid #ddd;
             border-radius: 4px;
+            background-color: #f5f5f5;
         }
         
         .split-summary {
-            background-color: #f5f5f5;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            margin: 15px 0;
             font-weight: bold;
         }
         
-        .balanced {
-            color: #28a745;
+        .split-remaining {
+            padding: 5px 10px;
+            border-radius: 4px;
         }
         
-        .unbalanced {
-            color: #dc3545;
+        .split-items-container {
+            margin-bottom: 20px;
         }
         
         .split-item {
-            background-color: #f9f9f9;
-            padding: 10px;
             margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
             border-radius: 4px;
-            border: 1px solid #eaeaea;
+            border: 1px solid #eee;
         }
         
         .split-row {
             display: grid;
-            grid-template-columns: 1fr 2fr auto;
+            grid-template-columns: 3fr 2fr 3fr 1fr;
             gap: 10px;
-            align-items: end;
+            align-items: center;
         }
         
+        .split-category select, 
         .split-amount input,
-        .split-category-container select {
+        .split-notes input {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
         }
         
-        .remove-split {
-            background-color: #dc3545;
+        .split-actions {
+            text-align: right;
+        }
+        
+        .split-actions button {
+            padding: 5px 8px;
+            background-color: #f44336;
             color: white;
             border: none;
-            border-radius: 50%;
-            width: 25px;
-            height: 25px;
-            font-size: 16px;
+            border-radius: 4px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-top: 2px;
+        }
+        
+        .split-actions button:hover {
+            background-color: #d32f2f;
         }
         
         .split-actions {
             display: flex;
             justify-content: space-between;
-            margin-top: 15px;
+            margin-top: 20px;
         }
         
+        /* Balance indicator styles */
+        .balanced {
+            color: #28a745;
+        }
+        
+        .positive-amount {
+            color: #28a745;
+        }
+        
+        .negative-amount {
+            color: #dc3545;
+        }
+        
+        /* Parent/child transaction styling */
         .parent-transaction {
-            background-color: #f0f7ff;
+            background-color: #f0f8ff;
             font-weight: bold;
         }
         
         .child-transaction {
-            background-color: #f7f7f7;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        
+        /* Loading indicator */
+        .loading-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: #007bff;
+            z-index: 10;
+        }
+        
+        /* Improve report controls layout */
+        .report-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .date-range, .saved-reports {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        /* Mobile responsiveness for report controls */
+        @media (max-width: 768px) {
+            .report-controls {
+                flex-direction: column;
+            }
+            
+            .date-range, .saved-reports {
+                width: 100%;
+            }
+        }
+        
+        /* Report styles */
+        .report-nav {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+        }
+        
+        .report-nav-btn {
+            background: none;
+            border: none;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        
+        .report-nav-btn.active {
+            border-bottom: 3px solid #2e7d32;
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        
+        .report-controls {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        
+        .date-range {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .date-range input {
+            width: auto;
+        }
+        
+        .report-container {
+            padding: 1rem 0;
+        }
+        
+        .report-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .summary-card {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .summary-card h3 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: #666;
+        }
+        
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        
+        .chart-container {
+            margin: 1.5rem 0;
+            height: 300px;
+            position: relative;
+        }
+        
+        #account-selector {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        #account-selector select {
+            width: auto;
+            min-width: 200px;
+        }
+        
+        #category-spending-table,
+        #monthly-income-expenses-table,
+        #balance-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+        
+        #category-spending-table th,
+        #monthly-income-expenses-table th,
+        #balance-history-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+        
+        .progress-bar-cell {
+            position: relative;
+            height: 20px;
+        }
+        
+        .progress-bar {
+            background-color: #c8e6c9;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        .progress-text {
+            position: relative;
+            z-index: 2;
+            padding-left: 8px;
+        }
+        
+        .positive-amount {
+            color: #28a745;
+        }
+        
+        .negative-amount {
+            color: #dc3545;
+        }
+        
+        /* Add loading indicator CSS to the existing style section */
+        .loading-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #666;
+            z-index: 10;
+        }
+        
+        .saved-reports {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: auto;
+        }
+        
+        .saved-reports select {
+            min-width: 150px;
+        }
+        
+        /* Fix report controls layout */
+        .report-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        
+        /* Fix for mobile responsiveness */
+        @media (max-width: 768px) {
+            .date-range, .saved-reports {
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+            
+            .date-range input, .saved-reports select {
+                width: 100%;
+            }
+            
+            .report-controls {
+                flex-direction: column;
+            }
+        }
+        
+        /* Split transaction styles */
+        .parent-transaction {
+            background-color: #f0f8ff; /* Light blue background */
+            font-weight: bold;
+            border-bottom: none !important;
+        }
+        
+        .child-transaction {
+            background-color: #f8f9fa;
+            border-left: 3px solid #4CAF50; /* Green left border */
             font-size: 0.95em;
         }
         
-        .child-transaction td.indent {
-            padding-left: 20px;
-            color: #999;
+        .split-summary-row {
+            background-color: #e3f2fd;
+            font-size: 0.9em;
+        }
+        
+        .split-summary-header {
+            padding: 3px 8px;
+            font-style: italic;
+            color: #1565c0;
+        }
+        
+        .first-child {
+            border-top: 1px dashed #c5e1a5;
+        }
+        
+        .last-child {
+            border-bottom: 1px dashed #c5e1a5;
+            margin-bottom: 8px;
+        }
+        
+        .split-indicator {
+            font-size: 0.8em;
+            background-color: #e0f7fa;
+            color: #0097a7;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-left: 5px;
+        }
+        
+        .split-category-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .split-category {
+            color: #2e7d32;
+            font-weight: 500;
+            padding: 2px 5px;
+            background-color: #e8f5e9;
+            border-radius: 3px;
+        }
+        
+        .split-percentage {
+            font-size: 0.8em;
+            color: #757575;
+            margin-left: 5px;
+        }
+        
+        /* Improve split modal appearance */
+        .split-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background-color: #f1f8e9;
+            border-radius: 4px;
+            border: 1px solid #c5e1a5;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .split-row {
+            display: grid;
+            grid-template-columns: 3fr 2fr 3fr 1fr;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .split-remaining.balanced {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 5px 8px;
+            border-radius: 4px;
             font-weight: bold;
         }
+        
+        /* Add styles for split transactions */
+        .parent-transaction {
+            font-weight: bold;
+            background-color: #f9f9f9;
+        }
+        
+        .child-transaction {
+            background-color: #f5f8ff;
+            color: #555;
+            font-size: 0.95em;
+        }
+        
+        .child-transaction td:nth-child(2) {
+            padding-left: 20px;
+        }
+        
+        .split-indicator {
+            display: inline-block;
+            background-color: #e0e7ff;
+            color: #4338ca;
+            font-size: 0.75em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+        
+        .split-summary-header {
+            background-color: #f0f4ff;
+            padding: 4px 8px;
+            font-size: 0.85em;
+            color: #4338ca;
+            font-style: italic;
+        }
+        
+        .split-category-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .split-percentage {
+            font-size: 0.85em;
+            color: #6b7280;
+            margin-left: 8px;
+        }
+        
+        /* Ensure first/last child has proper border-radius */
+        .first-child td:first-child {
+            border-top-left-radius: 6px;
+        }
+        
+        .last-child td:last-child {
+            border-bottom-right-radius: 6px;
+        }
     </style>
+    <!-- Chart.js for reports -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
 <body>
     <header>
@@ -306,6 +701,7 @@
         <button id="budgets-btn">Budgets</button>
         <button id="accounts-btn" disabled>Accounts</button>
         <button id="transactions-btn" disabled>Transactions</button>
+        <button id="reports-btn" disabled>Reports</button>
         <button id="budget-btn" disabled>Budget</button>
     </nav>
     
@@ -456,6 +852,132 @@
             </table>
         </section>
 
+        <!-- Add Reports Section after Budget Section -->
+        <!-- Reports Section -->
+        <section id="reports-section" class="hidden">
+            <h2>Reports</h2>
+            
+            <!-- Report Navigation -->
+            <div class="report-nav">
+                <button id="spending-category-btn" class="report-nav-btn active">Spending by Category</button>
+                <button id="income-expenses-btn" class="report-nav-btn">Income vs Expenses</button>
+                <button id="balance-history-btn" class="report-nav-btn">Account Balance History</button>
+            </div>
+            
+            <!-- Date Range Selector -->
+            <div class="report-controls">
+                <div class="date-range">
+                    <label for="report-start-date">Start Date:</label>
+                    <input type="date" id="report-start-date">
+                    <label for="report-end-date">End Date:</label>
+                    <input type="date" id="report-end-date">
+                    <button id="apply-date-range">Apply</button>
+                    <button id="reset-date-range">Reset</button>
+                </div>
+                <div class="saved-reports">
+                    <label for="saved-report-select">Saved Reports:</label>
+                    <select id="saved-report-select">
+                        <option value="">-- Select Saved Report --</option>
+                    </select>
+                    <button id="save-current-report">Save Current</button>
+                </div>
+            </div>
+            
+            <!-- Reports Content -->
+            <div id="report-content">
+                <!-- Spending by Category Report -->
+                <div id="spending-category-report" class="report-container">
+                    <div class="report-summary">
+                        <div class="summary-card">
+                            <h3>Total Spending</h3>
+                            <div id="total-spending" class="summary-value">$0.00</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Categories</h3>
+                            <div id="category-count" class="summary-value">0</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Transactions</h3>
+                            <div id="transaction-count" class="summary-value">0</div>
+                        </div>
+                    </div>
+                    
+                    <div id="category-chart-container" class="chart-container">
+                        <canvas id="category-chart"></canvas>
+                    </div>
+                    
+                    <table id="category-spending-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Percentage</th>
+                                <th>Transaction Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="category-spending-body"></tbody>
+                    </table>
+                </div>
+                
+                <!-- Income vs Expenses Report -->
+                <div id="income-expenses-report" class="report-container hidden">
+                    <div class="report-summary">
+                        <div class="summary-card">
+                            <h3>Total Income</h3>
+                            <div id="total-income" class="summary-value">$0.00</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Total Expenses</h3>
+                            <div id="total-expenses" class="summary-value">$0.00</div>
+                        </div>
+                        <div class="summary-card">
+                            <h3>Net Income</h3>
+                            <div id="net-income" class="summary-value">$0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div id="income-expenses-chart-container" class="chart-container">
+                        <canvas id="income-expenses-chart"></canvas>
+                    </div>
+                    
+                    <table id="monthly-income-expenses-table">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Income</th>
+                                <th>Expenses</th>
+                                <th>Net</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-income-expenses-body"></tbody>
+                    </table>
+                </div>
+                
+                <!-- Account Balance History Report -->
+                <div id="balance-history-report" class="report-container hidden">
+                    <div id="account-selector">
+                        <label for="balance-history-account">Select Account:</label>
+                        <select id="balance-history-account"></select>
+                    </div>
+                    
+                    <div id="balance-history-chart-container" class="chart-container">
+                        <canvas id="balance-history-chart"></canvas>
+                    </div>
+                    
+                    <table id="balance-history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Balance</th>
+                                <th>Change</th>
+                            </tr>
+                        </thead>
+                        <tbody id="balance-history-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <!-- Split Transaction Modal -->
         <div id="split-transaction-modal" class="modal">
             <div class="modal-content">
@@ -566,6 +1088,7 @@
             const accountsBtn = document.getElementById('accounts-btn');
             const transactionsBtn = document.getElementById('transactions-btn');
             const budgetBtn = document.getElementById('budget-btn');
+            const reportsBtn = document.getElementById('reports-btn');
             
             if (isLoaded) {
                 statusBar.textContent = 'Budget loaded successfully';
@@ -573,6 +1096,7 @@
                 accountsBtn.disabled = false;
                 transactionsBtn.disabled = false;
                 budgetBtn.disabled = false;
+                reportsBtn.disabled = false;
             } else {
                 statusBar.textContent = 'No budget loaded. Please select a budget file.';
                 statusBar.classList.remove('success');
@@ -580,6 +1104,7 @@
                 accountsBtn.disabled = true;
                 transactionsBtn.disabled = true;
                 budgetBtn.disabled = true;
+                reportsBtn.disabled = true;
             }
         }
         
@@ -616,6 +1141,19 @@
                     const monthSelect = document.getElementById('month-select');
                     if (monthSelect.value) loadBudgetMonth(monthSelect.value);
                 });
+            }
+            if (section === 'reports' && isBudgetLoaded) {
+                // Initialize the reports section
+                loadSpendingByCategory();
+                loadSavedReports();
+                
+                // Set up default date range (last 3 months)
+                const today = new Date();
+                const threeMonthsAgo = new Date();
+                threeMonthsAgo.setMonth(today.getMonth() - 3);
+                
+                document.getElementById('report-end-date').value = formatDateForInput(today);
+                document.getElementById('report-start-date').value = formatDateForInput(threeMonthsAgo);
             }
         }
         
@@ -794,7 +1332,7 @@
             showSection('transactions');
         }
         
-        // Load Transactions
+        // Load transactions for an account
         async function loadTransactions(accountId) {
             if (!isBudgetLoaded) {
                 showError('Please load a budget first');
@@ -803,58 +1341,179 @@
             }
             
             try {
-                const response = await fetch(`/api/transactions/${accountId}`);
+                // First, ensure categories are loaded
+                if (!window.allCategories || window.allCategories.length === 0) {
+                    console.log("Loading categories before transactions...");
+                    await loadCategories();
+                }
+                
+                const loadingEl = document.getElementById('transaction-loading');
+                if (loadingEl) {
+                    loadingEl.classList.remove('hidden');
+                }
+                
+                // Force a fresh fetch from the server to get the latest transactions
+                const response = await fetch(`/api/transactions/${accountId}?_t=${Date.now()}`);
                 const transactions = await handleApiResponse(response);
                 
-                // Store transactions globally for filtering/sorting
+                if (loadingEl) {
+                    loadingEl.classList.add('hidden');
+                }
+                
+                console.log(`Loaded ${transactions.length} transactions for account ${accountId}`, transactions);
+                
+                // Store the transactions for filtering/sorting
                 currentTransactions = transactions;
                 
-                // Apply current sort order
-                sortTransactions();
+                // Process transactions to resolve category names
+                processTransactions(currentTransactions);
                 
-                // Display the transactions
-                displayTransactions();
+                // Sort using current sort settings
+                sortTransactions(currentSort.field, currentSort.direction);
+                
+                // Update transaction count if element exists
+                const countEl = document.getElementById('transaction-count');
+                if (countEl) {
+                    countEl.textContent = transactions.length;
+                }
+                
+                // Display all transactions
+                displayTransactions(currentTransactions);
+                
+                return transactions;
             } catch (error) {
+                const loadingEl = document.getElementById('transaction-loading');
+                if (loadingEl) {
+                    loadingEl.classList.add('hidden');
+                }
+                
                 console.error('Failed to load transactions:', error);
                 if (error.message && error.message.includes('No budget file is open')) {
                     updateBudgetStatus(false);
                     showSection('budgets');
                 }
+                return [];
             }
         }
         
-        // Sort transactions based on current sort settings
-        function sortTransactions() {
-            const { field, direction } = currentSort;
-            
-            currentTransactions.sort((a, b) => {
-                let valueA, valueB;
-                
-                // Extract values based on field
-                if (field === 'date') {
-                    valueA = a.date;
-                    valueB = b.date;
-                } else if (field === 'amount') {
-                    valueA = a.amount;
-                    valueB = b.amount;
-                } else {
-                    valueA = a[field] || '';
-                    valueB = b[field] || '';
+        // Process transactions to add category names and handle split structure
+        function processTransactions(transactions) {
+            transactions.forEach(transaction => {
+                // Add category names
+                if (transaction.category && !transaction.category_name) {
+                    const category = window.allCategories?.find(c => c.id === transaction.category);
+                    if (category) {
+                        transaction.category_name = category.name;
+                    }
                 }
                 
-                // Compare values based on type
-                let result;
-                if (field === 'amount') {
-                    result = valueA - valueB; // Numeric comparison
-                } else if (field === 'date') {
-                    result = new Date(valueA) - new Date(valueB); // Date comparison
+                // Mark split transactions properly - only if they actually have subtransactions
+                if (transaction.subtransactions && transaction.subtransactions.length > 0) {
+                    transaction.is_parent = true;
+                    
+                    // Process category names for subtransactions
+                    transaction.subtransactions.forEach(subTrans => {
+                        if (subTrans.category && !subTrans.category_name) {
+                            const category = window.allCategories?.find(c => c.id === subTrans.category);
+                            if (category) {
+                                subTrans.category_name = category.name;
+                            }
+                        }
+                        subTrans.is_child = true;
+                        subTrans.parent_id = transaction.id;
+                    });
                 } else {
-                    result = String(valueA).localeCompare(String(valueB)); // String comparison
+                    // If a transaction is marked as parent but has no subtransactions, fix that
+                    if (transaction.is_parent && (!transaction.subtransactions || transaction.subtransactions.length === 0)) {
+                        transaction.is_parent = false;
+                        console.log(`Fixing incorrectly marked parent transaction: ${transaction.id}`);
+                    }
+                }
+            });
+        }
+        
+        // Sort transactions
+        function sortTransactions(field, direction) {
+            // Update sort state
+            currentSort = { field, direction };
+            
+            // Update header sort indicators
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.querySelector('.sort-icon').textContent = th.dataset.field === field 
+                    ? (direction === 'asc' ? '▲' : '▼') 
+                    : '';
+            });
+            
+            // Sort the transactions
+            currentTransactions.sort((a, b) => {
+                let comparison = 0;
+                
+                // Compare values based on field type
+                if (field === 'amount') {
+                    comparison = a.amount - b.amount;
+                } else if (field === 'date') {
+                    comparison = a.date.localeCompare(b.date);
+                } else if (field === 'payee') {
+                    comparison = (a.payee || '').localeCompare(b.payee || '');
+                } else if (field === 'category') {
+                    comparison = (a.category || '').localeCompare(b.category || '');
                 }
                 
                 // Apply sort direction
-                return direction === 'asc' ? result : -result;
+                return direction === 'asc' ? comparison : -comparison;
             });
+            
+            // Update display
+            displayTransactions(currentTransactions);
+        }
+        
+        // Apply transaction filters
+        function applyTransactionFilters() {
+            const searchInput = document.getElementById('transaction-search');
+            const searchText = searchInput.value.toLowerCase();
+            
+            const dateFilterSelect = document.getElementById('date-filter');
+            const dateFilter = dateFilterSelect.value;
+            
+            let filteredTransactions = [...currentTransactions]; // Start with all transactions
+            
+            // Apply search text filter if any
+            if (searchText) {
+                filteredTransactions = filteredTransactions.filter(transaction => {
+                    return (
+                        (transaction.payee && transaction.payee.toLowerCase().includes(searchText)) ||
+                        (transaction.category && transaction.category.toLowerCase().includes(searchText)) ||
+                        (transaction.notes && transaction.notes.toLowerCase().includes(searchText))
+                    );
+                });
+            }
+            
+            // Apply date filter if any
+            if (dateFilter) {
+                const today = new Date();
+                const thisMonth = today.getMonth();
+                const thisYear = today.getFullYear();
+                
+                filteredTransactions = filteredTransactions.filter(transaction => {
+                    const transDate = new Date(transaction.date);
+                    
+                    if (dateFilter === 'thisMonth') {
+                        return transDate.getMonth() === thisMonth && transDate.getFullYear() === thisYear;
+                    } else if (dateFilter === 'lastMonth') {
+                        const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+                        const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+                        return transDate.getMonth() === lastMonth && transDate.getFullYear() === lastMonthYear;
+                    } else if (dateFilter === 'thisYear') {
+                        return transDate.getFullYear() === thisYear;
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            // Update display with filtered transactions
+            currentTransactions = filteredTransactions;
+            displayTransactions(currentTransactions);
         }
         
         // Filter transactions based on search term
@@ -885,99 +1544,184 @@
         }
         
         // Display transactions based on current filters and sort
-        function displayTransactions() {
+        function displayTransactions(transactions) {
+            // Store transactions globally for operations
+            currentTransactions = transactions;
+            
+            // Show transaction count
+            const countEl = document.getElementById('transaction-count');
+            if (countEl) {
+                countEl.textContent = transactions.length;
+            }
+            
+            // Organize transactions for display
+            const organizedTransactions = organizeTransactionsByParent(transactions);
+            
             const tbody = document.getElementById('transactions-body');
             tbody.innerHTML = '';
             
-            // Get search settings
-            const searchTerm = document.getElementById('transaction-search').value.trim();
-            const filterType = document.getElementById('search-filter-type').value;
-            
-            // Filter transactions
-            const filtered = searchTerm ? filterTransactions(searchTerm, filterType) : currentTransactions;
-            
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6">No transactions found for this account.</td></tr>';
+            if (organizedTransactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No transactions found.</td></tr>';
                 return;
             }
             
-            // Group transactions by parent-child relationships
-            const organizedTransactions = organizeTransactionsByParent(filtered);
-            
-            // Display the organized transactions
             organizedTransactions.forEach(transaction => {
-                if (transaction.is_child) return; // Skip child transactions as they'll be displayed with parents
-                
-                // Create parent transaction row
                 const tr = document.createElement('tr');
                 tr.dataset.id = transaction.id;
-                tr.className = transaction.is_parent ? 'parent-transaction' : '';
                 
-                // Show checkbox only for transactions that aren't parents (can't delete parent without children)
-                const checkboxCell = transaction.is_parent ? 
-                    '<td></td>' : 
-                    `<td><input type="checkbox" class="transaction-checkbox" data-id="${transaction.id}"></td>`;
+                // Only apply parent class if it has actual children
+                const hasChildren = (transaction.children && transaction.children.length > 0) || 
+                                  (transaction.subtransactions && transaction.subtransactions.length > 0);
+                
+                if (hasChildren) {
+                    tr.classList.add('parent-transaction');
+                    transaction.is_parent = true; // Ensure consistency
+                } else {
+                    transaction.is_parent = false; // Fix incorrect parent marking
+                }
+                
+                if (transaction.is_child) {
+                    tr.classList.add('child-transaction');
+                }
+                
+                // Format the category name for display
+                let categoryDisplay = '';
+                if (transaction.category_name) {
+                    categoryDisplay = transaction.category_name;
+                } else if (transaction.category) {
+                    // Try to resolve from our global category list
+                    if (window.allCategories) {
+                        const category = window.allCategories.find(c => c.id === transaction.category);
+                        if (category) categoryDisplay = category.name;
+                    }
+                }
+                
+                // For parent transactions with splits, indicate it's a split
+                let splitIndicator = '';
+                if (hasChildren) {
+                    const childCount = transaction.children?.length || transaction.subtransactions?.length || 0;
+                    // Only show split indicator if there are actual children
+                    if (childCount > 0) {
+                        splitIndicator = ` <span class="split-indicator">[Split:${childCount}]</span>`;
+                        categoryDisplay = 'Split Transaction';
+                    }
+                }
                 
                 tr.innerHTML = `
-                    ${checkboxCell}
+                    <td><input type="checkbox" class="transaction-checkbox" data-id="${transaction.id}"></td>
                     <td>${formatDate(transaction.date)}</td>
-                    <td>${transaction.payee || 'N/A'}</td>
-                    <td>${transaction.category || 'N/A'}</td>
-                    <td>${formatCurrency(transaction.amount)}</td>
+                    <td>${transaction.payee || ''}${splitIndicator}</td>
+                    <td>${categoryDisplay || 'Uncategorized'}</td>
+                    <td class="${transaction.amount >= 0 ? 'positive-amount' : 'negative-amount'}">${formatCurrency(transaction.amount)}</td>
                     <td>
-                        <button onclick="editTransaction('${transaction.id}')">Edit</button>
-                        ${!transaction.is_parent ? `<button onclick="splitTransaction('${transaction.id}')">Split</button>` : ''}
-                        ${!transaction.is_parent ? `<button onclick="deleteTransaction('${transaction.id}')">Delete</button>` : ''}
+                        <div class="table-actions">
+                            <button onclick="editTransaction('${transaction.id}')">Edit</button>
+                            <button onclick="deleteTransaction('${transaction.id}')">Delete</button>
+                            ${!transaction.is_child && !hasChildren ? `<button onclick="showSplitModal('${transaction.id}')">Split</button>` : ''}
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
                 
-                // If this is a parent transaction, also display its children
-                if (transaction.is_parent && transaction.children && transaction.children.length > 0) {
-                    transaction.children.forEach(child => {
-                        const childRow = document.createElement('tr');
-                        childRow.className = 'child-transaction';
-                        childRow.dataset.id = child.id;
-                        childRow.dataset.parentId = transaction.id;
+                // Only display children if there are actual children to display
+                const childrenToDisplay = transaction.children && transaction.children.length > 0 
+                    ? transaction.children 
+                    : (transaction.subtransactions && transaction.subtransactions.length > 0 ? transaction.subtransactions : []);
+                    
+                if (childrenToDisplay.length > 0) {
+                    // Add a split summary header
+                    const summaryRow = document.createElement('tr');
+                    summaryRow.classList.add('split-summary-row');
+                    summaryRow.innerHTML = `
+                        <td colspan="6">
+                            <div class="split-summary-header">
+                                <span class="split-summary-text">Split into ${childrenToDisplay.length} categories:</span>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(summaryRow);
+                    
+                    // Then add each child transaction
+                    childrenToDisplay.forEach((childTransaction, index) => {
+                        const childTr = document.createElement('tr');
+                        childTr.dataset.id = childTransaction.id || `${transaction.id}-child-${index}`;
+                        childTr.classList.add('child-transaction');
                         
-                        childRow.innerHTML = `
-                            <td><input type="checkbox" class="transaction-checkbox" data-id="${child.id}"></td>
-                            <td class="indent">↳</td>
-                            <td>${child.payee || 'N/A'}</td>
-                            <td>${child.category || 'N/A'}</td>
-                            <td>${formatCurrency(child.amount)}</td>
+                        // Add first/last child classes for styling
+                        if (index === 0) childTr.classList.add('first-child');
+                        if (index === childrenToDisplay.length - 1) childTr.classList.add('last-child');
+                        
+                        // Format the category name for child
+                        let childCategoryDisplay = '';
+                        if (childTransaction.category_name) {
+                            childCategoryDisplay = childTransaction.category_name;
+                        } else if (childTransaction.category) {
+                            // Try to resolve from our global category list
+                            if (window.allCategories) {
+                                const category = window.allCategories.find(c => c.id === childTransaction.category);
+                                if (category) childCategoryDisplay = category.name;
+                            }
+                        }
+                        
+                        // Calculate percentage of total for this split
+                        const percentage = Math.abs(childTransaction.amount) / Math.abs(transaction.amount) * 100;
+                        const percentageDisplay = percentage.toFixed(0) + '%';
+                        
+                        childTr.innerHTML = `
+                            <td><input type="checkbox" class="transaction-checkbox" data-id="${childTransaction.id || `${transaction.id}-child-${index}`}"></td>
+                            <td>⤷ ${formatDate(childTransaction.date || transaction.date)}</td>
+                            <td>${childTransaction.payee || transaction.payee || ''}</td>
                             <td>
-                                <button onclick="editTransaction('${child.id}')">Edit</button>
-                                <button onclick="deleteTransaction('${child.id}')">Delete</button>
+                                <div class="split-category-container">
+                                    <span class="split-category">${childCategoryDisplay || 'Uncategorized'}</span>
+                                    <span class="split-percentage">${percentageDisplay}</span>
+                                </div>
+                            </td>
+                            <td class="${childTransaction.amount >= 0 ? 'positive-amount' : 'negative-amount'}">${formatCurrency(childTransaction.amount)}</td>
+                            <td>
+                                <div class="table-actions">
+                                    <button onclick="editTransaction('${childTransaction.id || `${transaction.id}-child-${index}`}')">Edit</button>
+                                    <button onclick="deleteTransaction('${childTransaction.id || `${transaction.id}-child-${index}`}')">Delete</button>
+                                </div>
                             </td>
                         `;
-                        tbody.appendChild(childRow);
+                        tbody.appendChild(childTr);
                     });
                 }
             });
             
-            // Update the batch delete button based on selections
+            // Update batch delete button
             updateBatchDeleteButton();
         }
         
         // Organize transactions into parent-child hierarchy
         function organizeTransactionsByParent(transactions) {
+            console.log("Organizing transactions by parent:", transactions.length);
             const result = [];
             const transactionsMap = {};
             const childrenIds = new Set();
             
             // First pass: create a map of all transactions
             transactions.forEach(transaction => {
-                transactionsMap[transaction.id] = { ...transaction, children: [] };
+                transactionsMap[transaction.id] = { 
+                    ...transaction, 
+                    children: [],
+                    is_parent: transaction.is_parent || (transaction.subtransactions && transaction.subtransactions.length > 0)
+                };
             });
+            
+            // Debug logging
+            const parentIds = Object.values(transactionsMap)
+                .filter(t => t.is_parent)
+                .map(t => t.id);
+            console.log(`Identified ${parentIds.length} parent transactions`);
             
             // Second pass: organize parents and children
             transactions.forEach(transaction => {
                 const transactionCopy = transactionsMap[transaction.id];
                 
                 // Check if this is a child transaction
-                if (transaction.parent_id) {
-                    transactionCopy.is_child = true;
+                if (transaction.is_child && transaction.parent_id) {
                     childrenIds.add(transaction.id);
                     
                     // Add to parent's children if parent exists
@@ -992,134 +1736,197 @@
                 } else {
                     // This is a regular transaction or a parent
                     result.push(transactionCopy);
+                    
+                    // If it has subtransactions, process them
+                    if (transaction.subtransactions && transaction.subtransactions.length > 0) {
+                        transaction.subtransactions.forEach(subTrans => {
+                            // Create a proper transaction object for the subtransaction
+                            const subTransCopy = {
+                                ...subTrans,
+                                is_child: true,
+                                parent_id: transaction.id
+                            };
+                            
+                            // Add to parent's children array
+                            transactionCopy.children.push(subTransCopy);
+                            
+                            // Mark as a child so it doesn't appear twice
+                            childrenIds.add(subTrans.id);
+                        });
+                    }
                 }
             });
             
-            // Mark any transactions with children as parents
-            transactions.forEach(transaction => {
-                if (transaction.split && transaction.split.length > 0) {
-                    transactionsMap[transaction.id].is_parent = true;
+            // Remove child transactions from the result if they're included in a parent
+            const finalResult = result.filter(transaction => !childrenIds.has(transaction.id));
+            
+            // Final debugging
+            console.log(`Final result has ${finalResult.length} top-level transactions`);
+            finalResult.forEach(transaction => {
+                if (transaction.is_parent) {
+                    console.log(`Parent ${transaction.id} has ${transaction.children.length} children`);
                 }
             });
             
-            return result;
+            return finalResult;
         }
         
-        // Split transaction
-        function splitTransaction(id) {
-            // Find the transaction
-            const transaction = currentTransactions.find(t => t.id === id);
+        // Split transaction handling
+        async function showSplitModal(transactionId) {
+            // Ensure categories are loaded before showing the modal
+            if (!window.allCategories || window.allCategories.length === 0) {
+                console.log("Loading categories for split modal...");
+                await loadCategories();
+            }
+            
+            // Get transaction details
+            const transaction = currentTransactions.find(t => t.id === transactionId);
             if (!transaction) {
                 showError('Transaction not found');
                 return;
             }
             
-            // Show split transaction modal
-            const modal = document.getElementById('split-transaction-modal');
+            console.log("Opening split modal for transaction:", transaction);
+            
+            // Reset form and populate with transaction details
             const form = document.getElementById('split-transaction-form');
+            form.reset();
+            
+            // Set transaction ID in hidden field
+            document.getElementById('split-transaction-id').value = transactionId;
             
             // Set transaction details in the form
-            document.getElementById('split-transaction-id').value = transaction.id;
             document.getElementById('split-transaction-date').value = transaction.date;
             document.getElementById('split-transaction-payee').value = transaction.payee || '';
             document.getElementById('split-transaction-total').value = formatCurrency(transaction.amount);
-            document.getElementById('split-transaction-total').dataset.amount = transaction.amount;
             
-            // Initialize the splits container with one split item
-            const splitsContainer = document.getElementById('split-items-container');
-            splitsContainer.innerHTML = '';
+            // Clear existing split items
+            document.getElementById('split-items-container').innerHTML = '';
             
-            // Add first split item (same category as original)
-            addSplitItem(transaction.amount, transaction.category || '');
+            // Add initial split items (at least 2)
+            addSplitItem(transaction.amount, transaction.category);
+            addSplitItem(0, '');
+            
+            // Update remaining amount
+            updateSplitRemaining();
             
             // Show the modal
-            modal.style.display = 'block';
+            document.getElementById('split-transaction-modal').style.display = 'block';
         }
         
-        // Add a new split item to the form
-        function addSplitItem(amount = 0, categoryId = '') {
+        // Add a split item to the form
+        function addSplitItem(initialAmount = 0, initialCategory = '') {
             const container = document.getElementById('split-items-container');
-            const splitItem = document.createElement('div');
-            splitItem.className = 'split-item';
+            const splitCount = container.querySelectorAll('.split-item').length;
             
-            // Get next index
-            const itemIndex = container.children.length;
+            const item = document.createElement('div');
+            item.className = 'split-item';
             
-            // Create category dropdown clone
-            const categorySelect = document.createElement('select');
-            categorySelect.className = 'split-category';
-            categorySelect.name = `category-${itemIndex}`;
-            categorySelect.innerHTML = document.getElementById('transaction-category').innerHTML;
-            
-            // Set selected category if provided
-            if (categoryId) {
-                categorySelect.value = categoryId;
+            // Ensure categories are available
+            if (!window.allCategories || window.allCategories.length === 0) {
+                console.error("Categories not loaded for split item. This should not happen.");
+                showError("Categories not loaded. Please try again.");
+                return;
             }
             
-            splitItem.innerHTML = `
+            console.log(`Building category options with ${window.allCategories.length} categories for split item`);
+            
+            // Get categories for select options
+            let categoryOptions = '<option value="">-- Select Category --</option>';
+            
+            // Sort categories by name for better usability
+            const sortedCategories = [...window.allCategories].sort((a, b) => a.name.localeCompare(b.name));
+            
+            sortedCategories.forEach(category => {
+                const selected = category.id === initialCategory ? 'selected' : '';
+                categoryOptions += `<option value="${category.id}" ${selected}>${category.name}</option>`;
+            });
+            
+            item.innerHTML = `
                 <div class="split-row">
+                    <div class="split-category">
+                        <select class="split-category-select" onchange="updateSplitRemaining()">
+                            ${categoryOptions}
+                        </select>
+                    </div>
                     <div class="split-amount">
-                        <label for="amount-${itemIndex}">Amount</label>
-                        <input type="number" id="amount-${itemIndex}" class="split-amount-input" 
-                            value="${amount/100}" step="0.01" required oninput="updateSplitTotal()">
+                        <input type="number" class="split-amount-input" value="${initialAmount / 100}" 
+                               step="0.01" onchange="updateSplitRemaining()">
                     </div>
-                    <div class="split-category-container">
-                        <label for="category-${itemIndex}">Category</label>
+                    <div class="split-notes">
+                        <input type="text" class="split-notes-input" placeholder="Notes">
                     </div>
-                    <button type="button" class="remove-split" onclick="removeSplitItem(this)">×</button>
+                    <div class="split-actions">
+                        <button type="button" onclick="this.closest('.split-item').remove(); updateSplitRemaining()">Remove</button>
+                    </div>
                 </div>
             `;
             
-            // Insert the category select element
-            const categoryContainer = splitItem.querySelector('.split-category-container');
-            categoryContainer.appendChild(categorySelect);
-            
-            container.appendChild(splitItem);
-            updateSplitTotal();
+            container.appendChild(item);
+            updateSplitRemaining();
         }
         
-        // Remove a split item
-        function removeSplitItem(button) {
-            const item = button.closest('.split-item');
-            item.remove();
-            updateSplitTotal();
-        }
-        
-        // Update split total and check if it matches the transaction amount
-        function updateSplitTotal() {
-            const totalAmount = parseInt(document.getElementById('split-transaction-total').dataset.amount);
-            let currentTotal = 0;
+        // Update the remaining amount display
+        function updateSplitRemaining() {
+            const transactionId = document.getElementById('split-transaction-id').value;
+            const transaction = currentTransactions.find(t => t.id === transactionId);
+            if (!transaction) return;
             
+            const totalAmount = transaction.amount;
+            
+            // Calculate sum of split amounts
+            let splitSum = 0;
             document.querySelectorAll('.split-amount-input').forEach(input => {
-                currentTotal += Math.round(parseFloat(input.value || 0) * 100);
+                const amount = parseFloat(input.value) || 0;
+                splitSum += Math.round(amount * 100); // Convert to cents
             });
             
-            const difference = totalAmount - currentTotal;
+            // Update remaining display
+            const remaining = totalAmount - splitSum;
             const remainingEl = document.getElementById('split-remaining');
-            remainingEl.textContent = formatCurrency(difference);
+            remainingEl.textContent = formatCurrency(remaining);
+            remainingEl.className = remaining === 0 ? 'balanced' : (remaining > 0 ? 'positive-amount' : 'negative-amount');
             
-            // Highlight if not balanced
-            remainingEl.className = difference === 0 ? 'balanced' : 'unbalanced';
-            document.getElementById('submit-split').disabled = difference !== 0;
+            // Enable/disable save button based on balance
+            document.getElementById('submit-split').disabled = remaining !== 0;
         }
         
-        // Submit split transaction
-        async function submitSplitTransaction(e) {
-            e.preventDefault();
+        // Submit split transaction form
+        async function submitSplitTransaction(event) {
+            event.preventDefault();
             
             const transactionId = document.getElementById('split-transaction-id').value;
-            const splits = [];
+            if (!transactionId) {
+                showError('Transaction ID is missing');
+                return;
+            }
             
-            // Collect all split items
+            // Gather split data
+            const splits = [];
             document.querySelectorAll('.split-item').forEach(item => {
+                const categorySelect = item.querySelector('.split-category-select');
                 const amountInput = item.querySelector('.split-amount-input');
-                const categorySelect = item.querySelector('.split-category');
+                const notesInput = item.querySelector('.split-notes-input');
                 
-                splits.push({
-                    amount: Math.round(parseFloat(amountInput.value) * 100),
-                    category: categorySelect.value
-                });
+                if (categorySelect && amountInput) {
+                    const category = categorySelect.value;
+                    const amount = Math.round(parseFloat(amountInput.value) * 100); // Convert to cents
+                    const notes = notesInput ? notesInput.value : '';
+                    
+                    if (amount !== 0) {
+                        splits.push({
+                            category,
+                            amount,
+                            notes
+                        });
+                    }
+                }
             });
+            
+            if (splits.length < 2) {
+                showError('At least two split items with non-zero amounts are required');
+                return;
+            }
             
             try {
                 const response = await fetch(`/api/transactions/${transactionId}/split`, {
@@ -1132,21 +1939,22 @@
                 
                 const result = await handleApiResponse(response);
                 if (result.success) {
+                    // Close the modal
                     document.getElementById('split-transaction-modal').style.display = 'none';
                     
                     // Reload transactions
-                    const accountId = document.getElementById('account-select').value;
-                    if (accountId) {
-                        loadTransactions(accountId);
+                    const accountSelect = document.getElementById('account-select');
+                    if (accountSelect.value) {
+                        loadTransactions(accountSelect.value);
                     }
                 }
             } catch (error) {
                 console.error('Failed to split transaction:', error);
-                showError('Failed to split transaction: ' + error.message);
+                showError('Failed to split transaction');
             }
         }
         
-        // Load Categories
+        // Load Categories (improved to properly handle loading)
         async function loadCategories() {
             if (!isBudgetLoaded) {
                 showError('Please load a budget first');
@@ -1155,19 +1963,29 @@
             }
             
             try {
+                console.log("Loading categories...");
                 const response = await fetch('/api/categories');
                 const categories = await handleApiResponse(response);
                 
+                console.log("Categories loaded from API:", categories);
+                
+                // Store categories globally for use in split form and transaction display
+                window.allCategories = categories;
+                
                 const categorySelect = document.getElementById('transaction-category');
-                categorySelect.innerHTML = '<option value="">Select Category</option>';
+                if (categorySelect) {
+                    categorySelect.innerHTML = '<option value="">Select Category</option>';
+                    
+                    // Sort categories by name for better usability
+                    categories.sort((a, b) => a.name.localeCompare(b.name)).forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        categorySelect.appendChild(option);
+                    });
+                }
                 
-                categories.forEach(category => {
-                    const option = document.createElement('option');
-                    option.value = category.id;
-                    option.textContent = category.name;
-                    categorySelect.appendChild(option);
-                });
-                
+                console.log(`Successfully loaded ${categories.length} categories`);
                 return categories;
             } catch (error) {
                 console.error('Failed to load categories:', error);
@@ -1179,7 +1997,7 @@
             }
         }
         
-        // Add Transaction
+        // Add Transaction (improved to reload transactions and properly handle categories)
         document.getElementById('add-transaction-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -1201,7 +2019,40 @@
             const amount = parseFloat(document.getElementById('transaction-amount').value);
             const notes = document.getElementById('transaction-notes').value;
             
+            // Validate inputs
+            if (!date) {
+                showError('Date is required');
+                return;
+            }
+            
+            if (isNaN(amount)) {
+                showError('Amount must be a valid number');
+                return;
+            }
+            
+            // Find category name for logging
+            let categoryName = "None";
+            if (categoryId && window.allCategories) {
+                const category = window.allCategories.find(c => c.id === categoryId);
+                categoryName = category ? category.name : "Unknown";
+            }
+            
+            console.log('Adding transaction:', {
+                date,
+                payee_name: payee,
+                category: categoryId || null,
+                category_name: categoryName,
+                amount: Math.round(amount * 100),
+                notes
+            });
+            
             try {
+                // Show loading indicator if it exists
+                const loadingEl = document.getElementById('transaction-loading');
+                if (loadingEl) {
+                    loadingEl.classList.remove('hidden');
+                }
+                
                 const response = await fetch('/api/transactions', {
                     method: 'POST',
                     headers: {
@@ -1212,7 +2063,7 @@
                         transaction: {
                             date,
                             payee_name: payee,
-                            category: categoryId,
+                            category: categoryId || null, // Handle empty category
                             amount: Math.round(amount * 100), // Convert to cents
                             notes
                         }
@@ -1221,11 +2072,43 @@
                 
                 const result = await handleApiResponse(response);
                 if (result.success) {
-                    document.getElementById('add-transaction-form').reset();
-                    loadTransactions(accountId);
+                    // Reset the form
+                    const form = document.getElementById('add-transaction-form');
+                    if (form) {
+                        form.reset();
+                    }
+                    
+                    // Set the date field to today's date
+                    const dateField = document.getElementById('transaction-date');
+                    if (dateField) {
+                        dateField.valueAsDate = new Date();
+                    }
+                    
+                    // Clear and refetch everything to ensure accurate data
+                    window.allCategories = null;
+                    
+                    try {
+                        const reloadedTransactions = await loadTransactions(accountId);
+                        console.log(`Reloaded ${reloadedTransactions ? reloadedTransactions.length : 0} transactions after adding`);
+                    } catch (reloadError) {
+                        console.error('Error reloading transactions:', reloadError);
+                        showError('Transaction added but could not refresh the list');
+                    }
+                }
+                
+                // Hide loading indicator if it exists
+                if (loadingEl) {
+                    loadingEl.classList.add('hidden');
                 }
             } catch (error) {
+                // Hide loading indicator if it exists
+                const loadingEl = document.getElementById('transaction-loading');
+                if (loadingEl) {
+                    loadingEl.classList.add('hidden');
+                }
+                
                 console.error('Failed to add transaction:', error);
+                showError('Failed to add transaction: ' + (error.message || 'Unknown error'));
             }
         });
         
@@ -1536,6 +2419,697 @@
             // For now, just display an alert
             alert(`Edit transaction ${id} - This feature will be implemented soon`);
             // TODO: Implement transaction editing
+        }
+        
+        // Report-related functions
+        
+        // Navigation between reports
+        document.getElementById('reports-btn').addEventListener('click', () => {
+            if (isBudgetLoaded) showSection('reports');
+        });
+        
+        // Update UI based on budget status (modify existing function)
+        function updateBudgetStatus(isLoaded) {
+            isBudgetLoaded = isLoaded;
+            const statusBar = document.getElementById('status-bar');
+            const accountsBtn = document.getElementById('accounts-btn');
+            const transactionsBtn = document.getElementById('transactions-btn');
+            const budgetBtn = document.getElementById('budget-btn');
+            const reportsBtn = document.getElementById('reports-btn'); // Add this line
+            
+            if (isLoaded) {
+                statusBar.textContent = 'Budget loaded successfully';
+                statusBar.classList.add('success', 'active');
+                accountsBtn.disabled = false;
+                transactionsBtn.disabled = false;
+                budgetBtn.disabled = false;
+                reportsBtn.disabled = false; // Add this line
+            } else {
+                statusBar.textContent = 'No budget loaded. Please select a budget file.';
+                statusBar.classList.remove('success');
+                statusBar.classList.add('active');
+                accountsBtn.disabled = true;
+                transactionsBtn.disabled = true;
+                budgetBtn.disabled = true;
+                reportsBtn.disabled = true; // Add this line
+            }
+        }
+        
+        // Update showSection function to handle reports (modify existing function)
+        function showSection(section) {
+            document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(`${section}-section`).classList.remove('hidden');
+            document.getElementById(`${section}-btn`).classList.add('active');
+            
+            if (section === 'budgets') loadBudgets();
+            if (section === 'accounts' && isBudgetLoaded) loadAccounts();
+            if (section === 'transactions' && isBudgetLoaded) {
+                loadAccounts().then(() => {
+                    const accountSelect = document.getElementById('account-select');
+                    if (accountSelect.value) loadTransactions(accountSelect.value);
+                });
+                loadCategories();
+            }
+            if (section === 'budget' && isBudgetLoaded) {
+                loadBudgetMonths().then(() => {
+                    const monthSelect = document.getElementById('month-select');
+                    if (monthSelect.value) loadBudgetMonth(monthSelect.value);
+                });
+            }
+            if (section === 'reports' && isBudgetLoaded) {
+                // Initialize the reports section
+                loadSpendingByCategory();
+                loadSavedReports();
+                
+                // Set up default date range (last 3 months)
+                const today = new Date();
+                const threeMonthsAgo = new Date();
+                threeMonthsAgo.setMonth(today.getMonth() - 3);
+                
+                document.getElementById('report-end-date').value = formatDateForInput(today);
+                document.getElementById('report-start-date').value = formatDateForInput(threeMonthsAgo);
+            }
+        }
+        
+        // Helper to format dates for input fields
+        function formatDateForInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+        
+        // Report navigation
+        document.getElementById('spending-category-btn').addEventListener('click', (e) => {
+            showReport('spending-category');
+            setActiveReportBtn(e.target);
+            loadSpendingByCategory();
+        });
+        
+        document.getElementById('income-expenses-btn').addEventListener('click', (e) => {
+            showReport('income-expenses');
+            setActiveReportBtn(e.target);
+            loadIncomeVsExpenses();
+        });
+        
+        document.getElementById('balance-history-btn').addEventListener('click', (e) => {
+            showReport('balance-history');
+            setActiveReportBtn(e.target);
+            loadBalanceHistory();
+        });
+        
+        // Set active report button
+        function setActiveReportBtn(button) {
+            document.querySelectorAll('.report-nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            button.classList.add('active');
+        }
+        
+        // Show selected report
+        function showReport(reportId) {
+            document.querySelectorAll('.report-container').forEach(container => {
+                container.classList.add('hidden');
+            });
+            document.getElementById(`${reportId}-report`).classList.remove('hidden');
+        }
+        
+        // Date range controls
+        document.getElementById('apply-date-range').addEventListener('click', () => {
+            // Get the active report and reload it with date range
+            const activeReport = document.querySelector('.report-nav-btn.active').id;
+            
+            if (activeReport === 'spending-category-btn') {
+                loadSpendingByCategory();
+            } else if (activeReport === 'income-expenses-btn') {
+                loadIncomeVsExpenses();
+            } else if (activeReport === 'balance-history-btn') {
+                loadBalanceHistory();
+            }
+        });
+        
+        document.getElementById('reset-date-range').addEventListener('click', () => {
+            // Clear date range and reload
+            document.getElementById('report-start-date').value = '';
+            document.getElementById('report-end-date').value = '';
+            
+            // Reload active report
+            const activeReport = document.querySelector('.report-nav-btn.active').id;
+            
+            if (activeReport === 'spending-category-btn') {
+                loadSpendingByCategory();
+            } else if (activeReport === 'income-expenses-btn') {
+                loadIncomeVsExpenses();
+            } else if (activeReport === 'balance-history-btn') {
+                loadBalanceHistory();
+            }
+        });
+        
+        // Chart instances (to destroy before recreating)
+        let categoryChart = null;
+        let incomeExpensesChart = null;
+        let balanceHistoryChart = null;
+        
+        // Load Spending by Category report
+        async function loadSpendingByCategory() {
+            try {
+                // Show loading indicator
+                showReportLoading('category-chart-container');
+                
+                // Get date range if specified
+                const startDate = document.getElementById('report-start-date').value;
+                const endDate = document.getElementById('report-end-date').value;
+                
+                // Build URL with query parameters
+                let url = '/api/reports/spending-by-category';
+                const params = new URLSearchParams();
+                if (startDate) params.append('startDate', startDate);
+                if (endDate) params.append('endDate', endDate);
+                if (params.toString()) url += `?${params.toString()}`;
+                
+                const response = await fetch(url);
+                const data = await handleApiResponse(response);
+                
+                // Hide loading indicator
+                hideReportLoading('category-chart-container');
+                
+                // Update summary cards
+                document.getElementById('total-spending').textContent = formatCurrency(data.summary.totalSpending);
+                document.getElementById('category-count').textContent = data.summary.categoryCount;
+                document.getElementById('transaction-count').textContent = data.summary.transactionCount;
+                
+                // Create the chart
+                createCategoryChart(data);
+                
+                // Populate the table
+                const tbody = document.getElementById('category-spending-body');
+                tbody.innerHTML = '';
+                
+                data.categories.forEach(category => {
+                    const percentage = (category.total / data.summary.totalSpending) * 100;
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${category.name}</td>
+                        <td>${formatCurrency(category.total)}</td>
+                        <td>
+                            <div class="progress-bar-cell">
+                                <div class="progress-bar" style="width: ${percentage}%"></div>
+                                <span class="progress-text">${percentage.toFixed(1)}%</span>
+                            </div>
+                        </td>
+                        <td>${category.count}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                hideReportLoading('category-chart-container');
+                console.error('Failed to load spending by category data:', error);
+                showError('Failed to load report data');
+            }
+        }
+        
+        // Show and hide loading indicator
+        function showReportLoading(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // Create loading indicator if it doesn't exist
+            if (!container.querySelector('.loading-indicator')) {
+                const loadingEl = document.createElement('div');
+                loadingEl.className = 'loading-indicator';
+                loadingEl.innerHTML = 'Loading data...';
+                container.appendChild(loadingEl);
+            }
+            
+            // Show the loading indicator
+            container.querySelector('.loading-indicator').style.display = 'flex';
+        }
+        
+        function hideReportLoading(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const loadingEl = container.querySelector('.loading-indicator');
+            if (loadingEl) {
+                loadingEl.style.display = 'none';
+            }
+        }
+        
+        // Save current report configuration
+        document.getElementById('save-current-report').addEventListener('click', async () => {
+            const reportName = prompt('Enter a name for this report configuration:');
+            if (!reportName) return;
+            
+            // Get active report type
+            const activeReportButton = document.querySelector('.report-nav-btn.active');
+            if (!activeReportButton) return;
+            
+            const reportType = activeReportButton.id.replace('-btn', '');
+            
+            // Get date range
+            const startDate = document.getElementById('report-start-date').value;
+            const endDate = document.getElementById('report-end-date').value;
+            
+            try {
+                const response = await fetch('/api/reports/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reportType,
+                        configuration: {
+                            name: reportName,
+                            dateRange: {
+                                startDate,
+                                endDate
+                            }
+                        }
+                    })
+                });
+                
+                const result = await handleApiResponse(response);
+                if (result.success) {
+                    showError('Report configuration saved successfully');
+                    loadSavedReports();
+                }
+            } catch (error) {
+                console.error('Failed to save report configuration:', error);
+                showError('Failed to save report configuration');
+            }
+        });
+        
+        // Load saved report configurations
+        async function loadSavedReports() {
+            try {
+                const response = await fetch('/api/reports/config');
+                const data = await handleApiResponse(response);
+                
+                const savedReportSelect = document.getElementById('saved-report-select');
+                savedReportSelect.innerHTML = '<option value="">-- Select Saved Report --</option>';
+                
+                data.savedReports.forEach(report => {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify(report);
+                    option.textContent = report.name;
+                    savedReportSelect.appendChild(option);
+                });
+                
+                // Add event listener to load saved report if not already added
+                if (!savedReportSelect.dataset.listenerAdded) {
+                    savedReportSelect.addEventListener('change', loadSavedReport);
+                    savedReportSelect.dataset.listenerAdded = 'true';
+                }
+            } catch (error) {
+                console.error('Failed to load saved reports:', error);
+            }
+        }
+        
+        // Load a saved report configuration
+        function loadSavedReport() {
+            const savedReportSelect = document.getElementById('saved-report-select');
+            if (!savedReportSelect.value) return;
+            
+            try {
+                const reportConfig = JSON.parse(savedReportSelect.value);
+                
+                // Set date range inputs
+                if (reportConfig.dateRange) {
+                    document.getElementById('report-start-date').value = reportConfig.dateRange.startDate || '';
+                    document.getElementById('report-end-date').value = reportConfig.dateRange.endDate || '';
+                }
+                
+                // Switch to the correct report type
+                const reportButton = document.getElementById(`${reportConfig.reportType}-btn`);
+                if (reportButton) {
+                    reportButton.click();
+                }
+            } catch (error) {
+                console.error('Failed to load saved report:', error);
+                showError('Failed to load saved report configuration');
+            }
+        }
+        
+        // Load Income vs Expenses report
+        async function loadIncomeVsExpenses() {
+            try {
+                const response = await fetch('/api/reports/income-vs-expenses');
+                const data = await handleApiResponse(response);
+                
+                // Update summary cards
+                document.getElementById('total-income').textContent = formatCurrency(data.summary.totalIncome);
+                document.getElementById('total-expenses').textContent = formatCurrency(data.summary.totalExpenses);
+                
+                const netIncomeElement = document.getElementById('net-income');
+                netIncomeElement.textContent = formatCurrency(data.summary.netIncome);
+                netIncomeElement.className = 'summary-value ' + (data.summary.netIncome >= 0 ? 'positive-amount' : 'negative-amount');
+                
+                // Create the chart
+                createIncomeExpensesChart(data);
+                
+                // Populate the table
+                const tbody = document.getElementById('monthly-income-expenses-body');
+                tbody.innerHTML = '';
+                
+                data.monthly.forEach(month => {
+                    const netIncome = month.income - month.expenses;
+                    const netClass = netIncome >= 0 ? 'positive-amount' : 'negative-amount';
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${formatMonthLabel(month.month)}</td>
+                        <td>${formatCurrency(month.income)}</td>
+                        <td>${formatCurrency(month.expenses)}</td>
+                        <td class="${netClass}">${formatCurrency(netIncome)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Failed to load income vs expenses data:', error);
+                showError('Failed to load report data');
+            }
+        }
+        
+        // Format month for display (YYYY-MM to Month Year)
+        function formatMonthLabel(monthStr) {
+            const date = new Date(monthStr + '-01');
+            return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+        
+        // Create or update income vs expenses chart
+        function createIncomeExpensesChart(data) {
+            // Destroy existing chart if it exists
+            if (incomeExpensesChart) {
+                incomeExpensesChart.destroy();
+            }
+            
+            const ctx = document.getElementById('income-expenses-chart').getContext('2d');
+            
+            // Prepare chart data
+            const months = data.monthly.slice(-12); // Last 12 months
+            const labels = months.map(m => formatMonthLabel(m.month));
+            const incomeData = months.map(m => m.income / 100); // Convert to dollars
+            const expenseData = months.map(m => m.expenses / 100); // Convert to dollars
+            
+            incomeExpensesChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: incomeData,
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Expenses',
+                            data: expenseData,
+                            backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Monthly Income vs Expenses',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    return `${context.dataset.label}: ${formatCurrency(value * 100)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load Balance History report
+        async function loadBalanceHistory() {
+            try {
+                // First load accounts to populate account selector
+                const accountsResponse = await fetch('/api/accounts');
+                const accounts = await handleApiResponse(accountsResponse);
+                
+                // Update account selector
+                const accountSelect = document.getElementById('balance-history-account');
+                accountSelect.innerHTML = '<option value="">Select an account</option>';
+                
+                accounts.forEach(account => {
+                    const option = document.createElement('option');
+                    option.value = account.id;
+                    option.textContent = account.name;
+                    accountSelect.appendChild(option);
+                });
+                
+                // Add event listener to account selector
+                if (!accountSelect.dataset.listenerAdded) {
+                    accountSelect.addEventListener('change', () => {
+                        if (accountSelect.value) {
+                            loadAccountBalanceHistory(accountSelect.value);
+                        }
+                    });
+                    accountSelect.dataset.listenerAdded = 'true';
+                }
+                
+                // If there's only one account, select it automatically
+                if (accounts.length === 1) {
+                    accountSelect.value = accounts[0].id;
+                    loadAccountBalanceHistory(accounts[0].id);
+                }
+                
+                // Clear chart area if no account is selected
+                if (!accountSelect.value) {
+                    // Clear chart
+                    if (balanceHistoryChart) {
+                        balanceHistoryChart.destroy();
+                        balanceHistoryChart = null;
+                    }
+                    
+                    // Clear table
+                    document.getElementById('balance-history-body').innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Failed to load accounts for balance history:', error);
+                showError('Failed to load account data');
+            }
+        }
+        
+        // Load balance history for a specific account
+        async function loadAccountBalanceHistory(accountId) {
+            try {
+                const response = await fetch('/api/reports/account-balance-history');
+                const allAccountsData = await handleApiResponse(response);
+                
+                // Find the selected account
+                const accountData = allAccountsData.find(a => a.id === accountId);
+                
+                if (!accountData) {
+                    showError('Account data not found');
+                    return;
+                }
+                
+                // Create the chart
+                createBalanceHistoryChart(accountData);
+                
+                // Populate the table
+                const tbody = document.getElementById('balance-history-body');
+                tbody.innerHTML = '';
+                
+                let previousBalance = 0;
+                accountData.history.forEach((entry, index) => {
+                    const change = index === 0 ? entry.balance : entry.balance - previousBalance;
+                    const changeClass = change >= 0 ? 'positive-amount' : 'negative-amount';
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${formatDate(entry.date)}</td>
+                        <td>${formatCurrency(entry.balance)}</td>
+                        <td class="${changeClass}">${formatCurrency(change)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                    
+                    previousBalance = entry.balance;
+                });
+            } catch (error) {
+                console.error('Failed to load balance history data:', error);
+                showError('Failed to load balance history');
+            }
+        }
+        
+        // Create or update balance history chart
+        function createBalanceHistoryChart(accountData) {
+            // Destroy existing chart if it exists
+            if (balanceHistoryChart) {
+                balanceHistoryChart.destroy();
+            }
+            
+            const ctx = document.getElementById('balance-history-chart').getContext('2d');
+            
+            // Prepare chart data
+            const labels = accountData.history.map(entry => formatDate(entry.date));
+            const balances = accountData.history.map(entry => entry.balance / 100); // Convert to dollars
+            
+            balanceHistoryChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Account Balance',
+                        data: balances,
+                        fill: false,
+                        borderColor: 'rgba(46, 125, 50, 1)',
+                        tension: 0.1,
+                        pointRadius: 3,
+                        pointBackgroundColor: 'rgba(46, 125, 50, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Balance History: ${accountData.name}`,
+                            font: {
+                                size: 16
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    return `Balance: ${formatCurrency(value * 100)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Generate colors for charts
+        function generateColors(count) {
+            const baseColors = [
+                'rgba(46, 125, 50, 0.7)',    // Green
+                'rgba(3, 169, 244, 0.7)',    // Light Blue
+                'rgba(156, 39, 176, 0.7)',   // Purple
+                'rgba(255, 152, 0, 0.7)',    // Orange
+                'rgba(233, 30, 99, 0.7)',    // Pink
+                'rgba(0, 188, 212, 0.7)',    // Cyan
+                'rgba(139, 195, 74, 0.7)',   // Light Green
+                'rgba(121, 85, 72, 0.7)',    // Brown
+                'rgba(33, 150, 243, 0.7)',   // Blue
+                'rgba(255, 87, 34, 0.7)'     // Deep Orange
+            ];
+            
+            // If we need more colors than our base set, generate them
+            if (count <= baseColors.length) {
+                return baseColors.slice(0, count);
+            }
+            
+            // Generate additional colors by shifting hue
+            const result = [...baseColors];
+            const additionalNeeded = count - baseColors.length;
+            
+            for (let i = 0; i < additionalNeeded; i++) {
+                const hue = (i * 137) % 360; // Use golden angle approximation for even distribution
+                result.push(`hsla(${hue}, 70%, 60%, 0.7)`);
+            }
+            
+            return result;
+        }
+        
+        // Re-add the createCategoryChart function that was accidentally removed
+        function createCategoryChart(data) {
+            // Destroy existing chart if it exists
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+            
+            const ctx = document.getElementById('category-chart').getContext('2d');
+            
+            // Prepare chart data
+            const categories = data.categories.slice(0, 10); // Top 10 categories
+            const labels = categories.map(c => c.name);
+            const values = categories.map(c => c.total / 100); // Convert to dollars for display
+            
+            // Generate colors for pie chart
+            const backgroundColors = generateColors(categories.length);
+            
+            categoryChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: backgroundColors,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Top Categories by Spending',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${context.label}: ${formatCurrency(value * 100)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
     </script>
 </body>
