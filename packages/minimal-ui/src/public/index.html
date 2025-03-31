@@ -17,6 +17,21 @@
             padding: 1rem;
             text-align: center;
         }
+        .status-indicator {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .status-indicator.active {
+            display: block;
+        }
+        .status-indicator.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
         nav {
             background-color: #f5f5f5;
             border-bottom: 1px solid #ddd;
@@ -32,6 +47,11 @@
         }
         nav button.active {
             background-color: #c8e6c9;
+        }
+        nav button:disabled {
+            background-color: #f5f5f5;
+            color: #aaa;
+            cursor: not-allowed;
         }
         .container {
             padding: 1rem;
@@ -82,6 +102,17 @@
             border-radius: 4px;
             cursor: pointer;
         }
+        .error-message {
+            color: #721c24;
+            background-color: #f8d7da;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 1rem;
+            display: none;
+        }
+        .error-message.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -89,14 +120,20 @@
         <h1>Minimal Actual Budget</h1>
     </header>
     
+    <div id="status-bar" class="status-indicator">
+        No budget loaded. Please select a budget file.
+    </div>
+    
     <nav>
         <button id="budgets-btn">Budgets</button>
-        <button id="accounts-btn">Accounts</button>
-        <button id="transactions-btn">Transactions</button>
-        <button id="budget-btn">Budget</button>
+        <button id="accounts-btn" disabled>Accounts</button>
+        <button id="transactions-btn" disabled>Transactions</button>
+        <button id="budget-btn" disabled>Budget</button>
     </nav>
     
     <div class="container">
+        <div id="error-message" class="error-message"></div>
+        
         <!-- Budgets Section -->
         <section id="budgets-section">
             <h2>Budgets</h2>
@@ -221,11 +258,77 @@
     </div>
     
     <script>
+        // Global state
+        let isBudgetLoaded = false;
+        
+        // Helper to show errors
+        function showError(message) {
+            const errorEl = document.getElementById('error-message');
+            errorEl.textContent = message;
+            errorEl.classList.add('active');
+            setTimeout(() => {
+                errorEl.classList.remove('active');
+            }, 5000);
+        }
+        
+        // Helper to handle API responses
+        async function handleApiResponse(response) {
+            const data = await response.json();
+            if (!response.ok) {
+                const errorMessage = data.message || data.error || 'Unknown error occurred';
+                showError(errorMessage);
+                throw new Error(errorMessage);
+            }
+            return data;
+        }
+        
+        // Check budget status on page load
+        async function checkBudgetStatus() {
+            try {
+                const response = await fetch('/api/budget-status');
+                const data = await handleApiResponse(response);
+                updateBudgetStatus(data.budgetLoaded);
+            } catch (error) {
+                console.error('Failed to check budget status:', error);
+                updateBudgetStatus(false);
+            }
+        }
+        
+        // Update UI based on budget status
+        function updateBudgetStatus(isLoaded) {
+            isBudgetLoaded = isLoaded;
+            const statusBar = document.getElementById('status-bar');
+            const accountsBtn = document.getElementById('accounts-btn');
+            const transactionsBtn = document.getElementById('transactions-btn');
+            const budgetBtn = document.getElementById('budget-btn');
+            
+            if (isLoaded) {
+                statusBar.textContent = 'Budget loaded successfully';
+                statusBar.classList.add('success', 'active');
+                accountsBtn.disabled = false;
+                transactionsBtn.disabled = false;
+                budgetBtn.disabled = false;
+            } else {
+                statusBar.textContent = 'No budget loaded. Please select a budget file.';
+                statusBar.classList.remove('success');
+                statusBar.classList.add('active');
+                accountsBtn.disabled = true;
+                transactionsBtn.disabled = true;
+                budgetBtn.disabled = true;
+            }
+        }
+        
         // Navigation
         document.getElementById('budgets-btn').addEventListener('click', () => showSection('budgets'));
-        document.getElementById('accounts-btn').addEventListener('click', () => showSection('accounts'));
-        document.getElementById('transactions-btn').addEventListener('click', () => showSection('transactions'));
-        document.getElementById('budget-btn').addEventListener('click', () => showSection('budget'));
+        document.getElementById('accounts-btn').addEventListener('click', () => {
+            if (isBudgetLoaded) showSection('accounts');
+        });
+        document.getElementById('transactions-btn').addEventListener('click', () => {
+            if (isBudgetLoaded) showSection('transactions');
+        });
+        document.getElementById('budget-btn').addEventListener('click', () => {
+            if (isBudgetLoaded) showSection('budget');
+        });
         
         function showSection(section) {
             document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
@@ -235,15 +338,15 @@
             document.getElementById(`${section}-btn`).classList.add('active');
             
             if (section === 'budgets') loadBudgets();
-            if (section === 'accounts') loadAccounts();
-            if (section === 'transactions') {
+            if (section === 'accounts' && isBudgetLoaded) loadAccounts();
+            if (section === 'transactions' && isBudgetLoaded) {
                 loadAccounts().then(() => {
                     const accountSelect = document.getElementById('account-select');
                     if (accountSelect.value) loadTransactions(accountSelect.value);
                 });
                 loadCategories();
             }
-            if (section === 'budget') {
+            if (section === 'budget' && isBudgetLoaded) {
                 loadBudgetMonths().then(() => {
                     const monthSelect = document.getElementById('month-select');
                     if (monthSelect.value) loadBudgetMonth(monthSelect.value);
@@ -255,10 +358,15 @@
         async function loadBudgets() {
             try {
                 const response = await fetch('/api/budgets');
-                const budgets = await response.json();
+                const budgets = await handleApiResponse(response);
                 
                 const tbody = document.getElementById('budgets-body');
                 tbody.innerHTML = '';
+                
+                if (budgets.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">No budgets found. Create a new one to get started.</td></tr>';
+                    return;
+                }
                 
                 budgets.forEach(budget => {
                     const tr = document.createElement('tr');
@@ -285,36 +393,46 @@
                     body: JSON.stringify({ budgetId })
                 });
                 
-                const result = await response.json();
+                const result = await handleApiResponse(response);
                 if (result.success) {
-                    alert(`Budget ${budgetId} loaded successfully`);
+                    updateBudgetStatus(true);
                     showSection('accounts');
                 }
             } catch (error) {
                 console.error('Failed to load budget:', error);
-                alert('Failed to load budget');
+                updateBudgetStatus(false);
             }
         }
         
         // Load Accounts
         async function loadAccounts() {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return [];
+            }
+            
             try {
                 const response = await fetch('/api/accounts');
-                const accounts = await response.json();
+                const accounts = await handleApiResponse(response);
                 
                 const tbody = document.getElementById('accounts-body');
                 tbody.innerHTML = '';
                 
-                accounts.forEach(account => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${account.name}</td>
-                        <td>${formatCurrency(account.balance)}</td>
-                        <td>${account.type || 'N/A'}</td>
-                        <td><button onclick="viewTransactions('${account.id}')">View Transactions</button></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+                if (accounts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">No accounts found. Add one to get started.</td></tr>';
+                } else {
+                    accounts.forEach(account => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${account.name}</td>
+                            <td>${formatCurrency(account.balance)}</td>
+                            <td>${account.type || 'N/A'}</td>
+                            <td><button onclick="viewTransactions('${account.id}')">View Transactions</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
                 
                 // Also update the account select dropdown
                 const accountSelect = document.getElementById('account-select');
@@ -335,6 +453,10 @@
                 return accounts;
             } catch (error) {
                 console.error('Failed to load accounts:', error);
+                if (error.message && error.message.includes('No budget file is open')) {
+                    updateBudgetStatus(false);
+                    showSection('budgets');
+                }
                 return [];
             }
         }
@@ -342,6 +464,12 @@
         // Add Account
         document.getElementById('add-account-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return;
+            }
             
             const name = document.getElementById('account-name').value;
             const type = document.getElementById('account-type').value;
@@ -359,20 +487,24 @@
                     })
                 });
                 
-                const result = await response.json();
+                const result = await handleApiResponse(response);
                 if (result.success) {
-                    alert('Account added successfully');
                     document.getElementById('add-account-form').reset();
                     loadAccounts();
                 }
             } catch (error) {
                 console.error('Failed to add account:', error);
-                alert('Failed to add account');
             }
         });
         
         // View Transactions for Account
         function viewTransactions(accountId) {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return;
+            }
+            
             document.getElementById('account-select').value = accountId;
             loadTransactions(accountId);
             showSection('transactions');
@@ -380,12 +512,23 @@
         
         // Load Transactions
         async function loadTransactions(accountId) {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return;
+            }
+            
             try {
                 const response = await fetch(`/api/transactions/${accountId}`);
-                const transactions = await response.json();
+                const transactions = await handleApiResponse(response);
                 
                 const tbody = document.getElementById('transactions-body');
                 tbody.innerHTML = '';
+                
+                if (transactions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">No transactions found for this account.</td></tr>';
+                    return;
+                }
                 
                 transactions.forEach(transaction => {
                     const tr = document.createElement('tr');
@@ -400,14 +543,24 @@
                 });
             } catch (error) {
                 console.error('Failed to load transactions:', error);
+                if (error.message && error.message.includes('No budget file is open')) {
+                    updateBudgetStatus(false);
+                    showSection('budgets');
+                }
             }
         }
         
         // Load Categories
         async function loadCategories() {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return [];
+            }
+            
             try {
                 const response = await fetch('/api/categories');
-                const categories = await response.json();
+                const categories = await handleApiResponse(response);
                 
                 const categorySelect = document.getElementById('transaction-category');
                 categorySelect.innerHTML = '<option value="">Select Category</option>';
@@ -422,6 +575,10 @@
                 return categories;
             } catch (error) {
                 console.error('Failed to load categories:', error);
+                if (error.message && error.message.includes('No budget file is open')) {
+                    updateBudgetStatus(false);
+                    showSection('budgets');
+                }
                 return [];
             }
         }
@@ -430,9 +587,15 @@
         document.getElementById('add-transaction-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return;
+            }
+            
             const accountId = document.getElementById('account-select').value;
             if (!accountId) {
-                alert('Please select an account');
+                showError('Please select an account');
                 return;
             }
             
@@ -460,26 +623,35 @@
                     })
                 });
                 
-                const result = await response.json();
+                const result = await handleApiResponse(response);
                 if (result.success) {
-                    alert('Transaction added successfully');
                     document.getElementById('add-transaction-form').reset();
                     loadTransactions(accountId);
                 }
             } catch (error) {
                 console.error('Failed to add transaction:', error);
-                alert('Failed to add transaction');
             }
         });
         
         // Load Budget Months
         async function loadBudgetMonths() {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return [];
+            }
+            
             try {
                 const response = await fetch('/api/budget/months');
-                const months = await response.json();
+                const months = await handleApiResponse(response);
                 
                 const monthSelect = document.getElementById('month-select');
                 monthSelect.innerHTML = '';
+                
+                if (months.length === 0) {
+                    showError('No budget months found');
+                    return [];
+                }
                 
                 months.forEach(month => {
                     const option = document.createElement('option');
@@ -496,39 +668,62 @@
                 return months;
             } catch (error) {
                 console.error('Failed to load budget months:', error);
+                if (error.message && error.message.includes('No budget file is open')) {
+                    updateBudgetStatus(false);
+                    showSection('budgets');
+                }
                 return [];
             }
         }
         
         // Load Budget Month
         async function loadBudgetMonth(month) {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return;
+            }
+            
             try {
                 const response = await fetch(`/api/budget/month/${month}`);
-                const budget = await response.json();
+                const budget = await handleApiResponse(response);
                 
                 const tbody = document.getElementById('budget-body');
                 tbody.innerHTML = '';
                 
-                if (budget.categories) {
-                    budget.categories.forEach(category => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${category.name}</td>
-                            <td>${formatCurrency(category.budgeted)}</td>
-                            <td>${formatCurrency(category.activity)}</td>
-                            <td>${formatCurrency(category.available)}</td>
-                            <td><button onclick="setBudgetAmount('${month}', '${category.id}')">Set Budget</button></td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
+                if (!budget.categories || budget.categories.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">No categories found for this month.</td></tr>';
+                    return;
                 }
+                
+                budget.categories.forEach(category => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${category.name}</td>
+                        <td>${formatCurrency(category.budgeted)}</td>
+                        <td>${formatCurrency(category.activity)}</td>
+                        <td>${formatCurrency(category.available)}</td>
+                        <td><button onclick="setBudgetAmount('${month}', '${category.id}')">Set Budget</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
             } catch (error) {
                 console.error('Failed to load budget month:', error);
+                if (error.message && error.message.includes('No budget file is open')) {
+                    updateBudgetStatus(false);
+                    showSection('budgets');
+                }
             }
         }
         
         // Set Budget Amount
         function setBudgetAmount(month, categoryId) {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return;
+            }
+            
             const amount = prompt('Enter budget amount:');
             if (amount === null) return;
             
@@ -543,16 +738,18 @@
                     amount: Math.round(parseFloat(amount) * 100) // Convert to cents
                 })
             })
-            .then(response => response.json())
+            .then(response => handleApiResponse(response))
             .then(result => {
                 if (result.success) {
-                    alert('Budget updated successfully');
                     loadBudgetMonth(month);
                 }
             })
             .catch(error => {
                 console.error('Failed to set budget amount:', error);
-                alert('Failed to set budget amount');
+                if (error.message && error.message.includes('No budget file is open')) {
+                    updateBudgetStatus(false);
+                    showSection('budgets');
+                }
             });
         }
         
@@ -574,7 +771,9 @@
         }
         
         // Initialize
-        showSection('budgets');
+        checkBudgetStatus().then(() => {
+            showSection('budgets');
+        });
     </script>
 </body>
 </html> 

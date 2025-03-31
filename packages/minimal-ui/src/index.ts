@@ -10,6 +10,9 @@ const app = express();
 const wsApp = expressWs(app as unknown as expressWs.Application);
 const port = process.env.PORT || 3000;
 
+// Track budget loaded state
+let budgetLoaded = false;
+
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
@@ -28,6 +31,17 @@ async function initActual() {
   }
 }
 
+// Middleware to check if budget is loaded for protected routes
+const ensureBudgetLoaded = (req, res, next) => {
+  if (!budgetLoaded) {
+    return res.status(400).json({ 
+      error: 'No budget file is open', 
+      message: 'Please select and load a budget first'
+    });
+  }
+  next();
+};
+
 // API Routes
 app.get('/api/budgets', async (req, res) => {
   try {
@@ -35,7 +49,10 @@ app.get('/api/budgets', async (req, res) => {
     res.json(budgets);
   } catch (error) {
     console.error('Failed to get budgets:', error);
-    res.status(500).json({ error: 'Failed to get budgets' });
+    res.status(500).json({ 
+      error: 'Failed to get budgets',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
@@ -47,24 +64,38 @@ app.post('/api/budgets/load', async (req, res) => {
     }
     
     const result = await actualAPI.loadBudget(budgetId);
+    budgetLoaded = true;  // Mark budget as loaded
     res.json({ success: true, result });
   } catch (error) {
     console.error('Failed to load budget:', error);
-    res.status(500).json({ error: 'Failed to load budget' });
+    budgetLoaded = false;
+    res.status(500).json({ 
+      error: 'Failed to load budget',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.get('/api/accounts', async (req, res) => {
+// Check budget loaded status
+app.get('/api/budget-status', (req, res) => {
+  res.json({ budgetLoaded });
+});
+
+// Apply budget loaded check to all budget-related endpoints
+app.get('/api/accounts', ensureBudgetLoaded, async (req, res) => {
   try {
     const accounts = await actualAPI.getAccounts();
     res.json(accounts);
   } catch (error) {
     console.error('Failed to get accounts:', error);
-    res.status(500).json({ error: 'Failed to get accounts' });
+    res.status(500).json({ 
+      error: 'Failed to get accounts',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.post('/api/accounts', async (req, res) => {
+app.post('/api/accounts', ensureBudgetLoaded, async (req, res) => {
   try {
     const { account, initialBalance } = req.body;
     if (!account) {
@@ -75,11 +106,14 @@ app.post('/api/accounts', async (req, res) => {
     res.json({ success: true, id: result });
   } catch (error) {
     console.error('Failed to create account:', error);
-    res.status(500).json({ error: 'Failed to create account' });
+    res.status(500).json({ 
+      error: 'Failed to create account',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.get('/api/transactions/:accountId', async (req, res) => {
+app.get('/api/transactions/:accountId', ensureBudgetLoaded, async (req, res) => {
   try {
     const { accountId } = req.params;
     const { startDate, endDate } = req.query;
@@ -93,11 +127,14 @@ app.get('/api/transactions/:accountId', async (req, res) => {
     res.json(transactions);
   } catch (error) {
     console.error('Failed to get transactions:', error);
-    res.status(500).json({ error: 'Failed to get transactions' });
+    res.status(500).json({ 
+      error: 'Failed to get transactions',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.post('/api/transactions', async (req, res) => {
+app.post('/api/transactions', ensureBudgetLoaded, async (req, res) => {
   try {
     const { accountId, transaction } = req.body;
     if (!accountId || !transaction) {
@@ -108,42 +145,54 @@ app.post('/api/transactions', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Failed to add transaction:', error);
-    res.status(500).json({ error: 'Failed to add transaction' });
+    res.status(500).json({ 
+      error: 'Failed to add transaction',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.get('/api/categories', async (req, res) => {
+app.get('/api/categories', ensureBudgetLoaded, async (req, res) => {
   try {
     const categories = await actualAPI.getCategories();
     res.json(categories);
   } catch (error) {
     console.error('Failed to get categories:', error);
-    res.status(500).json({ error: 'Failed to get categories' });
+    res.status(500).json({ 
+      error: 'Failed to get categories',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.get('/api/budget/months', async (req, res) => {
+app.get('/api/budget/months', ensureBudgetLoaded, async (req, res) => {
   try {
     const months = await actualAPI.getBudgetMonths();
     res.json(months);
   } catch (error) {
     console.error('Failed to get budget months:', error);
-    res.status(500).json({ error: 'Failed to get budget months' });
+    res.status(500).json({ 
+      error: 'Failed to get budget months',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.get('/api/budget/month/:month', async (req, res) => {
+app.get('/api/budget/month/:month', ensureBudgetLoaded, async (req, res) => {
   try {
     const { month } = req.params;
     const budgetMonth = await actualAPI.getBudgetMonth(month);
     res.json(budgetMonth);
   } catch (error) {
     console.error('Failed to get budget month:', error);
-    res.status(500).json({ error: 'Failed to get budget month' });
+    res.status(500).json({ 
+      error: 'Failed to get budget month',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
-app.post('/api/budget/set-amount', async (req, res) => {
+app.post('/api/budget/set-amount', ensureBudgetLoaded, async (req, res) => {
   try {
     const { month, categoryId, amount } = req.body;
     if (!month || !categoryId || amount === undefined) {
@@ -154,7 +203,10 @@ app.post('/api/budget/set-amount', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Failed to set budget amount:', error);
-    res.status(500).json({ error: 'Failed to set budget amount' });
+    res.status(500).json({ 
+      error: 'Failed to set budget amount',
+      message: error.message || 'Unknown error'
+    });
   }
 });
 
