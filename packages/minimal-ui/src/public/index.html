@@ -7,7 +7,7 @@
     <style>
         /* Core styles */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             line-height: 1.6;
             color: #333;
             margin: 0;
@@ -790,6 +790,240 @@
             70% { opacity: 1; }
             100% { opacity: 0; visibility: hidden; }
         }
+        
+        /* Add these new styles for budget categories */
+        .category-group-row {
+            background-color: #f0f0f0;
+        }
+        
+        .category-group-header {
+            font-weight: bold;
+            padding: 10px 15px;
+            background-color: #e8e8e8;
+            color: #555;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .indent-category {
+            padding-left: 30px !important;
+        }
+        
+        .income-category {
+            background-color: #f8fffd;
+        }
+        
+        /* Category management styles */
+        .category-groups-container {
+            margin-top: 20px;
+        }
+        
+        .category-group {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .category-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .category-group-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .category-group-actions button,
+        .category-actions button {
+            margin-left: 5px;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+        }
+        
+        .category-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .category-item:last-child {
+            border-bottom: none;
+        }
+        
+        .category-name {
+            flex-grow: 1;
+        }
+        
+        .category-actions {
+            display: flex;
+        }
+        
+        .income-group {
+            background-color: #f3f8ff;
+        }
+        
+        .income-group .category-group-header {
+            background-color: #e8f1ff;
+        }
+        
+        .hidden-category, 
+        .hidden-group {
+            opacity: 0.5;
+        }
+        
+        .primary-button {
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .secondary-button {
+            background-color: #e0e0e0;
+            color: #333;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .danger-button {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .checkbox-field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .checkbox-field input {
+            width: auto;
+            margin-right: 8px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .section-controls {
+            margin-bottom: 20px;
+        }
+        
+        /* Empty and error states */
+        .empty-state, .error-state {
+            padding: 20px;
+            border-radius: 4px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .empty-state {
+            background-color: #f5f5f5;
+            border: 1px dashed #ddd;
+            color: #666;
+        }
+        
+        .error-state {
+            background-color: #fff3f3;
+            border: 1px solid #ffcaca;
+            color: #d32f2f;
+        }
+        
+        .category-empty, .category-error {
+            padding: 10px 15px;
+            font-style: italic;
+            color: #777;
+        }
+        
+        .category-error {
+            color: #d32f2f;
+        }
+        
+        .highlight-new {
+            animation: highlight-fade 3s ease-in-out;
+        }
+        
+        @keyframes highlight-fade {
+            0%, 30% {
+                background-color: rgba(0, 102, 204, 0.15);
+                box-shadow: 0 0 8px rgba(0, 102, 204, 0.5);
+            }
+            100% {
+                background-color: transparent;
+                box-shadow: none;
+            }
+        }
+        
+        .error-action-button {
+            margin-left: 10px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        
+        .error-action-button:hover {
+            background-color: #b71c1c;
+        }
+        
+        .error.with-action {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .truly-hidden {
+            display: none !important;
+        }
+        
+        .show-hidden {
+            display: block !important;
+            opacity: 0.7;
+        }
+        
+        .highlight-hidden {
+            animation: highlight-hidden 5s ease-in-out;
+        }
+        
+        @keyframes highlight-hidden {
+            0%, 50% {
+                background-color: rgba(255, 87, 34, 0.15);
+                box-shadow: 0 0 8px rgba(255, 87, 34, 0.5);
+            }
+            100% {
+                background-color: transparent;
+                box-shadow: none;
+            }
+        }
+    </style>
+    <!-- Chart.js for reports -->
     </style>
     <!-- Chart.js for reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -805,10 +1039,11 @@
     
     <nav>
         <button id="budgets-btn">Budgets</button>
-        <button id="accounts-btn" disabled>Accounts</button>
-        <button id="transactions-btn" disabled>Transactions</button>
-        <button id="reports-btn" disabled>Reports</button>
-        <button id="budget-btn" disabled>Budget</button>
+        <button id="accounts-btn" disabled onclick="showSection('accounts')">Accounts</button>
+        <button id="transactions-btn" disabled onclick="showSection('transactions')">Transactions</button>
+        <button id="budget-btn" disabled onclick="showSection('budget')">Budget</button>
+        <button id="categories-btn" disabled onclick="showSection('categories')">Categories</button>
+        <button id="reports-btn" disabled onclick="showSection('reports')">Reports</button>
     </nav>
     
     <div class="container">
@@ -993,6 +1228,94 @@
             </table>
         </section>
 
+        <!-- Categories Section -->
+        <section id="categories-section" class="hidden">
+            <h2>Categories</h2>
+            
+            <div class="section-controls">
+                <button id="add-category-group-btn" class="primary-button">Add Category Group</button>
+            </div>
+            
+            <div id="category-groups-container" class="category-groups-container">
+                <!-- Category groups will be loaded dynamically here -->
+            </div>
+            
+            <!-- Add Category Group Modal -->
+            <div id="category-group-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="document.getElementById('category-group-modal').style.display='none'">&times;</span>
+                    <h3 id="category-group-modal-title">Add Category Group</h3>
+                    
+                    <form id="category-group-form" onsubmit="submitCategoryGroup(event)">
+                        <input type="hidden" id="category-group-id">
+                        
+                        <div>
+                            <label for="category-group-name">Name</label>
+                            <input type="text" id="category-group-name" required>
+                        </div>
+                        
+                        <div class="checkbox-field">
+                            <input type="checkbox" id="category-group-is-income">
+                            <label for="category-group-is-income">Income Group</label>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="primary-button">Save</button>
+                            <button type="button" onclick="document.getElementById('category-group-modal').style.display='none'" class="secondary-button">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Add Category Modal -->
+            <div id="category-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="document.getElementById('category-modal').style.display='none'">&times;</span>
+                    <h3 id="category-modal-title">Add Category</h3>
+                    
+                    <form id="category-form" onsubmit="submitCategory(event)">
+                        <input type="hidden" id="category-id">
+                        <input type="hidden" id="category-group-id-field">
+                        
+                        <div>
+                            <label for="category-name">Name</label>
+                            <input type="text" id="category-name" required>
+                        </div>
+                        
+                        <div>
+                            <label for="category-group-select">Group</label>
+                            <select id="category-group-select"></select>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="primary-button">Save</button>
+                            <button type="button" onclick="document.getElementById('category-modal').style.display='none'" class="secondary-button">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Confirm Delete Modal -->
+            <div id="confirm-delete-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="document.getElementById('confirm-delete-modal').style.display='none'">&times;</span>
+                    <h3>Confirm Delete</h3>
+                    
+                    <p id="confirm-delete-message">Are you sure you want to delete this item?</p>
+                    
+                    <div id="transfer-category-container" class="hidden">
+                        <label for="transfer-category-select">Transfer transactions to:</label>
+                        <select id="transfer-category-select"></select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button id="confirm-delete-btn" class="danger-button">Delete</button>
+                        <button onclick="document.getElementById('confirm-delete-modal').style.display='none'" class="secondary-button">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
         <!-- Add Reports Section after Budget Section -->
         <!-- Reports Section -->
         <section id="reports-section" class="hidden">
@@ -1229,6 +1552,7 @@
             const accountsBtn = document.getElementById('accounts-btn');
             const transactionsBtn = document.getElementById('transactions-btn');
             const budgetBtn = document.getElementById('budget-btn');
+            const categoriesBtn = document.getElementById('categories-btn');
             const reportsBtn = document.getElementById('reports-btn');
             
             if (isLoaded) {
@@ -1237,6 +1561,7 @@
                 accountsBtn.disabled = false;
                 transactionsBtn.disabled = false;
                 budgetBtn.disabled = false;
+                categoriesBtn.disabled = false;
                 reportsBtn.disabled = false;
             } else {
                 statusBar.textContent = 'No budget loaded. Please select a budget file.';
@@ -1245,6 +1570,7 @@
                 accountsBtn.disabled = true;
                 transactionsBtn.disabled = true;
                 budgetBtn.disabled = true;
+                categoriesBtn.disabled = true;
                 reportsBtn.disabled = true;
             }
         }
@@ -1282,6 +1608,9 @@
                     const monthSelect = document.getElementById('month-select');
                     if (monthSelect.value) loadBudgetMonth(monthSelect.value);
                 });
+            }
+            if (section === 'categories' && isBudgetLoaded) {
+                loadCategoryGroups();
             }
             if (section === 'reports' && isBudgetLoaded) {
                 // Initialize the reports section
@@ -2311,7 +2640,7 @@
                 const tbody = document.getElementById('budget-body');
                 tbody.innerHTML = '';
                 
-                if (!budget.categories || budget.categories.length === 0) {
+                if (!budget.categoryGroups || budget.categoryGroups.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5">No categories found for this month.</td></tr>';
                     return;
                 }
@@ -2320,38 +2649,71 @@
                 let totalBudgeted = 0;
                 let totalIncome = 0;
                 
-                budget.categories.forEach(category => {
-                    // Sum up budgeted amounts
-                    totalBudgeted += category.budgeted || 0;
-                    
-                    // Sum up income
-                    if (category.is_income) {
-                        totalIncome += category.budgeted || 0;
-                    }
-                    
-                    const tr = document.createElement('tr');
-                    
-                    // Add CSS class based on category type
-                    if (category.is_income) {
-                        tr.classList.add('income-category');
-                    }
-                    
-                    tr.innerHTML = `
-                        <td>${category.name}</td>
-                        <td class="${category.budgeted > 0 ? 'positive-amount' : ''}">${formatCurrency(category.budgeted)}</td>
-                        <td class="${category.activity > 0 ? 'positive-amount' : category.activity < 0 ? 'negative-amount' : ''}">${formatCurrency(category.activity)}</td>
-                        <td class="${category.available > 0 ? 'positive-amount' : category.available < 0 ? 'negative-amount' : ''}">${formatCurrency(category.available)}</td>
-                        <td>
-                            <div class="table-actions">
-                                <button onclick="setBudgetAmount('${month}', '${category.id}', ${category.budgeted})">Set Budget</button>
-                            </div>
-                        </td>
+                // Process each category group
+                budget.categoryGroups.forEach(group => {
+                    // Add group header row
+                    const groupRow = document.createElement('tr');
+                    groupRow.classList.add('category-group-row');
+                    groupRow.innerHTML = `
+                        <td colspan="5" class="category-group-header">${group.name}</td>
                     `;
-                    tbody.appendChild(tr);
+                    tbody.appendChild(groupRow);
+                    
+                    // Process categories within this group
+                    group.categories.forEach(category => {
+                        // Handle income vs expense categories differently
+                        const isIncome = group.is_income;
+                        
+                        // For income categories, track received amount as "income"
+                        if (isIncome && category.received) {
+                            totalIncome += category.received;
+                        }
+                        
+                        // For expense categories, track budgeted amount
+                        if (!isIncome && category.budgeted) {
+                            totalBudgeted += category.budgeted;
+                        }
+                        
+                        const tr = document.createElement('tr');
+                        
+                        // Add CSS class based on category type
+                        if (isIncome) {
+                            tr.classList.add('income-category');
+                        }
+                        
+                        if (isIncome) {
+                            // Income category row
+                            tr.innerHTML = `
+                                <td class="indent-category">${category.name}</td>
+                                <td class="positive-amount">${formatCurrency(category.received || 0)}</td>
+                                <td>—</td>
+                                <td>—</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button disabled>Income Category</button>
+                                    </div>
+                                </td>
+                            `;
+                        } else {
+                            // Expense category row
+                            tr.innerHTML = `
+                                <td class="indent-category">${category.name}</td>
+                                <td class="${category.budgeted > 0 ? 'positive-amount' : ''}">${formatCurrency(category.budgeted || 0)}</td>
+                                <td class="${category.spent < 0 ? 'negative-amount' : ''}">${formatCurrency(category.spent || 0)}</td>
+                                <td class="${category.balance > 0 ? 'positive-amount' : category.balance < 0 ? 'negative-amount' : ''}">${formatCurrency(category.balance || 0)}</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button onclick="setBudgetAmount('${month}', '${category.id}', ${category.budgeted || 0})">Set Budget</button>
+                                    </div>
+                                </td>
+                            `;
+                        }
+                        tbody.appendChild(tr);
+                    });
                 });
                 
                 // Update summary cards
-                document.getElementById('to-budget-amount').textContent = formatCurrency(totalIncome - totalBudgeted);
+                document.getElementById('to-budget-amount').textContent = formatCurrency(budget.toBudget || 0);
                 document.getElementById('budgeted-amount').textContent = formatCurrency(totalBudgeted);
                 document.getElementById('income-amount').textContent = formatCurrency(totalIncome);
                 
@@ -2610,6 +2972,7 @@
             const accountsBtn = document.getElementById('accounts-btn');
             const transactionsBtn = document.getElementById('transactions-btn');
             const budgetBtn = document.getElementById('budget-btn');
+            const categoriesBtn = document.getElementById('categories-btn');
             const reportsBtn = document.getElementById('reports-btn'); // Add this line
             
             if (isLoaded) {
@@ -2618,6 +2981,7 @@
                 accountsBtn.disabled = false;
                 transactionsBtn.disabled = false;
                 budgetBtn.disabled = false;
+                categoriesBtn.disabled = false;
                 reportsBtn.disabled = false; // Add this line
             } else {
                 statusBar.textContent = 'No budget loaded. Please select a budget file.';
@@ -2626,6 +2990,7 @@
                 accountsBtn.disabled = true;
                 transactionsBtn.disabled = true;
                 budgetBtn.disabled = true;
+                categoriesBtn.disabled = true;
                 reportsBtn.disabled = true; // Add this line
             }
         }
@@ -2652,6 +3017,9 @@
                     const monthSelect = document.getElementById('month-select');
                     if (monthSelect.value) loadBudgetMonth(monthSelect.value);
                 });
+            }
+            if (section === 'categories' && isBudgetLoaded) {
+                loadCategoryGroups();
             }
             if (section === 'reports' && isBudgetLoaded) {
                 // Initialize the reports section
@@ -3353,22 +3721,35 @@
                 const prevBudgetResponse = await fetch(`/api/budget/month/${prevMonth}`);
                 const prevBudget = await handleApiResponse(prevBudgetResponse);
                 
-                // For each category, copy the budgeted amount
+                // Check if we have nested category groups (new structure)
+                if (!prevBudget.categoryGroups) {
+                    showError('Unable to copy budget: Previous month data format is unexpected');
+                    return;
+                }
+                
+                // For each category group and each category, copy the budgeted amount
                 let copyCount = 0;
-                for (const category of prevBudget.categories) {
-                    if (category.budgeted > 0) {
-                        await fetch('/api/budget/set-amount', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                month: currentMonth,
-                                categoryId: category.id,
-                                amount: category.budgeted
-                            })
-                        });
-                        copyCount++;
+                
+                for (const group of prevBudget.categoryGroups) {
+                    // Skip income groups since we don't budget for income
+                    if (group.is_income) continue;
+                    
+                    for (const category of group.categories) {
+                        // Only copy non-zero budgeted amounts
+                        if (category.budgeted > 0) {
+                            await fetch('/api/budget/set-amount', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    month: currentMonth,
+                                    categoryId: category.id,
+                                    amount: category.budgeted
+                                })
+                            });
+                            copyCount++;
+                        }
                     }
                 }
                 
@@ -3401,22 +3782,35 @@
                 const budgetResponse = await fetch(`/api/budget/month/${currentMonth}`);
                 const budget = await handleApiResponse(budgetResponse);
                 
-                // For each category, set the budgeted amount to zero
+                // Check if we have nested category groups (new structure)
+                if (!budget.categoryGroups) {
+                    showError('Unable to reset budget: Data format is unexpected');
+                    return;
+                }
+                
+                // For each category group and each category, set the budgeted amount to zero
                 let resetCount = 0;
-                for (const category of budget.categories) {
-                    if (category.budgeted !== 0) {
-                        await fetch('/api/budget/set-amount', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                month: currentMonth,
-                                categoryId: category.id,
-                                amount: 0
-                            })
-                        });
-                        resetCount++;
+                
+                for (const group of budget.categoryGroups) {
+                    // Skip income groups since we don't budget for income
+                    if (group.is_income) continue;
+                    
+                    for (const category of group.categories) {
+                        // Only reset non-zero budgeted amounts
+                        if (category.budgeted !== 0) {
+                            await fetch('/api/budget/set-amount', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    month: currentMonth,
+                                    categoryId: category.id,
+                                    amount: 0
+                                })
+                            });
+                            resetCount++;
+                        }
                     }
                 }
                 
@@ -3454,6 +3848,705 @@
                 successElement.remove();
             }, 5000);
         }
+
+        // CATEGORY MANAGEMENT FUNCTIONS
+        
+        // Load category groups and their categories using the optimized endpoint
+        async function loadCategoriesGrouped() {
+            if (!isBudgetLoaded) {
+                showError('Please load a budget first');
+                showSection('budgets');
+                return [];
+            }
+            
+            try {
+                console.log("Loading categories grouped by parent groups...");
+                
+                // Use timeout to prevent hanging if server is unresponsive
+                const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), timeout);
+                    
+                    try {
+                        const response = await fetch(url, {
+                            ...options,
+                            signal: controller.signal
+                        });
+                        clearTimeout(id);
+                        return response;
+                    } catch (error) {
+                        clearTimeout(id);
+                        if (error.name === 'AbortError') {
+                            throw new Error('Request timed out - server may be unresponsive');
+                        }
+                        throw error;
+                    }
+                };
+                
+                // Make the API call with timeout protection
+                const response = await fetchWithTimeout('/api/categories/grouped');
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+                }
+                
+                // Use try-catch to ensure we can handle parsing errors
+                let categoryGroups;
+                try {
+                    categoryGroups = await response.json();
+                } catch (parseError) {
+                    console.error('Error parsing API response:', parseError);
+                    throw new Error('Failed to parse server response. The server may be experiencing issues.');
+                }
+                
+                console.log("Categories grouped by parent groups loaded:", categoryGroups);
+                
+                if (!Array.isArray(categoryGroups) || categoryGroups.length === 0) {
+                    console.log("No category groups found or empty array returned");
+                    document.getElementById('category-groups-container').innerHTML = `
+                        <div class="empty-state">
+                            <p>No category groups found. Create your first category group to get started.</p>
+                        </div>
+                    `;
+                    return [];
+                }
+                
+                // Render content inside a try-catch to prevent UI errors
+                try {
+                    const container = document.getElementById('category-groups-container');
+                    container.innerHTML = '';
+                    
+                    // Sort groups: first regular groups, then income groups
+                    categoryGroups.sort((a, b) => {
+                        if (a.is_income === b.is_income) {
+                            return a.name.localeCompare(b.name);
+                        }
+                        return a.is_income ? 1 : -1;
+                    });
+                    
+                    // Create DOM elements for each group and its categories
+                    categoryGroups.forEach(group => {
+                        try {
+                            const groupEl = document.createElement('div');
+                            groupEl.className = `category-group ${group.is_income ? 'income-group' : ''} ${group.hidden ? 'hidden-group' : ''}`;
+                            
+                            // Group header
+                            const header = document.createElement('div');
+                            header.className = 'category-group-header';
+                            header.innerHTML = `
+                                <div class="category-group-title">${group.name}</div>
+                                <div class="category-group-actions">
+                                    <button class="add-category-btn" data-group-id="${group.id}" data-is-income="${group.is_income}">Add Category</button>
+                                    <button class="edit-group-btn" data-group-id="${group.id}">Edit</button>
+                                    <button class="delete-group-btn" data-group-id="${group.id}">Delete</button>
+                                </div>
+                            `;
+                            
+                            // Categories list
+                            const categoriesList = document.createElement('ul');
+                            categoriesList.className = 'category-list';
+                            
+                            // Sort categories by name
+                            if (group.categories && Array.isArray(group.categories)) {
+                                group.categories.sort((a, b) => a.name.localeCompare(b.name));
+                                
+                                if (group.categories.length === 0) {
+                                    const emptyItem = document.createElement('li');
+                                    emptyItem.className = 'category-empty';
+                                    emptyItem.textContent = 'No categories in this group. Add one using the "Add Category" button.';
+                                    categoriesList.appendChild(emptyItem);
+                                } else {
+                                    group.categories.forEach(category => {
+                                        try {
+                                            const categoryItem = document.createElement('li');
+                                            categoryItem.className = `category-item ${category.hidden ? 'hidden-category' : ''}`;
+                                            categoryItem.innerHTML = `
+                                                <div class="category-name">${category.name}</div>
+                                                <div class="category-actions">
+                                                    <button class="edit-category-btn" data-category-id="${category.id}">Edit</button>
+                                                    <button class="delete-category-btn" data-category-id="${category.id}">Delete</button>
+                                                </div>
+                                            `;
+                                            categoriesList.appendChild(categoryItem);
+                                        } catch (categoryRenderError) {
+                                            console.error(`Error rendering category ${category?.id || 'unknown'}:`, categoryRenderError);
+                                        }
+                                    });
+                                }
+                            } else {
+                                console.warn(`Invalid or missing categories for group ${group.name}`);
+                                const errorItem = document.createElement('li');
+                                errorItem.className = 'category-error';
+                                errorItem.textContent = 'Error loading categories for this group.';
+                                categoriesList.appendChild(errorItem);
+                            }
+                            
+                            // Append elements
+                            groupEl.appendChild(header);
+                            groupEl.appendChild(categoriesList);
+                            container.appendChild(groupEl);
+                        } catch (groupRenderError) {
+                            console.error(`Error rendering group ${group?.id || 'unknown'}:`, groupRenderError);
+                        }
+                    });
+                    
+                    // Add event listeners for category actions
+                    try {
+                        setupCategoryEventListeners();
+                    } catch (listenerError) {
+                        console.error('Error setting up category event listeners:', listenerError);
+                        showError('Error setting up interactions. Try refreshing the page.');
+                    }
+                } catch (renderError) {
+                    console.error('Error rendering category groups:', renderError);
+                    showError('Error displaying categories. Please try refreshing the page.');
+                }
+                
+                return categoryGroups;
+            } catch (error) {
+                console.error('Failed to load categories grouped by parent groups:', error);
+                
+                // Show more helpful error message based on error type
+                let errorMessage = error.message || 'Unknown error';
+                if (errorMessage.includes('No budget file is open')) {
+                    showError('No budget is loaded. Please load a budget first.');
+                    updateBudgetStatus(false);
+                    showSection('budgets');
+                } else if (errorMessage.includes('timed out')) {
+                    showError('Server request timed out. The server may be unresponsive. Try refreshing the page or restarting the server.');
+                } else {
+                    showError('Failed to load categories grouped by parent groups: ' + errorMessage);
+                    
+                    // Show empty state with error
+                    document.getElementById('category-groups-container').innerHTML = `
+                        <div class="error-state">
+                            <p>Error loading categories and groups: ${errorMessage}</p>
+                            <p>Please try reloading the page or loading a different budget.</p>
+                        </div>
+                    `;
+                }
+                
+                return [];
+            }
+        }
+
+        // Update the existing loadCategoryGroups function to use the new optimized endpoint
+        async function loadCategoryGroups() {
+            // Use the new optimized endpoint function
+            return loadCategoriesGrouped();
+        }
+        
+        // Setup event listeners for category management
+        function setupCategoryEventListeners() {
+            // Add Category Group button
+            document.getElementById('add-category-group-btn').addEventListener('click', () => {
+                // Reset form
+                document.getElementById('category-group-form').reset();
+                document.getElementById('category-group-id').value = '';
+                document.getElementById('category-group-modal-title').textContent = 'Add Category Group';
+                
+                // Show modal
+                document.getElementById('category-group-modal').style.display = 'block';
+            });
+            
+            // Add Category buttons
+            document.querySelectorAll('.add-category-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    // Reset form
+                    document.getElementById('category-form').reset();
+                    document.getElementById('category-id').value = '';
+                    document.getElementById('category-modal-title').textContent = 'Add Category';
+                    
+                    // Set the group ID
+                    const groupId = button.getAttribute('data-group-id');
+                    const isIncome = button.getAttribute('data-is-income') === 'true';
+                    document.getElementById('category-group-id-field').value = groupId;
+                    
+                    // Load group dropdown but select the current group
+                    loadCategoryGroupDropdown(groupId);
+                    
+                    // Show modal
+                    document.getElementById('category-modal').style.display = 'block';
+                });
+            });
+            
+            // Edit Category Group buttons
+            document.querySelectorAll('.edit-group-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const groupId = button.getAttribute('data-group-id');
+                    await editCategoryGroup(groupId);
+                });
+            });
+            
+            // Delete Category Group buttons
+            document.querySelectorAll('.delete-group-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const groupId = button.getAttribute('data-group-id');
+                    deleteCategoryGroup(groupId);
+                });
+            });
+            
+            // Edit Category buttons
+            document.querySelectorAll('.edit-category-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const categoryId = button.getAttribute('data-category-id');
+                    await editCategory(categoryId);
+                });
+            });
+            
+            // Delete Category buttons
+            document.querySelectorAll('.delete-category-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const categoryId = button.getAttribute('data-category-id');
+                    deleteCategory(categoryId);
+                });
+            });
+        }
+        
+        // Load category groups dropdown for the category modal
+        async function loadCategoryGroupDropdown(selectedGroupId) {
+            try {
+                const response = await fetch('/api/category-groups');
+                const groups = await handleApiResponse(response);
+                
+                const select = document.getElementById('category-group-select');
+                select.innerHTML = '';
+                
+                groups.forEach(group => {
+                    const option = document.createElement('option');
+                    option.value = group.id;
+                    option.textContent = group.name + (group.is_income ? ' (Income)' : '');
+                    option.selected = group.id === selectedGroupId;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load category groups for dropdown:', error);
+                showError('Failed to load category groups');
+            }
+        }
+        
+        // Edit Category Group
+        async function editCategoryGroup(groupId) {
+            try {
+                const response = await fetch('/api/category-groups');
+                const groups = await handleApiResponse(response);
+                
+                const group = groups.find(g => g.id === groupId);
+                if (!group) {
+                    showError('Category group not found');
+                    return;
+                }
+                
+                // Populate form
+                document.getElementById('category-group-id').value = group.id;
+                document.getElementById('category-group-name').value = group.name;
+                document.getElementById('category-group-is-income').checked = group.is_income;
+                
+                // Update modal title
+                document.getElementById('category-group-modal-title').textContent = 'Edit Category Group';
+                
+                // Show modal
+                document.getElementById('category-group-modal').style.display = 'block';
+            } catch (error) {
+                console.error('Failed to edit category group:', error);
+                showError('Failed to load category group details');
+            }
+        }
+        
+        // Delete Category Group
+        function deleteCategoryGroup(groupId) {
+            // Set up the confirm delete modal
+            document.getElementById('confirm-delete-message').textContent = 
+                'Are you sure you want to delete this category group? All categories in this group will also be deleted.';
+            
+            // Show transfer options for categories if needed
+            document.getElementById('transfer-category-container').classList.add('hidden');
+            
+            // Set up the confirm button
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            confirmBtn.onclick = async () => {
+                try {
+                    const response = await fetch(`/api/category-groups/${groupId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    await handleApiResponse(response);
+                    
+                    // Close modal and reload
+                    document.getElementById('confirm-delete-modal').style.display = 'none';
+                    loadCategoryGroups();
+                    showSuccess('Category group deleted successfully');
+                } catch (error) {
+                    console.error('Failed to delete category group:', error);
+                    showError('Failed to delete category group: ' + (error.message || 'Unknown error'));
+                }
+            };
+            
+            // Show the confirm delete modal
+            document.getElementById('confirm-delete-modal').style.display = 'block';
+        }
+        
+        // Edit Category
+        async function editCategory(categoryId) {
+            try {
+                // Get all categories
+                const categoriesResponse = await fetch('/api/categories');
+                const categories = await handleApiResponse(categoriesResponse);
+                
+                const category = categories.find(c => c.id === categoryId);
+                if (!category) {
+                    showError('Category not found');
+                    return;
+                }
+                
+                // Populate form
+                document.getElementById('category-id').value = category.id;
+                document.getElementById('category-name').value = category.name;
+                document.getElementById('category-group-id-field').value = category.group_id;
+                
+                // Load group dropdown
+                await loadCategoryGroupDropdown(category.group_id);
+                
+                // Update modal title
+                document.getElementById('category-modal-title').textContent = 'Edit Category';
+                
+                // Show modal
+                document.getElementById('category-modal').style.display = 'block';
+            } catch (error) {
+                console.error('Failed to edit category:', error);
+                showError('Failed to load category details');
+            }
+        }
+        
+        // Delete Category
+        function deleteCategory(categoryId) {
+            // Load all categories for the transfer dropdown
+            loadTransferCategoriesDropdown(categoryId).then(() => {
+                // Set up the confirm delete modal
+                document.getElementById('confirm-delete-message').textContent = 
+                    'Are you sure you want to delete this category?';
+                
+                // Show transfer options
+                document.getElementById('transfer-category-container').classList.remove('hidden');
+                
+                // Set up the confirm button
+                const confirmBtn = document.getElementById('confirm-delete-btn');
+                confirmBtn.onclick = async () => {
+                    try {
+                        const transferCategoryId = document.getElementById('transfer-category-select').value;
+                        const url = transferCategoryId 
+                            ? `/api/categories/${categoryId}?transferCategoryId=${transferCategoryId}`
+                            : `/api/categories/${categoryId}`;
+                        
+                        const response = await fetch(url, {
+                            method: 'DELETE'
+                        });
+                        
+                        await handleApiResponse(response);
+                        
+                        // Close modal and reload
+                        document.getElementById('confirm-delete-modal').style.display = 'none';
+                        loadCategoryGroups();
+                        showSuccess('Category deleted successfully');
+                    } catch (error) {
+                        console.error('Failed to delete category:', error);
+                        showError('Failed to delete category: ' + (error.message || 'Unknown error'));
+                    }
+                };
+                
+                // Show the confirm delete modal
+                document.getElementById('confirm-delete-modal').style.display = 'block';
+            });
+        }
+        
+        // Load categories for transfer dropdown
+        async function loadTransferCategoriesDropdown(excludeCategoryId) {
+            try {
+                const response = await fetch('/api/categories');
+                const categories = await handleApiResponse(response);
+                
+                const select = document.getElementById('transfer-category-select');
+                select.innerHTML = '<option value="">None (Delete transactions)</option>';
+                
+                categories
+                    .filter(category => category.id !== excludeCategoryId)
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        select.appendChild(option);
+                    });
+            } catch (error) {
+                console.error('Failed to load categories for transfer dropdown:', error);
+                showError('Failed to load categories');
+            }
+        }
+        
+        // Submit Category Group Form
+        function submitCategoryGroup(event) {
+            event.preventDefault();
+            
+            const groupId = document.getElementById('category-group-id').value;
+            const name = document.getElementById('category-group-name').value;
+            const isIncome = document.getElementById('category-group-is-income').checked;
+            
+            if (!name) {
+                showError('Category group name is required');
+                return;
+            }
+            
+            // First check if a category group with this name already exists
+            checkCategoryGroupExists(name)
+                .then(exists => {
+                    if (exists && !groupId) {
+                        showError(`A category group named "${name}" already exists. Please choose a different name.`);
+                        return;
+                    }
+                    
+                    // If the category group doesn't exist or we're updating an existing one, proceed
+                    createOrUpdateCategoryGroup(groupId, name, isIncome);
+                })
+                .catch(error => {
+                    console.error('Error checking category group existence:', error);
+                    showError('Failed to check if category group exists: ' + error.message);
+                });
+        }
+
+        // Helper function to check if a category group exists
+        async function checkCategoryGroupExists(groupName) {
+            try {
+                const response = await fetch('/api/category-groups');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const groups = await response.json();
+                
+                // Check if the group exists (case-insensitive comparison)
+                return groups.some(group => 
+                    group.name.toLowerCase() === groupName.toLowerCase() && 
+                    group.id !== document.getElementById('category-group-id').value // Exclude current group when editing
+                );
+            } catch (error) {
+                console.error('Error checking category group existence:', error);
+                throw error;
+            }
+        }
+
+        // Function to create or update a category group
+        function createOrUpdateCategoryGroup(groupId, name, isIncome) {
+            // Determine if this is a create or update operation
+            const isUpdate = !!groupId;
+            
+            // Prepare the request
+            const method = isUpdate ? 'PUT' : 'POST';
+            const url = isUpdate 
+                ? `/api/category-groups/${groupId}` 
+                : '/api/category-groups';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    is_income: isIncome
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Unknown error');
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                document.getElementById('category-group-modal').style.display = 'none';
+                
+                // Handle special cases from our enhanced API
+                if (result.modifiedName) {
+                    showSuccess(`Created category group "${result.modifiedName}" (original name "${result.originalName}" was reported as already existing)`);
+                } else if (result.wasHidden) {
+                    showSuccess(`Found and un-hid existing category group "${result.message}"`);
+                } else {
+                    // Standard success message
+                    showSuccess(isUpdate 
+                        ? 'Category group updated successfully' 
+                        : 'Category group created successfully'
+                    );
+                }
+                
+                // Reload the category groups with a slight delay to ensure DB sync
+                setTimeout(() => {
+                    loadCategoryGroups().then(() => {
+                        // After reload is complete, set up event listeners again
+                        setupCategoryEventListeners();
+                        
+                        // If we just created a new group, highlight it visually
+                        if ((!isUpdate || result.wasHidden) && result.id) {
+                            const newGroupElement = document.querySelector(`.category-group button[data-group-id="${result.id}"]`);
+                            if (newGroupElement) {
+                                // Scroll to the new group
+                                newGroupElement.scrollIntoView({ behavior: 'smooth' });
+                                
+                                // Highlight the new group temporarily
+                                const groupContainer = newGroupElement.closest('.category-group');
+                                if (groupContainer) {
+                                    groupContainer.classList.add('highlight-new');
+                                    setTimeout(() => {
+                                        groupContainer.classList.remove('highlight-new');
+                                    }, 3000);
+                                }
+                            }
+                        }
+                    });
+                }, 500); // Half-second delay to ensure DB sync
+            })
+            .catch(error => {
+                console.error('Failed to save category group:', error);
+                // Check for common error patterns
+                let errorMessage = error.message || 'Unknown error';
+                
+                if (errorMessage.includes('already exists')) {
+                    errorMessage = `A category group with this name already exists. Please choose a different name or try adding "(new)" at the end.`;
+                }
+                
+                showError('Failed to save category group: ' + errorMessage);
+            });
+        }
+        
+        // Submit Category Form
+        function submitCategory(event) {
+            event.preventDefault();
+            
+            const categoryId = document.getElementById('category-id').value;
+            const name = document.getElementById('category-name').value;
+            const groupId = document.getElementById('category-group-select').value;
+            
+            if (!name) {
+                showError('Category name is required');
+                return;
+            }
+            
+            if (!groupId) {
+                showError('Category group is required');
+                return;
+            }
+            
+            // First check if a category with this name already exists in this group
+            checkCategoryExists(name, groupId)
+                .then(exists => {
+                    if (exists) {
+                        showError(`A category named "${name}" already exists in this group. Please choose a different name.`);
+                        return;
+                    }
+                    
+                    // If the category doesn't exist, proceed with creation/update
+                    createOrUpdateCategory(categoryId, name, groupId);
+                })
+                .catch(error => {
+                    console.error('Error checking category existence:', error);
+                    showError('Failed to check if category exists: ' + error.message);
+                });
+        }
+
+        // Helper function to check if a category exists
+        async function checkCategoryExists(categoryName, groupId) {
+            try {
+                // Use the new grouped endpoint for more accurate data
+                const response = await fetch('/api/categories/grouped');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const groupedCategories = await response.json();
+                
+                // Find the specific group
+                const group = groupedCategories.find(g => g.id === groupId);
+                if (!group) {
+                    return false; // Group not found, so category can't exist in it
+                }
+                
+                // Check if the category exists in this group (case-insensitive comparison)
+                return group.categories.some(cat => 
+                    cat.name.toLowerCase() === categoryName.toLowerCase() && 
+                    cat.id !== document.getElementById('category-id').value // Exclude current category when editing
+                );
+            } catch (error) {
+                console.error('Error checking category existence:', error);
+                throw error;
+            }
+        }
+
+        // Function to create or update a category
+        function createOrUpdateCategory(categoryId, name, groupId) {
+            // Find if the selected group is an income group
+            const groupOption = document.getElementById('category-group-select').options[
+                document.getElementById('category-group-select').selectedIndex
+            ];
+            const isIncome = groupOption.textContent.includes('(Income)');
+            
+            // Determine if this is a create or update operation
+            const isUpdate = !!categoryId;
+            
+            // Prepare the request
+            const method = isUpdate ? 'PUT' : 'POST';
+            const url = isUpdate 
+                ? `/api/categories/${categoryId}` 
+                : '/api/categories';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name,
+                    group_id: groupId,
+                    is_income: isIncome
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Unknown error');
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                document.getElementById('category-modal').style.display = 'none';
+                loadCategoryGroups();
+                showSuccess(isUpdate 
+                    ? 'Category updated successfully' 
+                    : 'Category created successfully'
+                );
+            })
+            .catch(error => {
+                console.error('Failed to save category:', error);
+                // Check for common error patterns
+                let errorMessage = error.message || 'Unknown error';
+                if (errorMessage.includes('already exists')) {
+                    errorMessage = `A category with this name already exists in this group. Please choose a different name.`;
+                }
+                showError('Failed to save category: ' + errorMessage);
+            });
+        }
+
+        // Add these event listeners near the bottom of the script tag
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing code ...
+            
+            // Category management form submissions
+            document.getElementById('category-group-form').addEventListener('submit', submitCategoryGroup);
+            document.getElementById('category-form').addEventListener('submit', submitCategory);
+        });
     </script>
 </body>
 </html> 

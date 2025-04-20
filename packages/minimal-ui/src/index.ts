@@ -6,6 +6,18 @@ import { Application } from 'express';
 import fs from 'fs';
 import cors from 'cors';
 
+// Global error handlers to prevent server crashes
+process.on('uncaughtException', (error) => {
+  console.error('UNCAUGHT EXCEPTION! Server will continue running:');
+  console.error(error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED PROMISE REJECTION! Server will continue running:');
+  console.error('Promise:', promise);
+  console.error('Reason:', reason);
+});
+
 // Access the internal send function (used in methods.ts)
 const send = actualAPI.internal?.send;
 
@@ -96,6 +108,42 @@ app.get('/api/budgets', async (req, res) => {
     console.error('Failed to get budgets:', error);
     res.status(500).json({ 
       error: 'Failed to get budgets',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Create a new budget
+app.post('/api/budgets/create', async (req, res) => {
+  try {
+    const { budgetName } = req.body;
+    
+    if (!budgetName) {
+      return res.status(400).json({ error: 'Budget name is required' });
+    }
+    
+    console.log(`Creating new budget: ${budgetName}`);
+    
+    // Use the internal send function to access the create-budget handler directly
+    const result = await actualAPI.internal.send('create-budget', { budgetName });
+    
+    if (result.error) {
+      console.error('Error creating budget:', result.error);
+      return res.status(500).json({ error: result.error });
+    }
+    
+    // Get updated list of budgets
+    const budgets = await actualAPI.getBudgets();
+    
+    res.json({ 
+      success: true, 
+      message: `Budget "${budgetName}" created successfully`,
+      budgets
+    });
+  } catch (error) {
+    console.error('Failed to create budget:', error);
+    res.status(500).json({ 
+      error: 'Failed to create budget',
       message: error.message || 'Unknown error'
     });
   }
@@ -623,6 +671,324 @@ app.get('/api/categories', ensureBudgetLoaded, async (req, res) => {
   }
 });
 
+// Get category groups
+app.get('/api/category-groups', ensureBudgetLoaded, async (req, res) => {
+  try {
+    console.log("Fetching category groups...");
+    
+    // Add explicit try-catch to handle API errors
+    let categories;
+    try {
+      // This will return categories grouped by their group
+      categories = await actualAPI.getCategoryGroups();
+      console.log(`Successfully fetched ${categories.length} category groups`);
+    } catch (apiError) {
+      console.error("API error fetching category groups:", apiError);
+      throw apiError; // Re-throw to be caught by the outer try-catch
+    }
+    
+    // Ensure we can respond even if there's an error in the response
+    try {
+      res.json(categories);
+    } catch (responseError) {
+      console.error("Error sending category groups response:", responseError);
+      throw responseError;
+    }
+  } catch (error) {
+    console.error('Failed to get category groups:', error);
+    // Ensure server keeps running even if response fails
+    try {
+      res.status(500).json({ 
+        error: 'Failed to get category groups',
+        message: error.message || 'Unknown error'
+      });
+    } catch (finalError) {
+      console.error("Fatal error sending error response:", finalError);
+    }
+  }
+});
+
+// Create a new category
+app.post('/api/categories', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { name, group_id, is_income, hidden } = req.body;
+    
+    if (!name || !group_id) {
+      return res.status(400).json({ error: 'Category name and group ID are required' });
+    }
+    
+    console.log(`Creating category "${name}" in group ${group_id}`);
+    
+    // Wrap in try-catch to handle potential API errors
+    let categoryId;
+    try {
+      categoryId = await actualAPI.createCategory({
+        name,
+        group_id,
+        is_income: is_income || false,
+        hidden: hidden || false
+      });
+      
+      console.log(`Successfully created category "${name}" with ID: ${categoryId}`);
+    } catch (apiError) {
+      console.error(`API error creating category "${name}":`, apiError);
+      throw apiError; // Re-throw to be caught by the outer try-catch
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Category "${name}" created successfully`,
+      id: categoryId
+    });
+  } catch (error) {
+    console.error('Failed to create category:', error);
+    // Ensure server keeps running
+    try {
+      res.status(500).json({ 
+        error: 'Failed to create category',
+        message: error.message || 'Unknown error'
+      });
+    } catch (responseError) {
+      console.error('Error sending error response:', responseError);
+    }
+  }
+});
+
+// Update an existing category
+app.put('/api/categories/:categoryId', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { name, group_id, is_income, hidden } = req.body;
+    
+    if (!categoryId) {
+      return res.status(400).json({ error: 'Category ID is required' });
+    }
+    
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: 'No fields to update provided' });
+    }
+    
+    // Only include fields that are provided
+    const fields: Record<string, any> = {};
+    if (name !== undefined) fields.name = name;
+    if (group_id !== undefined) fields.group_id = group_id;
+    if (is_income !== undefined) fields.is_income = is_income;
+    if (hidden !== undefined) fields.hidden = hidden;
+    
+    await actualAPI.updateCategory(categoryId, fields);
+    
+    res.json({ 
+      success: true, 
+      message: `Category updated successfully`
+    });
+  } catch (error) {
+    console.error('Failed to update category:', error);
+    res.status(500).json({ 
+      error: 'Failed to update category',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Delete a category
+app.delete('/api/categories/:categoryId', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { transferCategoryId } = req.query;
+    
+    if (!categoryId) {
+      return res.status(400).json({ error: 'Category ID is required' });
+    }
+    
+    await actualAPI.deleteCategory(categoryId, transferCategoryId as string);
+    
+    res.json({ 
+      success: true, 
+      message: `Category deleted successfully`
+    });
+  } catch (error) {
+    console.error('Failed to delete category:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete category',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Create a new category group
+app.post('/api/category-groups', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { name, is_income, hidden } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Category group name is required' });
+    }
+    
+    console.log(`Attempting to create category group with name: "${name}"`);
+    
+    // Log the exact request we're sending
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
+    // Workaround for the API bug: Direct DB access to check groups
+    try {
+      // Try to create the group - catch only duplicate errors
+      const groupId = await actualAPI.createCategoryGroup({
+        name,
+        is_income: is_income || false,
+        hidden: hidden || false
+      });
+      
+      console.log(`Successfully created category group "${name}" with ID: ${groupId}`);
+      
+      res.json({ 
+        success: true, 
+        message: `Category group "${name}" created successfully`,
+        id: groupId
+      });
+    } catch (createError) {
+      // Check specifically for the duplicate error message
+      if (createError.message && createError.message.includes('already exists')) {
+        console.error(`API reports category group "${name}" already exists, but UI doesn't show it.`);
+        console.error('Error details:', createError);
+        
+        // Get all groups including hidden ones
+        const allGroups = await actualAPI.getCategoryGroups();
+        console.log(`Found ${allGroups.length} total category groups in the budget:`);
+        allGroups.forEach(g => {
+          console.log(`- "${g.name}" (id: ${g.id}, hidden: ${!!g.hidden})`);
+        });
+        
+        // Try to find any similar group - exactly as the API would
+        const similarGroup = allGroups.find(g => 
+          g.name.toLowerCase() === name.toLowerCase()
+        );
+        
+        if (similarGroup) {
+          console.log(`Found similar group: "${similarGroup.name}" (id: ${similarGroup.id})`);
+          
+          // If it's hidden, try to un-hide it to make it usable
+          if (similarGroup.hidden) {
+            try {
+              await actualAPI.updateCategoryGroup(similarGroup.id, { hidden: false });
+              console.log(`Un-hid existing category group "${similarGroup.name}"`);
+              
+              return res.json({
+                success: true,
+                message: `Found and un-hid existing category group "${similarGroup.name}"`,
+                id: similarGroup.id,
+                wasHidden: true
+              });
+            } catch (unhideError) {
+              console.error('Failed to un-hide category group:', unhideError);
+            }
+          }
+          
+          // If we can't un-hide it or it's not hidden, suggest using the existing one
+          return res.status(400).json({
+            error: 'Category group already exists',
+            message: `A category group named "${similarGroup.name}" already exists${similarGroup.hidden ? ' (it may be hidden)' : ''}.`,
+            existingGroup: similarGroup
+          });
+        }
+        
+        // Weird case: API says it exists but we can't find it
+        // Try with a slightly modified name as a workaround
+        const modifiedName = `${name} (new)`;
+        try {
+          console.log(`Trying with modified name: "${modifiedName}"`);
+          const modifiedGroupId = await actualAPI.createCategoryGroup({
+            name: modifiedName,
+            is_income: is_income || false,
+            hidden: hidden || false
+          });
+          
+          return res.json({
+            success: true,
+            message: `Created category group with modified name "${modifiedName}"`,
+            id: modifiedGroupId,
+            originalName: name,
+            modifiedName: modifiedName
+          });
+        } catch (modifiedError) {
+          console.error(`Failed to create with modified name "${modifiedName}":`, modifiedError);
+          // Pass through to general error handler
+        }
+      }
+      
+      // Re-throw if it's not a duplicate error or our workarounds failed
+      throw createError;
+    }
+  } catch (error) {
+    console.error('Failed to create category group:', error);
+    res.status(500).json({ 
+      error: 'Failed to create category group',
+      message: error.message || 'Unknown error',
+      // Include the stack trace for debugging
+      stack: error.stack
+    });
+  }
+});
+
+// Update an existing category group
+app.put('/api/category-groups/:groupId', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { name, is_income, hidden } = req.body;
+    
+    if (!groupId) {
+      return res.status(400).json({ error: 'Category group ID is required' });
+    }
+    
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: 'No fields to update provided' });
+    }
+    
+    // Only include fields that are provided
+    const fields: Record<string, any> = {};
+    if (name !== undefined) fields.name = name;
+    if (is_income !== undefined) fields.is_income = is_income;
+    if (hidden !== undefined) fields.hidden = hidden;
+    
+    await actualAPI.updateCategoryGroup(groupId, fields);
+    
+    res.json({ 
+      success: true, 
+      message: `Category group updated successfully`
+    });
+  } catch (error) {
+    console.error('Failed to update category group:', error);
+    res.status(500).json({ 
+      error: 'Failed to update category group',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Delete a category group
+app.delete('/api/category-groups/:groupId', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { transferGroupId } = req.query;
+    
+    if (!groupId) {
+      return res.status(400).json({ error: 'Category group ID is required' });
+    }
+    
+    await actualAPI.deleteCategoryGroup(groupId, transferGroupId as string);
+    
+    res.json({ 
+      success: true, 
+      message: `Category group deleted successfully`
+    });
+  } catch (error) {
+    console.error('Failed to delete category group:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete category group',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
 app.get('/api/budget/months', ensureBudgetLoaded, async (req, res) => {
   try {
     const months = await actualAPI.getBudgetMonths();
@@ -822,5 +1188,73 @@ app.post('/api/transactions/:transactionId/split', ensureBudgetLoaded, async (re
       message: error.message || 'Unknown error',
       stack: error.stack
     });
+  }
+});
+
+// Get categories grouped by their parent groups
+app.get('/api/categories/grouped', ensureBudgetLoaded, async (req, res) => {
+  try {
+    console.log("Fetching grouped categories...");
+    
+    // Fetch groups with explicit error handling
+    let groups;
+    try {
+      // First get all category groups
+      groups = await actualAPI.getCategoryGroups();
+      console.log(`Successfully fetched ${groups.length} category groups`);
+    } catch (groupsError) {
+      console.error("Error fetching category groups:", groupsError);
+      throw groupsError;
+    }
+    
+    // Fetch categories with explicit error handling
+    let categories;
+    try {
+      // Then get all categories
+      categories = await actualAPI.getCategories();
+      console.log(`Successfully fetched ${categories.length} categories`);
+    } catch (categoriesError) {
+      console.error("Error fetching categories:", categoriesError);
+      throw categoriesError;
+    }
+    
+    // Organize categories by group with exception handling
+    let groupedCategories;
+    try {
+      groupedCategories = groups.map(group => {
+        // Find all categories belonging to this group
+        const groupCategories = categories.filter(category => category.group_id === group.id);
+        
+        return {
+          ...group,
+          categories: groupCategories
+        };
+      });
+      
+      console.log(`Successfully organized categories into ${groupedCategories.length} groups`);
+    } catch (organizeError) {
+      console.error("Error organizing categories by group:", organizeError);
+      throw organizeError;
+    }
+    
+    // Send response with explicit error handling
+    try {
+      res.json(groupedCategories);
+    } catch (responseError) {
+      console.error("Error sending grouped categories response:", responseError);
+      throw responseError;
+    }
+  } catch (error) {
+    console.error('Failed to get categories grouped by parent groups:', error);
+    
+    // Ensure server keeps running even if response fails
+    try {
+      res.status(500).json({ 
+        error: 'Failed to get categories grouped by parent groups',
+        message: error.message || 'Unknown error'
+      });
+    } catch (finalError) {
+      console.error("Fatal error sending error response:", finalError);
+    }
   }
 }); 

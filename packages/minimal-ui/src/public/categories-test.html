@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actual - Categories Grouped Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+            color: #333;
+        }
+        
+        h1, h2, h3 {
+            margin-top: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .button:hover {
+            background: #0052a3;
+        }
+        
+        .error {
+            color: #d9534f;
+            background-color: #f9f2f2;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            color: #5cb85c;
+            background-color: #f2f9f2;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .group-header {
+            background-color: #e9ecef;
+            font-weight: 600;
+        }
+        
+        .category-row td {
+            padding-left: 30px;
+        }
+        
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .actions {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Categories Grouped Test</h1>
+        
+        <div class="card">
+            <h2>Categories Hierarchy</h2>
+            <p>This page demonstrates the new /api/categories/grouped endpoint that efficiently loads categories organized by their parent groups.</p>
+            
+            <div class="actions">
+                <button id="load-budget-btn" class="button">1. Load Budget</button>
+                <button id="fetch-categories-btn" class="button">2. Fetch Grouped Categories</button>
+            </div>
+            
+            <div id="message-container"></div>
+            
+            <div id="categories-container">
+                <p>Click the "Fetch Grouped Categories" button to load the data.</p>
+            </div>
+            
+            <h3>Raw Response</h3>
+            <div id="raw-response" class="code-block">
+                No data fetched yet.
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let budgetLoaded = false;
+        
+        // DOM Elements
+        const loadBudgetBtn = document.getElementById('load-budget-btn');
+        const fetchCategoriesBtn = document.getElementById('fetch-categories-btn');
+        const messageContainer = document.getElementById('message-container');
+        const categoriesContainer = document.getElementById('categories-container');
+        const rawResponseElement = document.getElementById('raw-response');
+        
+        // Helper Functions
+        function showMessage(message, type) {
+            const element = document.createElement('div');
+            element.className = type;
+            element.textContent = message;
+            
+            messageContainer.innerHTML = '';
+            messageContainer.appendChild(element);
+            
+            // Clear message after 5 seconds
+            setTimeout(() => {
+                element.remove();
+            }, 5000);
+        }
+        
+        function showError(message) {
+            showMessage(message, 'error');
+        }
+        
+        function showSuccess(message) {
+            showMessage(message, 'success');
+        }
+        
+        // API Functions
+        async function loadBudget() {
+            try {
+                const response = await fetch('/api/budgets/load', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        budgetId: '_test-budget' 
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                budgetLoaded = true;
+                showSuccess('Budget loaded successfully!');
+                
+                return result;
+            } catch (error) {
+                console.error('Failed to load budget:', error);
+                showError(`Failed to load budget: ${error.message}`);
+                return null;
+            }
+        }
+        
+        async function fetchGroupedCategories() {
+            if (!budgetLoaded) {
+                showError('Please load a budget first');
+                return null;
+            }
+            
+            try {
+                const response = await fetch('/api/categories/grouped');
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                showSuccess('Categories fetched successfully!');
+                
+                // Display raw response
+                rawResponseElement.textContent = JSON.stringify(result, null, 2);
+                
+                return result;
+            } catch (error) {
+                console.error('Failed to fetch grouped categories:', error);
+                showError(`Failed to fetch grouped categories: ${error.message}`);
+                return null;
+            }
+        }
+        
+        // UI Rendering
+        function renderCategories(categoryGroups) {
+            if (!categoryGroups || !Array.isArray(categoryGroups) || categoryGroups.length === 0) {
+                categoriesContainer.innerHTML = '<p>No categories found.</p>';
+                return;
+            }
+            
+            // Sort groups: first regular groups, then income groups
+            const sortedGroups = [...categoryGroups].sort((a, b) => {
+                if (a.is_income === b.is_income) {
+                    return a.name.localeCompare(b.name);
+                }
+                return a.is_income ? 1 : -1;
+            });
+            
+            // Create table
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>ID</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            
+            const tbody = table.querySelector('tbody');
+            
+            // Add groups and categories to table
+            sortedGroups.forEach(group => {
+                // Group header
+                const groupRow = document.createElement('tr');
+                groupRow.className = 'group-header';
+                groupRow.innerHTML = `
+                    <td>${group.name}</td>
+                    <td>${group.id}</td>
+                    <td>${group.is_income ? 'Income' : 'Expense'}</td>
+                `;
+                tbody.appendChild(groupRow);
+                
+                // Categories
+                if (group.categories && Array.isArray(group.categories)) {
+                    // Sort categories by name
+                    const sortedCategories = [...group.categories].sort((a, b) => 
+                        a.name.localeCompare(b.name)
+                    );
+                    
+                    if (sortedCategories.length === 0) {
+                        const emptyRow = document.createElement('tr');
+                        emptyRow.className = 'category-row';
+                        emptyRow.innerHTML = `
+                            <td colspan="3"><em>No categories in this group</em></td>
+                        `;
+                        tbody.appendChild(emptyRow);
+                    } else {
+                        sortedCategories.forEach(category => {
+                            const categoryRow = document.createElement('tr');
+                            categoryRow.className = 'category-row';
+                            categoryRow.innerHTML = `
+                                <td>${category.name}</td>
+                                <td>${category.id}</td>
+                                <td>${category.is_income ? 'Income' : 'Expense'}</td>
+                            `;
+                            tbody.appendChild(categoryRow);
+                        });
+                    }
+                }
+            });
+            
+            categoriesContainer.innerHTML = '';
+            categoriesContainer.appendChild(table);
+        }
+        
+        // Event Listeners
+        loadBudgetBtn.addEventListener('click', async () => {
+            await loadBudget();
+        });
+        
+        fetchCategoriesBtn.addEventListener('click', async () => {
+            const data = await fetchGroupedCategories();
+            renderCategories(data);
+        });
+    </script>
+</body>
+</html> 
