@@ -13,31 +13,42 @@ This document outlines the remaining tasks to complete Phase 1 of the Actual Bud
 - ✅ **Income vs Expenses**: Add a monthly comparison of income vs. expenses
 - ✅ **Account Balance History**: Show account balance changes over time
 
-## 3. Core Financial Features
-- ⏳ **Transaction**: Implement the ability to edit existing transactions
-- ⏳ **Budget**: Add functionality to create new budgets
-- ⏳ **Budget Editing**: Enable editing of existing budgets
+## 3. Budget Management
+- ✅ **Create New Budgets**: Implement interface for creating new budget files
+- ✅ **Budget Editor**: Enhanced budget editing interface with summary information
+- ✅ **Budget Operations**: Add functionality to copy from previous months and reset budgets
+
+## 4. Core Financial Features
 - ⏳ **Scheduled Transactions**: Add support for recurring transactions
 - ⏳ **Account Reconciliation**: Implement the ability to reconcile accounts with statements
-- ⏳ **Budget Copy**: Allow copying budget amounts from previous months
 
-## 4. Data Export/Import
+## 5. Data Export/Import
 - ⏳ **CSV Export**: Add transaction export functionality
 - ⏳ **Simple Import**: Support basic CSV import for transactions
 
-## 5. UX Improvements
+## 6. UX Improvements
 - ⏳ **Keyboard Shortcuts**: Add basic keyboard navigation
 - ✅ **Confirmation Dialogs**: Add confirmation for destructive operations
-- ⏳ **Success/Error Messages**: Improve feedback for all operations
+- ✅ **Success/Error Messages**: Improve feedback for all operations
 
 ## Implementation Priority
 1. ✅ Focus first on transaction enhancements since that foundation is already solid
 2. ✅ Next implement basic reporting views to demonstrate data analysis capabilities
-3. ⏳ Then add core financial features that demonstrate the full capabilities of the Actual engine
-4. ⏳ Finally add the import/export and UX improvements
+3. ✅ Add budget management features including new budget creation and editing
+4. ⏳ Implement remaining core financial features (scheduled transactions, reconciliation)
+5. ⏳ Finally add the import/export and UX improvements
 
 ## Goal
 Complete a fully functional minimal UI that demonstrates all the core capabilities of Actual's engine while maintaining a clean separation between the UI and core logic. This provides the foundation for Phase 2 (Plugin SDK development).
 
 ## Progress Update
-We have successfully completed all Transaction Management Enhancements and Basic Reporting features. The foundation of the minimal UI is solid, with robust implementation of transaction management including the complex split transaction functionality. This establishes a strong basis for the remaining items. 
+We have successfully completed all Transaction Management Enhancements, Basic Reporting features, and Budget Management capabilities. 
+
+With these key features implemented, users can now:
+1. Create and manage budgets directly in the minimal UI
+2. Allocate budget amounts to categories and track spending
+3. Copy budget amounts from previous months
+4. View summary information for budget progress
+5. Manage transactions with comprehensive features including splits
+
+The next logical features to implement are Scheduled Transactions and Account Reconciliation, which will further enhance the practical utility of the minimal UI. 

@@ -2602,10 +2602,37 @@
                     return [];
                 }
                 
+                // Sort months in ascending order
+                months.sort();
+                
+                // Get current month in YYYY-MM format
+                const now = new Date();
+                const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                
+                // Find current month or closest month
+                let defaultMonth = months[months.length - 1]; // Most recent month as fallback
+                let currentMonthIndex = months.indexOf(currentMonth);
+                
+                if (currentMonthIndex !== -1) {
+                    defaultMonth = currentMonth;
+                } else {
+                    // If current month not found, find the closest available month
+                    // that doesn't exceed the current month
+                    for (let i = months.length - 1; i >= 0; i--) {
+                        if (months[i] <= currentMonth) {
+                            defaultMonth = months[i];
+                            break;
+                        }
+                    }
+                }
+                
                 months.forEach(month => {
                     const option = document.createElement('option');
                     option.value = month;
                     option.textContent = formatMonth(month);
+                    if (month === defaultMonth) {
+                        option.selected = true;
+                    }
                     monthSelect.appendChild(option);
                 });
                 
@@ -2613,6 +2640,11 @@
                 monthSelect.onchange = () => {
                     if (monthSelect.value) loadBudgetMonth(monthSelect.value);
                 };
+                
+                // Load the default month
+                if (defaultMonth) {
+                    loadBudgetMonth(defaultMonth);
+                }
                 
                 return months;
             } catch (error) {
