@@ -17,9 +17,9 @@ This document outlines the remaining tasks to complete Phase 1 of the Actual Bud
 - ✅ **Create New Budgets**: Implement interface for creating new budget files
 - ✅ **Budget Editor**: Enhanced budget editing interface with summary information
 - ✅ **Budget Operations**: Add functionality to copy from previous months and reset budgets
-
+ 
 ## 4. Core Financial Features
-- ⏳ **Scheduled Transactions**: Add support for recurring transactions
+- ✅ **Scheduled Transactions**: Add support for recurring transactions (implemented with mock data store)
 - ⏳ **Account Reconciliation**: Implement the ability to reconcile accounts with statements
 
 ## 5. Data Export/Import
@@ -35,14 +35,15 @@ This document outlines the remaining tasks to complete Phase 1 of the Actual Bud
 1. ✅ Focus first on transaction enhancements since that foundation is already solid
 2. ✅ Next implement basic reporting views to demonstrate data analysis capabilities
 3. ✅ Add budget management features including new budget creation and editing
-4. ⏳ Implement remaining core financial features (scheduled transactions, reconciliation)
-5. ⏳ Finally add the import/export and UX improvements
+4. ✅ Implement scheduled transactions with mock data store
+5. ⏳ Add account reconciliation functionality
+6. ⏳ Finally add the import/export and UX improvements
 
 ## Goal
 Complete a fully functional minimal UI that demonstrates all the core capabilities of Actual's engine while maintaining a clean separation between the UI and core logic. This provides the foundation for Phase 2 (Plugin SDK development).
 
 ## Progress Update
-We have successfully completed all Transaction Management Enhancements, Basic Reporting features, and Budget Management capabilities. 
+We have successfully completed all Transaction Management Enhancements, Basic Reporting features, and Budget Management capabilities. We've also implemented a working version of Scheduled Transactions with a mock data store.
 
 With these key features implemented, users can now:
 1. Create and manage budgets directly in the minimal UI
@@ -50,5 +51,6 @@ With these key features implemented, users can now:
 3. Copy budget amounts from previous months
 4. View summary information for budget progress
 5. Manage transactions with comprehensive features including splits
+6. Create and manage recurring transactions via scheduled transactions
 
-The next logical features to implement are Scheduled Transactions and Account Reconciliation, which will further enhance the practical utility of the minimal UI. 
+The next feature to implement is Account Reconciliation, which will further enhance the practical utility of the minimal UI. 
