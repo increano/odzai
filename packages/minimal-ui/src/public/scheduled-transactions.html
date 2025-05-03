@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduled Transactions - Minimal Actual Budget</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Minimal Actual Budget</h1>
+    </header>
+    
+    <nav>
+        <a href="/public/index.html" class="nav-link">Dashboard</a>
+        <a href="/public/index.html" class="nav-link">Budgets</a>
+        <a href="/public/index.html" class="nav-link">Accounts</a>
+        <a href="/public/index.html" class="nav-link">Transactions</a>
+        <a href="/public/index.html" class="nav-link">Budget</a>
+        <a href="/public/index.html" class="nav-link">Categories</a>
+        <a href="/public/index.html" class="nav-link">Reports</a>
+        <a href="#" class="nav-link active">Schedules</a>
+        <a href="/public/reconciliation.html" class="nav-link">Reconcile</a>
+    </nav>
+    
+    <div class="container">
+        <div class="section-header">
+            <h2>Scheduled Transactions</h2>
+            <button id="create-schedule-btn" class="action-button">Create New Schedule</button>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
+        
+        <div id="schedules-container" class="table-container">
+            <table id="schedules-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Next Date</th>
+                        <th>Amount</th>
+                        <th>Account</th>
+                        <th>Payee</th>
+                        <th>Category</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="schedules-tbody">
+                    <!-- Schedules will be populated here -->
+                </tbody>
+            </table>
+            <div id="no-schedules" class="no-data-message" style="display: none;">
+                <p>No scheduled transactions found. Create your first scheduled transaction to get started.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Schedule Form Modal -->
+    <div id="schedule-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-schedule-modal">&times;</span>
+            <h2 id="schedule-modal-title">Create Schedule</h2>
+            <form id="schedule-form">
+                <input type="hidden" id="schedule-id">
+                <div class="form-group">
+                    <label for="schedule-name">Name</label>
+                    <input type="text" id="schedule-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="schedule-date">Next Date</label>
+                    <input type="date" id="schedule-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="schedule-amount">Amount</label>
+                    <input type="number" id="schedule-amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="schedule-account">Account</label>
+                    <select id="schedule-account" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="schedule-payee">Payee</label>
+                    <input type="text" id="schedule-payee">
+                </div>
+                <div class="form-group">
+                    <label for="schedule-category">Category</label>
+                    <select id="schedule-category"></select>
+                </div>
+                <div class="form-group">
+                    <label for="schedule-frequency">Frequency</label>
+                    <select id="schedule-frequency">
+                        <option value="monthly">Monthly</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Bi-weekly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="action-button">Save</button>
+                    <button type="button" id="cancel-schedule" class="action-button">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Schedule Actions Modal -->
+    <div id="schedule-actions-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-schedule-actions">&times;</span>
+            <h2>Schedule Actions</h2>
+            <div id="schedule-details"></div>
+            <div class="modal-actions">
+                <button id="post-transaction-btn" class="action-button">Post Transaction Now</button>
+                <button id="skip-occurrence-btn" class="action-button">Skip Next Occurrence</button>
+                <button id="edit-schedule-btn" class="action-button">Edit Schedule</button>
+                <button id="delete-schedule-btn" class="danger-button">Delete Schedule</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let accounts = [];
+        let categories = [];
+        let schedules = [];
+        let currentSchedule = null;
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if a budget is loaded
+            checkBudgetStatus();
+            
+            // Check API status
+            checkSchedulesApi();
+            
+            // Set up event listeners
+            document.getElementById('create-schedule-btn').addEventListener('click', openCreateScheduleModal);
+            document.getElementById('close-schedule-modal').addEventListener('click', closeScheduleModal);
+            document.getElementById('cancel-schedule').addEventListener('click', closeScheduleModal);
+            document.getElementById('schedule-form').addEventListener('submit', saveSchedule);
+            
+            document.getElementById('close-schedule-actions').addEventListener('click', closeScheduleActionsModal);
+            document.getElementById('post-transaction-btn').addEventListener('click', postTransaction);
+            document.getElementById('skip-occurrence-btn').addEventListener('click', skipOccurrence);
+            document.getElementById('edit-schedule-btn').addEventListener('click', editSchedule);
+            document.getElementById('delete-schedule-btn').addEventListener('click', deleteSchedule);
+        });
+        
+        // Check if a budget is loaded
+        function checkBudgetStatus() {
+            fetch('/api/budget-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.budgetLoaded) {
+                        // Load accounts, categories, and schedules
+                        loadAccounts();
+                        loadCategories();
+                        loadSchedules();
+                    } else {
+                        showError('No budget is loaded. Please go to the main page and load a budget first.');
+                        document.getElementById('create-schedule-btn').disabled = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking budget status:', error);
+                    showError('Error checking budget status: ' + error.message);
+                });
+        }
+        
+        // Load accounts from the API
+        function loadAccounts() {
+            fetch('/api/accounts')
+                .then(response => response.json())
+                .then(data => {
+                    accounts = data;
+                    populateAccountSelect();
+                })
+                .catch(error => {
+                    console.error('Error loading accounts:', error);
+                    showError('Error loading accounts: ' + error.message);
+                });
+        }
+        
+        // Load categories from the API
+        function loadCategories() {
+            fetch('/api/categories')
+                .then(response => response.json())
+                .then(data => {
+                    categories = data;
+                    populateCategorySelect();
+                })
+                .catch(error => {
+                    console.error('Error loading categories:', error);
+                    showError('Error loading categories: ' + error.message);
+                });
+        }
+        
+        // Load schedules from the API
+        function loadSchedules() {
+            fetch('/api/schedules')
+                .then(response => response.json())
+                .then(data => {
+                    // Ensure schedules is always an array
+                    schedules = Array.isArray(data) ? data : [];
+                    displaySchedules();
+                })
+                .catch(error => {
+                    console.error('Error loading schedules:', error);
+                    showError('Error loading schedules: ' + error.message);
+                });
+        }
+        
+        // Populate the account select dropdown
+        function populateAccountSelect() {
+            const select = document.getElementById('schedule-account');
+            select.innerHTML = '';
+            
+            accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = account.name;
+                select.appendChild(option);
+            });
+        }
+        
+        // Populate the category select dropdown
+        function populateCategorySelect() {
+            const select = document.getElementById('schedule-category');
+            select.innerHTML = '<option value="">None</option>';
+            
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                select.appendChild(option);
+            });
+        }
+        
+        // Display schedules in the table
+        function displaySchedules() {
+            const tbody = document.getElementById('schedules-tbody');
+            const noSchedulesMsg = document.getElementById('no-schedules');
+            
+            tbody.innerHTML = '';
+            
+            if (!schedules || schedules.length === 0) {
+                noSchedulesMsg.style.display = 'block';
+                document.getElementById('schedules-table').style.display = 'none';
+                return;
+            }
+            
+            noSchedulesMsg.style.display = 'none';
+            document.getElementById('schedules-table').style.display = 'table';
+            
+            schedules.forEach(schedule => {
+                const row = document.createElement('tr');
+                
+                // Find account name
+                const account = accounts.find(acc => acc.id === schedule._account) || { name: 'Unknown' };
+                
+                // Find category name
+                let categoryName = 'None';
+                if (schedule._category) {
+                    const category = categories.find(cat => cat.id === schedule._category);
+                    if (category) categoryName = category.name;
+                }
+                
+                // Format date
+                const date = schedule.next_date || schedule._date;
+                
+                // Format amount
+                const amount = (schedule._amount / 100).toFixed(2);
+                
+                row.innerHTML = `
+                    <td>${schedule.name}</td>
+                    <td>${date}</td>
+                    <td>$${amount}</td>
+                    <td>${account.name}</td>
+                    <td>${schedule._payee || 'None'}</td>
+                    <td>${categoryName}</td>
+                    <td>
+                        <button class="action-button" data-id="${schedule.id}">Actions</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+                
+                // Add event listener to the actions button
+                row.querySelector('button[data-id]').addEventListener('click', () => {
+                    openScheduleActionsModal(schedule);
+                });
+            });
+        }
+        
+        // Open the create schedule modal
+        function openCreateScheduleModal() {
+            document.getElementById('schedule-modal-title').textContent = 'Create Scheduled Transaction';
+            document.getElementById('schedule-id').value = '';
+            document.getElementById('schedule-name').value = '';
+            document.getElementById('schedule-date').value = getCurrentDate();
+            document.getElementById('schedule-amount').value = '';
+            document.getElementById('schedule-payee').value = '';
+            document.getElementById('schedule-frequency').value = 'monthly';
+            
+            if (accounts.length > 0) {
+                document.getElementById('schedule-account').value = accounts[0].id;
+            }
+            
+            document.getElementById('schedule-category').value = '';
+            
+            document.getElementById('schedule-modal').style.display = 'block';
+        }
+        
+        // Close the schedule modal
+        function closeScheduleModal() {
+            document.getElementById('schedule-modal').style.display = 'none';
+        }
+        
+        // Open the schedule actions modal
+        function openScheduleActionsModal(schedule) {
+            currentSchedule = schedule;
+            
+            // Find account name
+            const account = accounts.find(acc => acc.id === schedule._account) || { name: 'Unknown' };
+            
+            // Find category name
+            let categoryName = 'None';
+            if (schedule._category) {
+                const category = categories.find(cat => cat.id === schedule._category);
+                if (category) categoryName = category.name;
+            }
+            
+            // Format date
+            const date = schedule.next_date || schedule._date;
+            
+            // Format amount
+            const amount = (schedule._amount / 100).toFixed(2);
+            
+            const detailsHtml = `
+                <div class="schedule-detail-item">
+                    <strong>Name:</strong> ${schedule.name}
+                </div>
+                <div class="schedule-detail-item">
+                    <strong>Next Date:</strong> ${date}
+                </div>
+                <div class="schedule-detail-item">
+                    <strong>Amount:</strong> $${amount}
+                </div>
+                <div class="schedule-detail-item">
+                    <strong>Account:</strong> ${account.name}
+                </div>
+                <div class="schedule-detail-item">
+                    <strong>Payee:</strong> ${schedule._payee || 'None'}
+                </div>
+                <div class="schedule-detail-item">
+                    <strong>Category:</strong> ${categoryName}
+                </div>
+            `;
+            
+            document.getElementById('schedule-details').innerHTML = detailsHtml;
+            document.getElementById('schedule-actions-modal').style.display = 'block';
+        }
+        
+        // Close the schedule actions modal
+        function closeScheduleActionsModal() {
+            document.getElementById('schedule-actions-modal').style.display = 'none';
+            currentSchedule = null;
+        }
+        
+        // Check if the schedules API is working properly
+        function checkSchedulesApi() {
+            fetch('/api/schedules/status', {
+                method: 'GET'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    console.warn('Schedules API status check failed.');
+                } else {
+                    console.log('Schedules API is available.');
+                }
+            })
+            .catch(error => {
+                console.error('Unable to check schedules API status:', error);
+            });
+        }
+        
+        // Save a schedule (create or update)
+        function saveSchedule(event) {
+            event.preventDefault();
+            
+            const scheduleId = document.getElementById('schedule-id').value;
+            const name = document.getElementById('schedule-name').value;
+            const date = document.getElementById('schedule-date').value;
+            const amountStr = document.getElementById('schedule-amount').value;
+            const accountId = document.getElementById('schedule-account').value;
+            
+            // These fields aren't used in the direct SQL query but save them just in case
+            const payee = document.getElementById('schedule-payee').value;
+            const categoryId = document.getElementById('schedule-category').value || null;
+            const frequency = document.getElementById('schedule-frequency').value;
+            
+            // Validate inputs
+            if (!name) {
+                showError('Name is required');
+                return;
+            }
+            
+            if (!date) {
+                showError('Next date is required');
+                return;
+            }
+            
+            if (!amountStr) {
+                showError('Amount is required');
+                return;
+            }
+            
+            if (!accountId) {
+                showError('Account is required');
+                return;
+            }
+            
+            // Convert amount to cents (integer)
+            const amount = Math.round(parseFloat(amountStr) * 100);
+            
+            // Format date as YYYY-MM-DD to ensure consistency
+            const formattedDate = new Date(date).toISOString().split('T')[0];
+            
+            // IMPORTANT: Only include the fields that are actually used in the SQL query:
+            // INSERT INTO schedules (id, name, _date, _amount, _account, posts_transaction, completed)
+            const scheduleData = {
+                name: name,
+                _date: formattedDate,
+                _amount: amount,
+                _account: accountId,
+                posts_transaction: 1,
+                completed: 0
+            };
+            
+            // Only add these if directly needed by the server
+            if (payee) scheduleData._payee = payee;
+            if (categoryId) scheduleData._category = categoryId;
+            if (frequency) scheduleData.frequency = frequency;
+            
+            console.log('Sending schedule data:', JSON.stringify(scheduleData));
+            
+            // Determine if this is a create or update operation
+            const isUpdate = !!scheduleId;
+            
+            // Set the API endpoint and method - don't include ID in request body
+            const method = isUpdate ? 'PUT' : 'POST';
+            const url = `/api/schedules${isUpdate ? '/' + scheduleId : ''}`;
+            
+            // Send request to the API
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(scheduleData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Get more detailed error information
+                    return response.text().then(text => {
+                        console.error(`API Error Response:`, text);
+                        
+                        try {
+                            // Try to parse as JSON
+                            const errorData = JSON.parse(text);
+                            throw new Error(errorData.message || errorData.error || 'Unknown server error');
+                        } catch (e) {
+                            // If parsing fails, use the raw text but trim HTML
+                            if (text.includes('<!DOCTYPE html>')) {
+                                throw new Error('API endpoint not available or server error');
+                            }
+                            throw new Error(text || 'Unknown server error');
+                        }
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Schedule created/updated successfully:', data);
+                closeScheduleModal();
+                showSuccess(`Schedule ${isUpdate ? 'updated' : 'created'} successfully`);
+                loadSchedules();
+            })
+            .catch(error => {
+                console.error(`Failed to ${isUpdate ? 'update' : 'create'} schedule:`, error);
+                showError(`Failed to ${isUpdate ? 'update' : 'create'} schedule: ${error.message}`);
+            });
+        }
+        
+        // Generate a UUID for new schedules
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        
+        // Post a transaction from a schedule
+        function postTransaction() {
+            if (!currentSchedule) {
+                showError('No schedule selected');
+                return;
+            }
+            
+            fetch(`/api/schedules/${currentSchedule.id}/post`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Unknown error');
+                    });
+                }
+                return response.json();
+            })
+            .then(() => {
+                closeScheduleActionsModal();
+                showSuccess('Transaction posted successfully');
+                loadSchedules();
+            })
+            .catch(error => {
+                console.error('Failed to post transaction:', error);
+                showError('Failed to post transaction: ' + error.message);
+            });
+        }
+        
+        // Skip the next occurrence of a schedule
+        function skipOccurrence() {
+            if (!currentSchedule) {
+                showError('No schedule selected');
+                return;
+            }
+            
+            fetch(`/api/schedules/${currentSchedule.id}/skip`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Unknown error');
+                    });
+                }
+                return response.json();
+            })
+            .then(() => {
+                closeScheduleActionsModal();
+                showSuccess('Next occurrence skipped successfully');
+                loadSchedules();
+            })
+            .catch(error => {
+                console.error('Failed to skip occurrence:', error);
+                showError('Failed to skip occurrence: ' + error.message);
+            });
+        }
+        
+        // Edit a schedule
+        function editSchedule() {
+            if (!currentSchedule) {
+                showError('No schedule selected');
+                return;
+            }
+            
+            document.getElementById('schedule-modal-title').textContent = 'Edit Scheduled Transaction';
+            document.getElementById('schedule-id').value = currentSchedule.id;
+            document.getElementById('schedule-name').value = currentSchedule.name;
+            document.getElementById('schedule-date').value = currentSchedule.next_date || currentSchedule._date;
+            document.getElementById('schedule-amount').value = (currentSchedule._amount / 100).toFixed(2);
+            document.getElementById('schedule-account').value = currentSchedule._account;
+            document.getElementById('schedule-payee').value = currentSchedule._payee || '';
+            document.getElementById('schedule-category').value = currentSchedule._category || '';
+            document.getElementById('schedule-frequency').value = currentSchedule.frequency || 'monthly';
+            
+            closeScheduleActionsModal();
+            document.getElementById('schedule-modal').style.display = 'block';
+        }
+        
+        // Delete a schedule
+        function deleteSchedule() {
+            if (!currentSchedule) {
+                showError('No schedule selected');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to delete this schedule?')) {
+                return;
+            }
+            
+            fetch(`/api/schedules/${currentSchedule.id}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Unknown error');
+                    });
+                }
+                return response.json();
+            })
+            .then(() => {
+                closeScheduleActionsModal();
+                showSuccess('Schedule deleted successfully');
+                loadSchedules();
+            })
+            .catch(error => {
+                console.error('Failed to delete schedule:', error);
+                showError('Failed to delete schedule: ' + error.message);
+            });
+        }
+        
+        // Helper function to get the current date in YYYY-MM-DD format
+        function getCurrentDate() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Show an error message
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.classList.add('active');
+            
+            // Hide the error message after 5 seconds
+            setTimeout(() => {
+                errorElement.classList.remove('active');
+            }, 5000);
+        }
+        
+        // Show a success message
+        function showSuccess(message) {
+            const successElement = document.getElementById('success-message');
+            successElement.textContent = message;
+            successElement.classList.add('active');
+            
+            // Hide the success message after 5 seconds
+            setTimeout(() => {
+                successElement.classList.remove('active');
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 

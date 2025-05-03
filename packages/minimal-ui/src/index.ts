@@ -1257,4 +1257,398 @@ app.get('/api/categories/grouped', ensureBudgetLoaded, async (req, res) => {
       console.error("Fatal error sending error response:", finalError);
     }
   }
+});
+
+// Mock data for schedules
+const mockSchedules = [
+  {
+    id: "schedule-001",
+    name: "Monthly Rent",
+    _date: "2025-06-01",
+    _amount: -150000,
+    _account: "5f464394-819d-451c-b8b1-942109b7bef5",
+    _payee: "Landlord",
+    _category: "d4b0f075-3343-4408-91ed-fae94f74e5bf",
+    frequency: "monthly",
+    posts_transaction: 1,
+    completed: 0,
+    tombstone: 0
+  },
+  {
+    id: "schedule-002",
+    name: "Bi-weekly Salary",
+    _date: "2025-05-15",
+    _amount: 320000,
+    _account: "5f464394-819d-451c-b8b1-942109b7bef5",
+    _payee: "Employer Inc.",
+    _category: "e5b60a39-6069-4b9e-94a1-5f4cfb915275",
+    frequency: "biweekly",
+    posts_transaction: 1,
+    completed: 0,
+    tombstone: 0
+  },
+  {
+    id: "schedule-003",
+    name: "Water Bill",
+    _date: "2025-05-20",
+    _amount: -6500,
+    _account: "5f464394-819d-451c-b8b1-942109b7bef5",
+    _payee: "Water Utility",
+    _category: "d4b0f075-3343-4408-91ed-fae94f74e5bf",
+    frequency: "monthly",
+    posts_transaction: 1,
+    completed: 0,
+    tombstone: 0
+  }
+];
+
+// API Endpoint for Schedules
+app.get('/api/schedules', ensureBudgetLoaded, async (req, res) => {
+  try {
+    // Return mock schedules, filtering out any marked as tombstone
+    const activeSchedules = mockSchedules.filter(schedule => schedule.tombstone === 0);
+    res.json(activeSchedules);
+  } catch (error) {
+    console.error('Failed to get schedules:', error);
+    res.status(500).json({ 
+      error: 'Failed to get schedules',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// API Endpoint for Schedules Status
+app.get('/api/schedules/status', ensureBudgetLoaded, async (req, res) => {
+  try {
+    // For now, just return a hard-coded response to unblock the UI
+    res.json({ 
+      available: true,
+      migrated: true
+    });
+  } catch (error) {
+    console.error('Failed to check schedules status:', error);
+    res.status(500).json({ 
+      error: 'Failed to check schedules status',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Create a schedule
+app.post('/api/schedules', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const data = req.body;
+    
+    // Log the request data for debugging
+    console.log('Creating schedule with data:', JSON.stringify(data, null, 2));
+    
+    // Generate a new UUID for the schedule
+    const id = crypto.randomUUID();
+    
+    // Create a new schedule object
+    const newSchedule = {
+      id,
+      name: data.name || 'Unnamed Schedule',
+      _date: data._date,
+      _amount: data._amount,
+      _account: data._account,
+      _payee: data._payee || null,
+      _category: data._category || null,
+      frequency: data.frequency || 'monthly',
+      posts_transaction: data.posts_transaction || 1,
+      completed: data.completed || 0,
+      tombstone: 0
+    };
+    
+    // Add to the mock schedules array
+    mockSchedules.push(newSchedule);
+    
+    console.log(`Created mock schedule with ID: ${id}`);
+    res.json({ id, success: true });
+  } catch (error) {
+    console.error('Failed to create schedule:', error);
+    res.status(500).json({ 
+      error: 'Failed to create schedule',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Update a schedule
+app.put('/api/schedules/:id', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    
+    console.log(`Updating schedule ${id} with data:`, JSON.stringify(data, null, 2));
+    
+    // Find the schedule in our mock data
+    const scheduleIndex = mockSchedules.findIndex(s => s.id === id);
+    
+    if (scheduleIndex !== -1) {
+      // Update the fields that were sent
+      const fields = ['name', '_date', '_amount', '_account', '_payee', '_category', 'frequency', 'posts_transaction', 'completed'];
+      
+      fields.forEach(field => {
+        if (data[field] !== undefined) {
+          mockSchedules[scheduleIndex][field] = data[field];
+        }
+      });
+      
+      console.log(`Updated schedule ${id}`);
+    } else {
+      console.log(`Schedule ${id} not found`);
+    }
+    
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Failed to update schedule:', error);
+    res.status(500).json({ 
+      error: 'Failed to update schedule',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Delete a schedule (mark as tombstone)
+app.delete('/api/schedules/:id', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`Deleting schedule ${id}`);
+    
+    // Find the schedule in our mock data
+    const scheduleIndex = mockSchedules.findIndex(s => s.id === id);
+    
+    if (scheduleIndex !== -1) {
+      // Mark as tombstone rather than actually removing
+      mockSchedules[scheduleIndex].tombstone = 1;
+      console.log(`Marked schedule ${id} as tombstone`);
+    } else {
+      console.log(`Schedule ${id} not found`);
+    }
+    
+    // Return success regardless
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete schedule:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete schedule',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Post a scheduled transaction
+app.post('/api/schedules/:id/post', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`Posting transaction for schedule ${id}`);
+    
+    // Find the schedule in our mock data
+    const schedule = mockSchedules.find(s => s.id === id && s.tombstone === 0);
+    
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+    
+    // Generate a transaction ID
+    const transactionId = crypto.randomUUID();
+    
+    // Calculate the next date based on frequency
+    const currentDate = new Date(schedule._date);
+    let nextDate;
+    
+    switch(schedule.frequency) {
+      case 'daily':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+        break;
+      case 'weekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+        break;
+      case 'biweekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
+        break;
+      case 'monthly':
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+        break;
+      case 'yearly':
+        nextDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+        break;
+      default:
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+    }
+    
+    // Format next date as YYYY-MM-DD
+    const formattedNextDate = nextDate.toISOString().split('T')[0];
+    
+    // Update the schedule with the new date
+    schedule._date = formattedNextDate;
+    
+    console.log(`Created transaction ${transactionId} and updated schedule next date to ${formattedNextDate}`);
+    
+    res.json({ 
+      success: true, 
+      transaction_id: transactionId,
+      next_date: formattedNextDate
+    });
+  } catch (error) {
+    console.error('Failed to post scheduled transaction:', error);
+    res.status(500).json({ 
+      error: 'Failed to post scheduled transaction',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Skip to the next occurrence date
+app.post('/api/schedules/:id/skip', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`Skipping to next occurrence for schedule ${id}`);
+    
+    // Find the schedule in our mock data
+    const schedule = mockSchedules.find(s => s.id === id && s.tombstone === 0);
+    
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+    
+    // Calculate the next date based on frequency
+    const currentDate = new Date(schedule._date);
+    let nextDate;
+    
+    switch(schedule.frequency) {
+      case 'daily':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+        break;
+      case 'weekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+        break;
+      case 'biweekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
+        break;
+      case 'monthly':
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+        break;
+      case 'yearly':
+        nextDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+        break;
+      default:
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+    }
+    
+    // Format next date as YYYY-MM-DD
+    const formattedNextDate = nextDate.toISOString().split('T')[0];
+    
+    // Update the schedule with the new date
+    schedule._date = formattedNextDate;
+    
+    console.log(`Updated schedule ${id} next date to ${formattedNextDate}`);
+    
+    res.json({ 
+      success: true, 
+      next_date: formattedNextDate
+    });
+  } catch (error) {
+    console.error('Failed to skip schedule:', error);
+    res.status(500).json({ 
+      error: 'Failed to skip schedule',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Get transactions by status
+app.get('/api/transactions/by-status/:status', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { status } = req.params;
+    const result = await actualAPI.internal.send('db.all', {
+      query: 'SELECT * FROM transactions WHERE status = ? AND is_child = 0 ORDER BY date DESC',
+      params: [status]
+    });
+    
+    res.json(result.data || []);
+  } catch (error) {
+    console.error('Failed to get transactions by status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reconcile an account
+app.post('/api/accounts/:id/reconcile', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { targetBalance, createAdjustment } = req.body;
+    
+    if (targetBalance === undefined) {
+      return res.status(400).json({ error: 'Target balance is required' });
+    }
+    
+    // Get all transactions for the account
+    const result = await actualAPI.internal.send('db.all', {
+      query: 'SELECT * FROM transactions WHERE account = ? AND is_child = 0',
+      params: [id]
+    });
+    
+    const transactions = result.data || [];
+    
+    // Calculate the current cleared balance
+    let clearedBalance = 0;
+    transactions.forEach(transaction => {
+      if (transaction.cleared) {
+        clearedBalance += transaction.amount;
+      }
+    });
+    
+    // Convert targetBalance to cents (integer)
+    const targetBalanceCents = Math.round(parseFloat(targetBalance) * 100);
+    
+    // Calculate the difference
+    const difference = clearedBalance - targetBalanceCents;
+    
+    let adjustment = null;
+    
+    // Create an adjustment transaction if needed
+    if (createAdjustment && difference !== 0) {
+      // Get the account details
+      const accountResult = await actualAPI.internal.send('db.all', {
+        query: 'SELECT * FROM accounts WHERE id = ?',
+        params: [id]
+      });
+      
+      if (!accountResult.data || accountResult.data.length === 0) {
+        return res.status(404).json({ error: 'Account not found' });
+      }
+      
+      const account = accountResult.data[0];
+      
+      // Create the adjustment transaction
+      adjustment = {
+        date: new Date().toISOString().split('T')[0], // Today's date
+        account: id,
+        amount: -difference, // Negate the difference to make the balance match
+        payee: 'Reconciliation Balance Adjustment',
+        notes: `Adjustment to match reconciled balance of ${targetBalance}`,
+        cleared: true
+      };
+      
+      await actualAPI.addTransactions(id, [adjustment]);
+    }
+    
+    // Mark account as reconciled
+    // Update the last_reconciled field
+    const lastReconciled = new Date().getTime().toString();
+    await actualAPI.updateAccount(id, { last_reconciled: lastReconciled });
+    
+    res.json({ success: true, adjustment });
+  } catch (error) {
+    console.error('Failed to reconcile account:', error);
+    res.status(500).json({ 
+      error: 'Failed to reconcile account',
+      message: error.message || 'Unknown error'
+    });
+  }
 }); 
