@@ -3,8 +3,11 @@
 ## Current Implementation Status
 
 ### Database Structure
-- The database has proper tables for schedules (`schedules`, `schedules_next_date`, etc.)
-- Transactions can be linked to schedules via the `schedule` column
+- ⬜ The database has proper tables for schedules (`schedules`, `schedules_next_date`, etc.)
+- ⬜ Transactions can be linked to schedules via the `schedule` column
+- ✅ Using in-memory mock data structure as temporary solution
+
+> **Note:** Currently, we have a mock implementation with in-memory data structure, not actual database tables. The database tables will be implemented in the next phase.
 
 ### API Endpoints
 - Basic CRUD endpoints exist for schedules:
