@@ -424,7 +424,10 @@ export function Sidebar({ className }: SidebarProps) {
         <SheetContent side="left" className="w-[240px] sm:w[300px] p-0">
           <div className="h-full flex flex-col bg-background rounded-r-lg shadow-lg">
             <div className="border-b py-4 px-6">
-              <div className="flex items-center">
+              <button 
+                onClick={() => openSettingsModal("account")} 
+                className="flex items-center hover:bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full"
+              >
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2">
                   <span className="font-medium text-sm">{userData.initials}</span>
                 </div>
@@ -432,7 +435,7 @@ export function Sidebar({ className }: SidebarProps) {
                   <p className="font-medium">{userData.name}</p>
                   <p className="text-xs text-muted-foreground">{userData.email}</p>
                 </div>
-              </div>
+              </button>
             </div>
             <MobileWorkspaceSelector />
             <div className="flex-1 overflow-auto py-4 px-2">
@@ -496,7 +499,10 @@ export function Sidebar({ className }: SidebarProps) {
             "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap",
             collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
           )}>
-            <div className="flex items-center">
+            <button 
+              onClick={() => openSettingsModal("account")}
+              className="flex items-center hover:bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full"
+            >
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2">
                 <span className="font-medium text-xs">{userData.initials}</span>
               </div>
@@ -504,7 +510,7 @@ export function Sidebar({ className }: SidebarProps) {
                 <p className="font-medium text-sm">{userData.name}</p>
                 <p className="text-xs text-muted-foreground">{userData.email}</p>
               </div>
-            </div>
+            </button>
           </div>
           <Button
             variant="ghost"
