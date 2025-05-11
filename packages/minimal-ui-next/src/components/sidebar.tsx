@@ -112,6 +112,13 @@ export function Sidebar({ className }: SidebarProps) {
     color: "#FF7043"
   })
   
+  // Mock user data (this would come from a context or API in a real app)
+  const [userData, setUserData] = useState({
+    name: "Fabrice Muhirwa",
+    email: "fmuhirwa@gmail.com",
+    initials: "FM"
+  })
+  
   // Mock available workspaces (this would come from a context or API in a real app)
   const [availableWorkspaces, setAvailableWorkspaces] = useState([
     { id: "1", name: "Family Budget", color: "#FF7043" },
@@ -128,6 +135,13 @@ export function Sidebar({ className }: SidebarProps) {
     setCurrentWorkspace(workspace)
     // In a real app, you would also update the global context/state
     // and possibly redirect or reload data
+  }
+  
+  // Function to open settings to the general tab
+  const openWorkspaceSettings = () => {
+    if (openSettingsModal) {
+      openSettingsModal("general")
+    }
   }
 
   // Grouped navigation structure
@@ -162,7 +176,7 @@ export function Sidebar({ className }: SidebarProps) {
     { 
       name: 'Settings', 
       icon: Settings, 
-      onClick: openSettingsModal
+      onClick: openWorkspaceSettings
     },
     { 
       name: 'Help', 
@@ -333,7 +347,7 @@ export function Sidebar({ className }: SidebarProps) {
               </DropdownMenuItem>
             ))}
             <div className="border-t mt-1 pt-1">
-              <DropdownMenuItem onClick={() => openSettingsModal("general")}>
+              <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
                 <span className="text-sm">Manage workspaces</span>
               </DropdownMenuItem>
             </div>
@@ -388,7 +402,7 @@ export function Sidebar({ className }: SidebarProps) {
             </DropdownMenuItem>
           ))}
           <div className="border-t mt-1 pt-1">
-            <DropdownMenuItem onClick={() => openSettingsModal("general")}>
+            <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
               <span className="text-sm">Manage workspaces</span>
             </DropdownMenuItem>
           </div>
@@ -410,9 +424,15 @@ export function Sidebar({ className }: SidebarProps) {
         <SheetContent side="left" className="w-[240px] sm:w[300px] p-0">
           <div className="h-full flex flex-col bg-background rounded-r-lg shadow-lg">
             <div className="border-b py-4 px-6">
-              <Link href="/" className="flex items-center gap-2 font-semibold">
-                <span className="text-xl">Odzai</span>
-              </Link>
+              <div className="flex items-center">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2">
+                  <span className="font-medium text-sm">{userData.initials}</span>
+                </div>
+                <div>
+                  <p className="font-medium">{userData.name}</p>
+                  <p className="text-xs text-muted-foreground">{userData.email}</p>
+                </div>
+              </div>
             </div>
             <MobileWorkspaceSelector />
             <div className="flex-1 overflow-auto py-4 px-2">
@@ -476,9 +496,15 @@ export function Sidebar({ className }: SidebarProps) {
             "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap",
             collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
           )}>
-            <Link href="/" className="flex items-center gap-2 font-semibold">
-              <span className="text-xl">Odzai</span>
-            </Link>
+            <div className="flex items-center">
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2">
+                <span className="font-medium text-xs">{userData.initials}</span>
+              </div>
+              <div>
+                <p className="font-medium text-sm">{userData.name}</p>
+                <p className="text-xs text-muted-foreground">{userData.email}</p>
+              </div>
+            </div>
           </div>
           <Button
             variant="ghost"
