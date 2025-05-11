@@ -48,6 +48,7 @@ import {
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultTab?: string;
 }
 
 // Helper component for section headings
@@ -59,7 +60,7 @@ const SectionHeading = ({ title }: { title: string }) => (
   </div>
 );
 
-const SettingsModal = ({ open, onOpenChange }: SettingsModalProps) => {
+const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsModalProps) => {
   // Initial state values
   const [workspaceName, setWorkspaceName] = useState("Fabrice Muhirwa's Notion");
   const [workspaceIcon, setWorkspaceIcon] = useState("/placeholder-icon.png");
@@ -142,7 +143,7 @@ const SettingsModal = ({ open, onOpenChange }: SettingsModalProps) => {
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="account" className="flex flex-1 overflow-hidden">
+          <Tabs defaultValue={defaultTab} className="flex flex-1 overflow-hidden">
             <div className="w-64 border-r p-4 space-y-1 overflow-y-auto">
               <TabsList className="flex flex-col h-auto bg-transparent p-0 items-start justify-start">
                 {/* Account Section */}
