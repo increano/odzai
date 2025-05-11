@@ -426,7 +426,7 @@ export function Sidebar({ className }: SidebarProps) {
             <div className="border-b py-4 px-6">
               <button 
                 onClick={() => openSettingsModal("account")} 
-                className="flex items-center hover:bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full"
+                className="flex items-center bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full hover:bg-accent"
               >
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2">
                   <span className="font-medium text-sm">{userData.initials}</span>
@@ -501,7 +501,7 @@ export function Sidebar({ className }: SidebarProps) {
           )}>
             <button 
               onClick={() => openSettingsModal("account")}
-              className="flex items-center hover:bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full"
+              className="flex items-center bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full hover:bg-accent"
             >
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2">
                 <span className="font-medium text-xs">{userData.initials}</span>
