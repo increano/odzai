@@ -81,3 +81,29 @@ Make Actual Budget accessible to more people by helping with the [Internationali
 Thanks to our wonderful sponsors who make Actual Budget possible!
 
 <a href="https://www.netlify.com"> <img src="https://www.netlify.com/v3/img/components/netlify-color-accent.svg" alt="Deploys by Netlify" /> </a>
+
+## Development Guidelines
+
+### Monetary Values
+
+**IMPORTANT**: All monetary values in the application must be stored as integers representing cents (or the smallest monetary unit) to avoid floating-point precision issues. For example:
+
+- $10.00 should be stored as `1000` (cents)
+- $5.99 should be stored as `599` (cents)
+- $-75.50 should be stored as `-7550` (cents)
+
+When displaying amounts to users, convert back to dollars by dividing by 100.
+
+```javascript
+// CORRECT: Convert from user input to database storage
+const userAmount = 10.50;
+const storageAmount = Math.round(userAmount * 100); // 1050 cents
+
+// CORRECT: Convert from database to display
+const dbAmount = 1050;
+const displayAmount = (dbAmount / 100).toFixed(2); // "$10.50"
+
+// INCORRECT: Never store decimal amounts directly
+// This will cause "Can't convert to integer" errors
+const wrongAmount = -75.50; // Don't do this!
+```

@@ -1472,27 +1472,27 @@ app.post('/api/schedules', ensureBudgetLoaded, async (req: Request, res: Respons
       
       // Fallback to mock data if the API method isn't available
       console.log('Falling back to mock data for schedule creation');
-      
-      // Create a new schedule object
-      const newSchedule = {
-        id,
-        name: data.name || 'Unnamed Schedule',
-        _date: data._date,
-        _amount: data._amount,
-        _account: data._account,
-        _payee: data._payee || null,
-        _category: data._category || null,
-        frequency: data.frequency || 'monthly',
-        posts_transaction: data.posts_transaction || 1,
-        completed: data.completed || 0,
-        tombstone: 0
-      };
-      
-      // Add to the mock schedules array
-      mockSchedules.push(newSchedule);
-      
-      console.log(`Created mock schedule with ID: ${id}`);
-      res.json({ id, success: true });
+    
+    // Create a new schedule object
+    const newSchedule = {
+      id,
+      name: data.name || 'Unnamed Schedule',
+      _date: data._date,
+      _amount: data._amount,
+      _account: data._account,
+      _payee: data._payee || null,
+      _category: data._category || null,
+      frequency: data.frequency || 'monthly',
+      posts_transaction: data.posts_transaction || 1,
+      completed: data.completed || 0,
+      tombstone: 0
+    };
+    
+    // Add to the mock schedules array
+    mockSchedules.push(newSchedule);
+    
+    console.log(`Created mock schedule with ID: ${id}`);
+    res.json({ id, success: true });
     }
   } catch (error) {
     console.error('Failed to create schedule:', error);
@@ -1528,22 +1528,22 @@ app.put('/api/schedules/:id', ensureBudgetLoaded, async (req: Request, res: Resp
       
       // Fallback to mock data if the API method isn't available
       console.log('Falling back to mock data for schedule update');
+    
+    // Find the schedule in our mock data
+    const scheduleIndex = mockSchedules.findIndex(s => s.id === id);
+    
+    if (scheduleIndex !== -1) {
+      // Update the fields that were sent
+      const fields = ['name', '_date', '_amount', '_account', '_payee', '_category', 'frequency', 'posts_transaction', 'completed'];
       
-      // Find the schedule in our mock data
-      const scheduleIndex = mockSchedules.findIndex(s => s.id === id);
-      
-      if (scheduleIndex !== -1) {
-        // Update the fields that were sent
-        const fields = ['name', '_date', '_amount', '_account', '_payee', '_category', 'frequency', 'posts_transaction', 'completed'];
-        
-        fields.forEach(field => {
-          if (data[field] !== undefined) {
+      fields.forEach(field => {
+        if (data[field] !== undefined) {
             (mockSchedules[scheduleIndex] as any)[field] = data[field];
-          }
-        });
-        
+        }
+      });
+      
         console.log(`Updated mock schedule ${id}`);
-      } else {
+    } else {
         console.log(`Schedule ${id} not found in mock data`);
       }
     }
@@ -1574,15 +1574,15 @@ app.delete('/api/schedules/:id', ensureBudgetLoaded, async (req: Request, res: R
       
       // Fallback to mock data if the API method isn't available
       console.log('Falling back to mock data for schedule deletion');
-      
-      // Find the schedule in our mock data
-      const scheduleIndex = mockSchedules.findIndex(s => s.id === id);
-      
-      if (scheduleIndex !== -1) {
-        // Mark as tombstone rather than actually removing
-        mockSchedules[scheduleIndex].tombstone = 1;
+    
+    // Find the schedule in our mock data
+    const scheduleIndex = mockSchedules.findIndex(s => s.id === id);
+    
+    if (scheduleIndex !== -1) {
+      // Mark as tombstone rather than actually removing
+      mockSchedules[scheduleIndex].tombstone = 1;
         console.log(`Marked mock schedule ${id} as tombstone`);
-      } else {
+    } else {
         console.log(`Schedule ${id} not found in mock data`);
       }
     }
@@ -1619,54 +1619,54 @@ app.post('/api/schedules/:id/post', ensureBudgetLoaded, async (req: Request, res
       
       // Fallback to mock data if the API method isn't available
       console.log('Falling back to mock data for transaction posting');
-      
-      // Find the schedule in our mock data
-      const schedule = mockSchedules.find(s => s.id === id && s.tombstone === 0);
-      
-      if (!schedule) {
-        return res.status(404).json({ error: 'Schedule not found' });
-      }
-      
-      // Generate a transaction ID
-      const transactionId = crypto.randomUUID();
-      
-      // Calculate the next date based on frequency
-      const currentDate = new Date(schedule._date);
-      let nextDate;
-      
-      switch(schedule.frequency) {
-        case 'daily':
-          nextDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
-          break;
-        case 'weekly':
-          nextDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
-          break;
-        case 'biweekly':
-          nextDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
-          break;
-        case 'monthly':
-          nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
-          break;
-        case 'yearly':
-          nextDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
-          break;
-        default:
-          nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
-      }
-      
-      // Format next date as YYYY-MM-DD
-      const formattedNextDate = nextDate.toISOString().split('T')[0];
-      
-      // Update the schedule with the new date
-      schedule._date = formattedNextDate;
-      
+    
+    // Find the schedule in our mock data
+    const schedule = mockSchedules.find(s => s.id === id && s.tombstone === 0);
+    
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+    
+    // Generate a transaction ID
+    const transactionId = crypto.randomUUID();
+    
+    // Calculate the next date based on frequency
+    const currentDate = new Date(schedule._date);
+    let nextDate;
+    
+    switch(schedule.frequency) {
+      case 'daily':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+        break;
+      case 'weekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+        break;
+      case 'biweekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
+        break;
+      case 'monthly':
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+        break;
+      case 'yearly':
+        nextDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+        break;
+      default:
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+    }
+    
+    // Format next date as YYYY-MM-DD
+    const formattedNextDate = nextDate.toISOString().split('T')[0];
+    
+    // Update the schedule with the new date
+    schedule._date = formattedNextDate;
+    
       console.log(`Created mock transaction ${transactionId} and updated schedule next date to ${formattedNextDate}`);
-      
-      res.json({ 
-        success: true, 
-        transaction_id: transactionId,
-        next_date: formattedNextDate
-      });
+    
+    res.json({ 
+      success: true, 
+      transaction_id: transactionId,
+      next_date: formattedNextDate
+    });
     }
   } catch (error) {
     console.error('Failed to post scheduled transaction:', error);
@@ -1697,50 +1697,50 @@ app.post('/api/schedules/:id/skip', ensureBudgetLoaded, async (req: Request, res
       
       // Fallback to mock data if the API method isn't available
       console.log('Falling back to mock data for schedule skipping');
-      
-      // Find the schedule in our mock data
-      const schedule = mockSchedules.find(s => s.id === id && s.tombstone === 0);
-      
-      if (!schedule) {
-        return res.status(404).json({ error: 'Schedule not found' });
-      }
-      
-      // Calculate the next date based on frequency
-      const currentDate = new Date(schedule._date);
-      let nextDate;
-      
-      switch(schedule.frequency) {
-        case 'daily':
-          nextDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
-          break;
-        case 'weekly':
-          nextDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
-          break;
-        case 'biweekly':
-          nextDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
-          break;
-        case 'monthly':
-          nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
-          break;
-        case 'yearly':
-          nextDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
-          break;
-        default:
-          nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
-      }
-      
-      // Format next date as YYYY-MM-DD
-      const formattedNextDate = nextDate.toISOString().split('T')[0];
-      
-      // Update the schedule with the new date
-      schedule._date = formattedNextDate;
-      
+    
+    // Find the schedule in our mock data
+    const schedule = mockSchedules.find(s => s.id === id && s.tombstone === 0);
+    
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+    
+    // Calculate the next date based on frequency
+    const currentDate = new Date(schedule._date);
+    let nextDate;
+    
+    switch(schedule.frequency) {
+      case 'daily':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+        break;
+      case 'weekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+        break;
+      case 'biweekly':
+        nextDate = new Date(currentDate.setDate(currentDate.getDate() + 14));
+        break;
+      case 'monthly':
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+        break;
+      case 'yearly':
+        nextDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+        break;
+      default:
+        nextDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+    }
+    
+    // Format next date as YYYY-MM-DD
+    const formattedNextDate = nextDate.toISOString().split('T')[0];
+    
+    // Update the schedule with the new date
+    schedule._date = formattedNextDate;
+    
       console.log(`Updated mock schedule ${id} next date to ${formattedNextDate}`);
-      
-      res.json({ 
-        success: true, 
-        next_date: formattedNextDate
-      });
+    
+    res.json({ 
+      success: true, 
+      next_date: formattedNextDate
+    });
     }
   } catch (error) {
     console.error('Failed to skip schedule:', error);

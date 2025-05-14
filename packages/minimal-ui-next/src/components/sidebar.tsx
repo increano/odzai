@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { 
   LayoutDashboard, 
   Home, 
@@ -18,7 +18,8 @@ import {
   Calendar,
   Clock,
   Building2,
-  ChevronDown
+  ChevronDown,
+  Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { useSettingsModal } from './SettingsModalProvider'
+import { useWorkspace } from './WorkspaceProvider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,15 +104,11 @@ type NavigationGroup = {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   // Use our custom hook with a default value of false (expanded)
   const [collapsed, setCollapsed] = useLocalStorage<boolean>(SIDEBAR_STATE_KEY, false)
   const { openSettingsModal } = useSettingsModal()
-  
-  // Mock current workspace data (this would come from a context or API in a real app)
-  const [currentWorkspace, setCurrentWorkspace] = useState({
-    name: "Family Budget",
-    color: "#FF7043"
-  })
+  const { isWorkspaceLoaded, currentWorkspace } = useWorkspace()
   
   // Mock user data (this would come from a context or API in a real app)
   const [userData, setUserData] = useState({
@@ -132,15 +130,22 @@ export function Sidebar({ className }: SidebarProps) {
   
   // Function to handle workspace switching
   const switchWorkspace = (workspace: any) => {
-    setCurrentWorkspace(workspace)
-    // In a real app, you would also update the global context/state
-    // and possibly redirect or reload data
+    router.push('/budgets')
   }
   
   // Function to open settings to the general tab
   const openWorkspaceSettings = () => {
     if (openSettingsModal) {
       openSettingsModal("general")
+    }
+  }
+
+  // Function to handle workspace unloading
+  const handleUnloadWorkspace = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('odzai-current-workspace')
+      // Force a page reload to reset the workspace context
+      window.location.href = '/budgets'
     }
   }
 
@@ -170,6 +175,41 @@ export function Sidebar({ className }: SidebarProps) {
       ]
     },
   ]
+
+  // Test section shown between planning and settings
+  const TestSection = ({ collapsed }: { collapsed: boolean }) => (
+    <div className="mb-6">
+      {!collapsed && (
+        <div className="mb-2 px-3">
+          <h3 className="text-xs font-semibold text-muted-foreground tracking-wider">
+            TEST
+          </h3>
+        </div>
+      )}
+      <div className="grid gap-1">
+        <button
+          onClick={handleUnloadWorkspace}
+          disabled={!isWorkspaceLoaded}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
+            isWorkspaceLoaded ? "text-red-500 hover:bg-red-100/30" : "text-muted-foreground opacity-50"
+          )}
+          title={collapsed ? "Unload Workspace (Test)" : undefined}
+        >
+          <Wallet className={cn(
+            "h-5 w-5 transition-all duration-300 ease-in-out",
+            collapsed ? "mr-0" : "mr-0"
+          )} />
+          <span className={cn(
+            "transition-all duration-300 ease-in-out whitespace-nowrap",
+            collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"
+          )}>
+            Unload Workspace
+          </span>
+        </button>
+      </div>
+    </div>
+  )
 
   // Settings navigation items (kept separate for the footer)
   const settingsNavigation = [
@@ -297,17 +337,103 @@ export function Sidebar({ className }: SidebarProps) {
     )}>
       {collapsed ? (
         <div className="flex justify-center py-2">
-          <div 
-            className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
-            style={{ backgroundColor: currentWorkspace.color }}
-          >
-            {currentWorkspace.name.charAt(0)}
-          </div>
+          {isWorkspaceLoaded && currentWorkspace ? (
+            <div 
+              className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
+              style={{ backgroundColor: currentWorkspace.color }}
+            >
+              {currentWorkspace.name.charAt(0)}
+            </div>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8"
+              onClick={() => router.push('/budgets')}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors">
+            {isWorkspaceLoaded && currentWorkspace ? (
+              <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors bg-accent text-accent-foreground">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
+                    style={{ backgroundColor: currentWorkspace.color }}
+                  >
+                    {currentWorkspace.name.charAt(0)}
+                  </div>
+                  <div className="flex flex-col items-start max-w-[120px]">
+                    <span className="text-sm font-medium truncate w-full">{currentWorkspace.name}</span>
+                    <span className="text-xs text-muted-foreground">Current workspace</span>
+                  </div>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </button>
+            ) : (
+              <button 
+                className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors"
+                onClick={() => router.push('/budgets')}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-md flex items-center justify-center bg-muted">
+                    <Plus className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium">Select Workspace</span>
+                    <span className="text-xs text-muted-foreground">No workspace loaded</span>
+                  </div>
+                </div>
+              </button>
+            )}
+          </DropdownMenuTrigger>
+          {isWorkspaceLoaded && currentWorkspace && (
+            <DropdownMenuContent align="start" className="w-[220px]">
+              <div className="px-2 py-1.5">
+                <h3 className="text-sm font-medium mb-1">Switch workspace</h3>
+                <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
+              </div>
+              {availableWorkspaces.map(workspace => (
+                <DropdownMenuItem 
+                  key={workspace.id}
+                  className="flex items-center gap-2 py-2"
+                  onClick={() => switchWorkspace(workspace)}
+                >
+                  <div 
+                    className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium"
+                    style={{ backgroundColor: workspace.color }}
+                  >
+                    {workspace.name.charAt(0)}
+                  </div>
+                  <span className="text-sm">{workspace.name}</span>
+                  {workspace.id === currentWorkspace.id && (
+                    <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
+                  )}
+                </DropdownMenuItem>
+              ))}
+              <div className="border-t mt-1 pt-1">
+                <DropdownMenuItem onClick={() => router.push('/budgets')}>
+                  <span className="text-sm">Manage workspaces</span>
+                </DropdownMenuItem>
+              </div>
+            </DropdownMenuContent>
+          )}
+        </DropdownMenu>
+      )}
+    </div>
+  )
+  
+  // Mobile workspace selector
+  const MobileWorkspaceSelector = () => (
+    <div className="border-b pb-3 px-4">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          {isWorkspaceLoaded && currentWorkspace ? (
+            <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors bg-accent text-accent-foreground">
               <div className="flex items-center gap-2">
                 <div 
                   className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
@@ -315,14 +441,31 @@ export function Sidebar({ className }: SidebarProps) {
                 >
                   {currentWorkspace.name.charAt(0)}
                 </div>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium">{currentWorkspace.name}</span>
+                <div className="flex flex-col items-start max-w-[120px]">
+                  <span className="text-sm font-medium truncate w-full">{currentWorkspace.name}</span>
                   <span className="text-xs text-muted-foreground">Current workspace</span>
                 </div>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </button>
-          </DropdownMenuTrigger>
+          ) : (
+            <button 
+              className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors"
+              onClick={() => router.push('/budgets')}
+            >
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-md flex items-center justify-center bg-muted">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium">Select Workspace</span>
+                  <span className="text-xs text-muted-foreground">No workspace loaded</span>
+                </div>
+              </div>
+            </button>
+          )}
+        </DropdownMenuTrigger>
+        {isWorkspaceLoaded && currentWorkspace && (
           <DropdownMenuContent align="start" className="w-[220px]">
             <div className="px-2 py-1.5">
               <h3 className="text-sm font-medium mb-1">Switch workspace</h3>
@@ -341,72 +484,18 @@ export function Sidebar({ className }: SidebarProps) {
                   {workspace.name.charAt(0)}
                 </div>
                 <span className="text-sm">{workspace.name}</span>
-                {workspace.id === "1" && (
+                {workspace.id === currentWorkspace.id && (
                   <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
                 )}
               </DropdownMenuItem>
             ))}
             <div className="border-t mt-1 pt-1">
-              <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
+              <DropdownMenuItem onClick={() => router.push('/budgets')}>
                 <span className="text-sm">Manage workspaces</span>
               </DropdownMenuItem>
             </div>
           </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
-  )
-  
-  // Mobile workspace selector
-  const MobileWorkspaceSelector = () => (
-    <div className="border-b pb-3 px-4">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors">
-            <div className="flex items-center gap-2">
-              <div 
-                className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
-                style={{ backgroundColor: currentWorkspace.color }}
-              >
-                {currentWorkspace.name.charAt(0)}
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-medium">{currentWorkspace.name}</span>
-                <span className="text-xs text-muted-foreground">Current workspace</span>
-              </div>
-            </div>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[220px]">
-          <div className="px-2 py-1.5">
-            <h3 className="text-sm font-medium mb-1">Switch workspace</h3>
-            <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
-          </div>
-          {availableWorkspaces.map(workspace => (
-            <DropdownMenuItem 
-              key={workspace.id}
-              className="flex items-center gap-2 py-2"
-              onClick={() => switchWorkspace(workspace)}
-            >
-              <div 
-                className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium"
-                style={{ backgroundColor: workspace.color }}
-              >
-                {workspace.name.charAt(0)}
-              </div>
-              <span className="text-sm">{workspace.name}</span>
-              {workspace.id === "1" && (
-                <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
-              )}
-            </DropdownMenuItem>
-          ))}
-          <div className="border-t mt-1 pt-1">
-            <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
-              <span className="text-sm">Manage workspaces</span>
-            </DropdownMenuItem>
-          </div>
-        </DropdownMenuContent>
+        )}
       </DropdownMenu>
     </div>
   )
@@ -488,11 +577,11 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Desktop sidebar */}
       <div className={cn(
         "hidden h-[calc(100vh-32px)] my-4 ml-4 rounded-lg border bg-background md:flex flex-col transition-all duration-300 ease-in-out shadow-md",
-        collapsed ? "w-[80px]" : "w-[240px]",
+        collapsed ? "w-[90px]" : "w-[260px]",
         className
       )}>
         <div className={cn(
-          "flex h-14 items-center border-b px-4 transition-all duration-300 ease-in-out",
+          "flex h-14 items-center px-4 transition-all duration-300 ease-in-out",
           collapsed ? "justify-center" : "justify-between"
         )}>
           <div className={cn(
@@ -531,6 +620,7 @@ export function Sidebar({ className }: SidebarProps) {
           {navigationGroups.map((group) => (
             <NavGroup key={group.title} group={group} collapsed={collapsed} />
           ))}
+          <TestSection collapsed={collapsed} />
         </div>
         <div className="mt-auto border-t p-4">
           {!collapsed && (

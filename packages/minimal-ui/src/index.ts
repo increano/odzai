@@ -1651,4 +1651,77 @@ app.post('/api/accounts/:id/reconcile', ensureBudgetLoaded, async (req, res) => 
       message: error.message || 'Unknown error'
     });
   }
+});
+
+// Update transaction cleared status
+app.post('/api/transactions/:id/cleared', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cleared } = req.body;
+    
+    if (cleared === undefined) {
+      return res.status(400).json({ error: 'Cleared status is required' });
+    }
+    
+    // Check if transaction is reconciled (you can't unmark a reconciled transaction as cleared)
+    const result = await actualAPI.internal.send('db.all', {
+      query: 'SELECT * FROM transactions WHERE id = ?',
+      params: [id]
+    });
+    
+    if (!result.data || result.data.length === 0) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    
+    const transaction = result.data[0];
+    
+    // If the transaction is reconciled and trying to mark as uncleared, don't allow it
+    if (transaction.reconciled && !cleared) {
+      return res.status(400).json({ 
+        error: 'Cannot mark a reconciled transaction as uncleared',
+        needsReconcileUnlock: true
+      });
+    }
+    
+    // Update the transaction
+    await actualAPI.updateTransaction(id, { cleared });
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to update transaction cleared status:', error);
+    res.status(500).json({ 
+      error: 'Failed to update transaction cleared status',
+      message: error.message || 'Unknown error'
+    });
+  }
+});
+
+// Mark transactions as reconciled
+app.post('/api/accounts/:id/lock-transactions', ensureBudgetLoaded, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get all cleared transactions for the account that aren't reconciled yet
+    const result = await actualAPI.internal.send('db.all', {
+      query: 'SELECT * FROM transactions WHERE account = ? AND cleared = 1 AND reconciled = 0',
+      params: [id]
+    });
+    
+    const transactions = result.data || [];
+    
+    // Update each transaction to be reconciled
+    const updates = transactions.map(transaction => {
+      return actualAPI.updateTransaction(transaction.id, { reconciled: true });
+    });
+    
+    await Promise.all(updates);
+    
+    res.json({ success: true, count: transactions.length });
+  } catch (error) {
+    console.error('Failed to mark transactions as reconciled:', error);
+    res.status(500).json({ 
+      error: 'Failed to mark transactions as reconciled',
+      message: error.message || 'Unknown error'
+    });
+  }
 }); 

@@ -32,6 +32,7 @@
     "start:browser-backend": "yarn workspace loot-core watch:browser",
     "start:browser-frontend": "yarn workspace @actual-app/web start:browser",
     "start:minimal-ui": "yarn workspace @actual-app/minimal-ui start",
+    "start:minimal-ui-next": "yarn workspace @actual-app/minimal-ui-next start",
     "build:server": "yarn build:browser",
     "build:browser": "./bin/package-browser",
     "build:desktop": "./bin/package-electron",
@@ -91,5 +92,10 @@
   "browserslist": [
     "electron 24.0",
     "defaults"
-  ]
+  ],
+  "dependencies": {
+    "@radix-ui/react-dropdown-menu": "^2.1.14",
+    "@radix-ui/react-popover": "^1.1.13",
+    "@radix-ui/react-switch": "^1.2.4"
+  }
 }

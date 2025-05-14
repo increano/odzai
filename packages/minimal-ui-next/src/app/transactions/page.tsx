@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CreateTransactionDialog } from '@/components/transactions/create-transaction-dialog'
+import { WorkspaceRequired } from '@/components/workspace-required'
 import Link from 'next/link'
 
 // Interface for transactions
@@ -145,7 +146,7 @@ export default function TransactionsPage({ defaultAccountId }: TransactionsPageP
     </div>
   );
 
-  return (
+  const content = (
     <DashboardLayout>
       <DashboardContent 
         title={pageTitle} 
@@ -259,9 +260,16 @@ export default function TransactionsPage({ defaultAccountId }: TransactionsPageP
             
             fetchTransactions();
           }}
-          initialAccountId={selectedAccountId && selectedAccountId !== 'all' ? selectedAccountId : undefined}
+          accounts={accounts}
+          defaultAccountId={selectedAccountId !== 'all' ? selectedAccountId : undefined}
         />
       </DashboardContent>
     </DashboardLayout>
-  )
+  );
+
+  return (
+    <WorkspaceRequired>
+      {content}
+    </WorkspaceRequired>
+  );
 } 

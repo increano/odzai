@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Reconciliation - Minimal Actual Budget</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Minimal Actual Budget</h1>
+    </header>
+    
+    <nav>
+        <a href="/public/index.html" class="nav-link">Dashboard</a>
+        <a href="/public/index.html" class="nav-link">Budgets</a>
+        <a href="/public/index.html" class="nav-link">Accounts</a>
+        <a href="/public/index.html" class="nav-link">Transactions</a>
+        <a href="/public/index.html" class="nav-link">Budget</a>
+        <a href="/public/index.html" class="nav-link">Categories</a>
+        <a href="/public/index.html" class="nav-link">Reports</a>
+        <a href="/public/scheduled-transactions.html" class="nav-link">Schedules</a>
+        <a href="#" class="nav-link active">Reconcile</a>
+    </nav>
+    
+    <div class="container">
+        <div class="section-header">
+            <h2>Account Reconciliation</h2>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
+        
+        <div id="account-select-panel" class="panel">
+            <h3 class="panel-header">Select an Account to Reconcile</h3>
+            <div class="form-group">
+                <label for="account-select">Account</label>
+                <select id="account-select"></select>
+            </div>
+            <button id="start-reconcile-btn" class="action-button">Start Reconciliation</button>
+        </div>
+        
+        <div id="reconciliation-panel" class="panel" style="display: none;">
+            <h3 class="panel-header">Reconcile Account: <span id="reconcile-account-name"></span></h3>
+            
+            <div class="reconcile-form">
+                <div class="form-group">
+                    <label for="statement-balance">Statement Ending Balance</label>
+                    <input type="number" id="statement-balance" step="0.01" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="statement-date">Statement Date</label>
+                    <input type="date" id="statement-date" required>
+                </div>
+                
+                <div id="summary-container" class="summary-container">
+                    <div class="summary-item">
+                        <span class="summary-label">Current Balance:</span>
+                        <span id="current-balance">$0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Cleared Balance:</span>
+                        <span id="cleared-balance">$0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Uncleared Balance:</span>
+                        <span id="uncleared-balance">$0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Target Balance:</span>
+                        <span id="target-balance">$0.00</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Difference:</span>
+                        <span id="difference">$0.00</span>
+                    </div>
+                </div>
+                
+                <div id="reconcile-actions" class="form-group" style="display: none;">
+                    <div class="form-group">
+                        <p class="bold">The cleared balance doesn't match the statement balance. Would you like to:</p>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="create-adjustment" name="reconcile-action" value="create-adjustment" checked>
+                                <label for="create-adjustment">Create an adjustment transaction</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="leave-unreconciled" name="reconcile-action" value="leave-unreconciled">
+                                <label for="leave-unreconciled">Leave unreconciled</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <button id="finish-reconcile-btn" class="action-button">Finish Reconciliation</button>
+                    <button id="cancel-reconcile-btn" class="secondary-button">Cancel</button>
+                </div>
+            </div>
+            
+            <h4>Transactions to Reconcile</h4>
+            <p>Mark transactions as cleared if they appear on your statement:</p>
+            
+            <div id="transaction-list" class="transaction-list">
+                <!-- Transactions will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <script>
+        // Global variables
+        let accounts = [];
+        let currentAccount = null;
+        let transactions = [];
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if a budget is loaded
+            checkBudgetStatus();
+            
+            // Set up event listeners
+            document.getElementById('account-select').addEventListener('change', updateSelectedAccount);
+            document.getElementById('start-reconcile-btn').addEventListener('click', startReconciliation);
+            document.getElementById('statement-balance').addEventListener('input', updateReconciliationSummary);
+            document.getElementById('finish-reconcile-btn').addEventListener('click', finishReconciliation);
+            document.getElementById('cancel-reconcile-btn').addEventListener('click', cancelReconciliation);
+        });
+        
+        // Check if a budget is loaded
+        function checkBudgetStatus() {
+            fetch('/api/budget-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.budgetLoaded) {
+                        // Load accounts
+                        loadAccounts();
+                    } else {
+                        showError('No budget is loaded. Please go to the main page and load a budget first.');
+                        document.getElementById('start-reconcile-btn').disabled = true;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking budget status:', error);
+                    showError('Error checking budget status: ' + error.message);
+                });
+        }
+        
+        // Load accounts from the API
+        function loadAccounts() {
+            fetch('/api/accounts')
+                .then(response => response.json())
+                .then(data => {
+                    accounts = data;
+                    populateAccountSelect();
+                })
+                .catch(error => {
+                    console.error('Error loading accounts:', error);
+                    showError('Error loading accounts: ' + error.message);
+                });
+        }
+        
+        // Populate the account select dropdown
+        function populateAccountSelect() {
+            const select = document.getElementById('account-select');
+            select.innerHTML = '<option value="">Select an account</option>';
+            
+            accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.id;
+                option.textContent = account.name;
+                select.appendChild(option);
+            });
+        }
+        
+        // Update the selected account
+        function updateSelectedAccount() {
+            const accountId = document.getElementById('account-select').value;
+            currentAccount = accounts.find(account => account.id === accountId);
+        }
+        
+        // Start the reconciliation process
+        function startReconciliation() {
+            const accountId = document.getElementById('account-select').value;
+            
+            if (!accountId) {
+                showError('Please select an account to reconcile');
+                return;
+            }
+            
+            currentAccount = accounts.find(account => account.id === accountId);
+            
+            // Set the account name in the reconciliation panel
+            document.getElementById('reconcile-account-name').textContent = currentAccount.name;
+            
+            // Set current date as default statement date
+            document.getElementById('statement-date').value = getCurrentDate();
+            
+            // Load transactions for the account
+            loadAccountTransactions(accountId);
+            
+            // Display the reconciliation panel
+            document.getElementById('account-select-panel').style.display = 'none';
+            document.getElementById('reconciliation-panel').style.display = 'block';
+        }
+        
+        // Load transactions for the selected account
+        function loadAccountTransactions(accountId) {
+            fetch(`/api/accounts/${accountId}/transactions`)
+                .then(response => response.json())
+                .then(data => {
+                    transactions = data;
+                    displayTransactions();
+                    updateReconciliationSummary();
+                })
+                .catch(error => {
+                    console.error('Error loading transactions:', error);
+                    showError('Error loading transactions: ' + error.message);
+                });
+        }
+        
+        // Display transactions in the list
+        function displayTransactions() {
+            const transactionList = document.getElementById('transaction-list');
+            transactionList.innerHTML = '';
+            
+            if (!transactions || transactions.length === 0) {
+                transactionList.innerHTML = '<p>No transactions found for this account.</p>';
+                return;
+            }
+            
+            // Sort transactions by date (newest first)
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            transactions.forEach(transaction => {
+                const item = document.createElement('div');
+                item.className = 'transaction-item';
+                
+                // Apply reconciled class if the transaction is reconciled
+                if (transaction.reconciled) {
+                    item.classList.add('reconciled-transaction');
+                }
+                
+                // Format amount
+                const amount = (transaction.amount / 100).toFixed(2);
+                const amountClass = transaction.amount >= 0 ? 'amount-positive' : 'amount-negative';
+                
+                // Format date
+                const date = new Date(transaction.date);
+                const formattedDate = date.toLocaleDateString();
+                
+                item.innerHTML = `
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="transaction-${transaction.id}" data-id="${transaction.id}" 
+                            ${transaction.cleared ? 'checked' : ''} class="transaction-checkbox"
+                            ${transaction.reconciled ? 'disabled' : ''}>
+                        ${transaction.reconciled ? '<span class="reconciled-badge" title="This transaction is reconciled">R</span>' : ''}
+                    </div>
+                    <div class="transaction-date">${formattedDate}</div>
+                    <div class="transaction-info">
+                        <div class="transaction-payee">${transaction.payee || 'No Payee'}</div>
+                        <div class="transaction-category">${transaction.category || 'Uncategorized'}</div>
+                    </div>
+                    <div class="transaction-amount ${amountClass}">${formatCurrency(transaction.amount)}</div>
+                `;
+                
+                transactionList.appendChild(item);
+                
+                // Add event listener to checkbox
+                item.querySelector('.transaction-checkbox').addEventListener('change', function() {
+                    toggleTransactionCleared(transaction.id, this.checked);
+                });
+            });
+        }
+        
+        // Toggle a transaction's cleared status
+        function toggleTransactionCleared(transactionId, isCleared) {
+            // Update local state
+            const transaction = transactions.find(t => t.id === transactionId);
+            if (transaction) {
+                // Update the UI first (optimistic update)
+                transaction.cleared = isCleared;
+                updateReconciliationSummary();
+                
+                // Send the update to the server
+                fetch(`/api/transactions/${transactionId}/cleared`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        cleared: isCleared
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            // Revert the local change if there was an error
+                            transaction.cleared = !isCleared;
+                            updateReconciliationSummary();
+                            
+                            // If the transaction is reconciled, show a specific error
+                            if (err.needsReconcileUnlock) {
+                                showError('Cannot change the cleared status of a reconciled transaction.');
+                            } else {
+                                throw new Error(err.message || 'Unknown error');
+                            }
+                        });
+                    }
+                    return response.json();
+                })
+                .catch(error => {
+                    console.error('Error updating transaction cleared status:', error);
+                    showError('Error updating transaction: ' + error.message);
+                });
+            }
+        }
+        
+        // Update the reconciliation summary
+        function updateReconciliationSummary() {
+            // Calculate current balance
+            const currentBalance = transactions.reduce((sum, t) => sum + t.amount, 0);
+            
+            // Calculate cleared balance
+            const clearedBalance = transactions
+                .filter(t => t.cleared)
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Calculate uncleared balance
+            const unclearedBalance = currentBalance - clearedBalance;
+            
+            // Get target balance from input
+            const targetBalanceInput = document.getElementById('statement-balance').value;
+            const targetBalance = targetBalanceInput ? parseFloat(targetBalanceInput) * 100 : 0;
+            
+            // Calculate difference
+            const difference = clearedBalance - targetBalance;
+            
+            // Update display
+            document.getElementById('current-balance').textContent = formatCurrency(currentBalance);
+            document.getElementById('cleared-balance').textContent = formatCurrency(clearedBalance);
+            document.getElementById('uncleared-balance').textContent = formatCurrency(unclearedBalance);
+            document.getElementById('target-balance').textContent = formatCurrency(targetBalance);
+            document.getElementById('difference').textContent = formatCurrency(difference);
+            
+            // Show/hide reconcile actions
+            if (difference !== 0 && targetBalanceInput) {
+                document.getElementById('reconcile-actions').style.display = 'block';
+            } else {
+                document.getElementById('reconcile-actions').style.display = 'none';
+            }
+        }
+        
+        // Finish the reconciliation process
+        function finishReconciliation() {
+            const accountId = currentAccount.id;
+            const statementBalance = parseFloat(document.getElementById('statement-balance').value);
+            
+            if (isNaN(statementBalance)) {
+                showError('Please enter a valid statement balance');
+                return;
+            }
+            
+            // Calculate cleared balance
+            const clearedBalance = transactions
+                .filter(t => t.cleared)
+                .reduce((sum, t) => sum + t.amount, 0) / 100;
+            
+            // Calculate difference
+            const difference = clearedBalance - statementBalance;
+            
+            // Determine if an adjustment transaction should be created
+            const createAdjustment = document.getElementById('create-adjustment').checked;
+            
+            // Show loading indicator
+            showLoading();
+            
+            // Send reconciliation request
+            fetch(`/api/accounts/${accountId}/reconcile`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    targetBalance: statementBalance,
+                    createAdjustment: createAdjustment && difference !== 0
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || 'Unknown error');
+                    });
+                }
+                return response.json();
+            })
+            .then(result => {
+                // If the difference was zero, mark all cleared transactions as reconciled
+                if (Math.abs(difference) < 0.01) {
+                    return fetch(`/api/accounts/${accountId}/lock-transactions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => {
+                                throw new Error(err.message || 'Unknown error');
+                            });
+                        }
+                        return response.json();
+                    }).then(lockResult => {
+                        return { ...result, lockedCount: lockResult.count };
+                    });
+                }
+                return result;
+            })
+            .then(result => {
+                // Hide loading indicator
+                hideLoading();
+                
+                // Show success message
+                let successMessage = 'Account reconciled successfully.';
+                
+                if (result.adjustment) {
+                    successMessage += ` An adjustment transaction of ${formatCurrency(result.adjustment.amount)} was created.`;
+                }
+                
+                if (result.lockedCount) {
+                    successMessage += ` ${result.lockedCount} transactions were marked as reconciled.`;
+                }
+                
+                showSuccess(successMessage);
+                
+                // Return to account selection panel
+                document.getElementById('reconciliation-panel').style.display = 'none';
+                document.getElementById('account-select-panel').style.display = 'block';
+            })
+            .catch(error => {
+                // Hide loading indicator
+                hideLoading();
+                
+                console.error('Error during reconciliation:', error);
+                showError('Error during reconciliation: ' + error.message);
+            });
+        }
+        
+        // Show loading indicator
+        function showLoading() {
+            document.getElementById('finish-reconcile-btn').disabled = true;
+            document.getElementById('finish-reconcile-btn').textContent = 'Processing...';
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+        
+        // Hide loading indicator
+        function hideLoading() {
+            document.getElementById('finish-reconcile-btn').disabled = false;
+            document.getElementById('finish-reconcile-btn').textContent = 'Finish Reconciliation';
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+        
+        // Cancel the reconciliation process
+        function cancelReconciliation() {
+            document.getElementById('reconciliation-panel').style.display = 'none';
+            document.getElementById('account-select-panel').style.display = 'block';
+            document.getElementById('account-select').value = '';
+            currentAccount = null;
+        }
+        
+        // Helper function to get the current date in YYYY-MM-DD format
+        function getCurrentDate() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Format currency
+        function formatCurrency(amountCents) {
+            const amount = amountCents / 100;
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+        
+        // Show an error message
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.classList.add('active');
+            
+            // Hide the error message after 5 seconds
+            setTimeout(() => {
+                errorElement.classList.remove('active');
+            }, 5000);
+        }
+        
+        // Show a success message
+        function showSuccess(message) {
+            const successElement = document.getElementById('success-message');
+            successElement.textContent = message;
+            successElement.classList.add('active');
+            
+            // Hide the success message after 5 seconds
+            setTimeout(() => {
+                successElement.classList.remove('active');
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 
