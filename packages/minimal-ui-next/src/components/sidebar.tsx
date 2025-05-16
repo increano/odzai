@@ -36,6 +36,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { toast } from 'sonner'
 
 // Key used for localStorage
 const SIDEBAR_STATE_KEY = 'odzai-sidebar-collapsed'
@@ -108,8 +109,12 @@ export function Sidebar({ className }: SidebarProps) {
   // Use our custom hook with a default value of false (expanded)
   const [collapsed, setCollapsed] = useLocalStorage<boolean>(SIDEBAR_STATE_KEY, false)
   const { openSettingsModal } = useSettingsModal()
-  const { isWorkspaceLoaded, currentWorkspace } = useWorkspace()
+  const { isWorkspaceLoaded, currentWorkspace, loadWorkspace, loadingWorkspace } = useWorkspace()
   
+  // Add state to control the dropdown open/close state
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false)
+
   // Mock user data (this would come from a context or API in a real app)
   const [userData, setUserData] = useState({
     name: "Fabrice Muhirwa",
@@ -117,12 +122,71 @@ export function Sidebar({ className }: SidebarProps) {
     initials: "FM"
   })
   
-  // Mock available workspaces (this would come from a context or API in a real app)
-  const [availableWorkspaces, setAvailableWorkspaces] = useState([
-    { id: "1", name: "Family Budget", color: "#FF7043" },
-    { id: "2", name: "Personal Finances", color: "#42A5F5" },
-    { id: "3", name: "Business Expenses", color: "#66BB6A" }
-  ])
+  // State for available workspaces from API
+  const [availableWorkspaces, setAvailableWorkspaces] = useState<{id: string, name: string, color?: string}[]>([])
+  const [isLoadingWorkspaces, setIsLoadingWorkspaces] = useState(false)
+  
+  // State for tracking selected workspace when none is loaded
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('')
+  const [loadingSelectedWorkspace, setLoadingSelectedWorkspace] = useState(false)
+
+  // Add a useEffect to automatically open the dropdowns on the home page
+  useEffect(() => {
+    // Check if we're on the home page
+    if (pathname === '/') {
+      // Set a small delay to ensure the component is fully mounted
+      const timer = setTimeout(() => {
+        // If no workspace is loaded, open the dropdown
+        if (!isWorkspaceLoaded) {
+          setDropdownOpen(true)
+          setMobileDropdownOpen(true)
+        }
+      }, 300) // Reduced delay for better responsiveness
+      
+      return () => clearTimeout(timer)
+    } else {
+      // When navigating away from home page, close the dropdowns
+      setDropdownOpen(false)
+      setMobileDropdownOpen(false)
+    }
+  }, [pathname, isWorkspaceLoaded])
+
+  // Fetch available workspaces on component mount
+  useEffect(() => {
+    fetchAvailableWorkspaces()
+  }, [])
+
+  // Function to fetch available workspaces from API
+  const fetchAvailableWorkspaces = async () => {
+    setIsLoadingWorkspaces(true)
+    try {
+      const response = await fetch('/api/budgets')
+      if (!response.ok) {
+        throw new Error('Failed to fetch workspaces')
+      }
+      
+      const data = await response.json()
+      
+      // If the API response doesn't include colors, add default colors
+      const workspacesWithColors = data.map((workspace: any, index: number) => {
+        // Array of colors for workspaces if not provided by API
+        const defaultColors = ["#FF7043", "#42A5F5", "#66BB6A", "#AB47BC", "#EC407A", "#7E57C2"]
+        return {
+          ...workspace,
+          color: workspace.color || defaultColors[index % defaultColors.length]
+        }
+      })
+      
+      setAvailableWorkspaces(workspacesWithColors)
+    } catch (error) {
+      console.error('Error fetching workspaces:', error)
+      toast.error('Failed to load available workspaces')
+      // Fallback to empty array
+      setAvailableWorkspaces([])
+    } finally {
+      setIsLoadingWorkspaces(false)
+    }
+  }
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed)
@@ -130,9 +194,63 @@ export function Sidebar({ className }: SidebarProps) {
   
   // Function to handle workspace switching
   const switchWorkspace = (workspace: any) => {
-    router.push('/budgets')
+    // Validate workspace object
+    if (!workspace || !workspace.id) {
+      toast.error('Invalid workspace selected')
+      return
+    }
+
+    // Always use the handleLoadSelectedWorkspace for both initial loading and switching
+    handleLoadSelectedWorkspace(workspace.id)
   }
   
+  // Function to load a workspace from selection
+  const handleLoadSelectedWorkspace = async (workspaceId: string) => {
+    if (!workspaceId) {
+      toast.error('Please select a workspace to load')
+      return
+    }
+    
+    setLoadingSelectedWorkspace(true)
+    
+    try {
+      // First try to load the workspace via the API
+      const response = await fetch('/api/budgets/load', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ budgetId: workspaceId }),
+      })
+      
+      if (!response.ok) {
+        let errorMessage = 'Failed to load workspace'
+        try {
+          const errorData = await response.json()
+          if (errorData.message || errorData.error) {
+            errorMessage = errorData.message || errorData.error
+          }
+        } catch (jsonError) {
+          errorMessage = response.statusText || errorMessage
+        }
+        throw new Error(errorMessage)
+      }
+      
+      // Now that backend load succeeded, use the workspace provider to update the app state
+      // This will also redirect to the home page
+      loadWorkspace(workspaceId)
+      
+      // Reset the selected workspace ID in the dropdown
+      setSelectedWorkspaceId('')
+      
+    } catch (error) {
+      console.error('Error loading workspace:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to load workspace')
+    } finally {
+      setLoadingSelectedWorkspace(false)
+    }
+  }
+
   // Function to open settings to the general tab
   const openWorkspaceSettings = () => {
     if (openSettingsModal) {
@@ -349,14 +467,14 @@ export function Sidebar({ className }: SidebarProps) {
               variant="outline" 
               size="icon" 
               className="h-8 w-8"
-              onClick={() => router.push('/budgets')}
+              onClick={() => setCollapsed(false)}
             >
               <Plus className="h-4 w-4" />
             </Button>
           )}
         </div>
       ) : (
-        <DropdownMenu>
+        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
             {isWorkspaceLoaded && currentWorkspace ? (
               <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors bg-accent text-accent-foreground">
@@ -368,17 +486,16 @@ export function Sidebar({ className }: SidebarProps) {
                     {currentWorkspace.name.charAt(0)}
                   </div>
                   <div className="flex flex-col items-start max-w-[120px]">
-                    <span className="text-sm font-medium truncate w-full">{currentWorkspace.name}</span>
+                    <span className="text-sm font-medium truncate w-full text-left">
+                      {currentWorkspace.name}
+                    </span>
                     <span className="text-xs text-muted-foreground">Current workspace</span>
                   </div>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </button>
             ) : (
-              <button 
-                className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors"
-                onClick={() => router.push('/budgets')}
-              >
+              <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors">
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-md flex items-center justify-center bg-muted">
                     <Plus className="h-4 w-4" />
@@ -388,15 +505,113 @@ export function Sidebar({ className }: SidebarProps) {
                     <span className="text-xs text-muted-foreground">No workspace loaded</span>
                   </div>
                 </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
           </DropdownMenuTrigger>
-          {isWorkspaceLoaded && currentWorkspace && (
-            <DropdownMenuContent align="start" className="w-[220px]">
-              <div className="px-2 py-1.5">
-                <h3 className="text-sm font-medium mb-1">Switch workspace</h3>
-                <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
+          <DropdownMenuContent align="start" className="w-[220px]">
+            <div className="px-2 py-1.5">
+              <h3 className="text-sm font-medium mb-1">
+                {isWorkspaceLoaded ? "Switch workspace" : "Select a workspace"}
+              </h3>
+              <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
+            </div>
+            {isLoadingWorkspaces ? (
+              <DropdownMenuItem disabled>
+                <span className="text-sm">Loading workspaces...</span>
+              </DropdownMenuItem>
+            ) : availableWorkspaces.length === 0 ? (
+              <DropdownMenuItem disabled>
+                <span className="text-sm">No workspaces found</span>
+              </DropdownMenuItem>
+            ) : (
+              <div className="max-h-[135px] overflow-y-auto pr-1 py-1">
+                {availableWorkspaces.map(workspace => (
+                  <DropdownMenuItem 
+                    key={workspace.id}
+                    className="flex items-center gap-2 py-2"
+                    onClick={() => switchWorkspace(workspace)}
+                  >
+                    <div 
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium"
+                      style={{ backgroundColor: workspace.color }}
+                    >
+                      {workspace.name.charAt(0)}
+                    </div>
+                    <span className="text-sm">{workspace.name}</span>
+                    {isWorkspaceLoaded && currentWorkspace && workspace.id === currentWorkspace.id && (
+                      <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
+                    )}
+                  </DropdownMenuItem>
+                ))}
               </div>
+            )}
+            <div className="border-t mt-1 pt-1">
+              <DropdownMenuItem onClick={() => router.push('/budgets')}>
+                <span className="text-sm">Manage workspaces</span>
+              </DropdownMenuItem>
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  )
+  
+  // Mobile workspace selector
+  const MobileWorkspaceSelector = () => (
+    <div className="border-b pb-3 px-4">
+      <DropdownMenu open={mobileDropdownOpen} onOpenChange={setMobileDropdownOpen}>
+        <DropdownMenuTrigger asChild>
+          {isWorkspaceLoaded && currentWorkspace ? (
+            <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors bg-accent text-accent-foreground">
+              <div className="flex items-center gap-2">
+                <div 
+                  className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
+                  style={{ backgroundColor: currentWorkspace.color }}
+                >
+                  {currentWorkspace.name.charAt(0)}
+                </div>
+                <div className="flex flex-col items-start max-w-[120px]">
+                  <span className="text-sm font-medium truncate w-full text-left">
+                    {currentWorkspace.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">Current workspace</span>
+                </div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </button>
+          ) : (
+            <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-md flex items-center justify-center bg-muted">
+                  <Plus className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-medium">Select Workspace</span>
+                  <span className="text-xs text-muted-foreground">No workspace loaded</span>
+                </div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-[220px]" forceMount={true}>
+          <div className="px-2 py-1.5">
+            <h3 className="text-sm font-medium mb-1">
+              {isWorkspaceLoaded ? "Switch workspace" : "Select a workspace"}
+            </h3>
+            <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
+          </div>
+          {isLoadingWorkspaces ? (
+            <DropdownMenuItem disabled>
+              <span className="text-sm">Loading workspaces...</span>
+            </DropdownMenuItem>
+          ) : availableWorkspaces.length === 0 ? (
+            <DropdownMenuItem disabled>
+              <span className="text-sm">No workspaces found</span>
+            </DropdownMenuItem>
+          ) : (
+            <div className="max-h-[135px] overflow-y-auto pr-1 py-1">
               {availableWorkspaces.map(workspace => (
                 <DropdownMenuItem 
                   key={workspace.id}
@@ -410,92 +625,19 @@ export function Sidebar({ className }: SidebarProps) {
                     {workspace.name.charAt(0)}
                   </div>
                   <span className="text-sm">{workspace.name}</span>
-                  {workspace.id === currentWorkspace.id && (
+                  {isWorkspaceLoaded && currentWorkspace && workspace.id === currentWorkspace.id && (
                     <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
                   )}
                 </DropdownMenuItem>
               ))}
-              <div className="border-t mt-1 pt-1">
-                <DropdownMenuItem onClick={() => router.push('/budgets')}>
-                  <span className="text-sm">Manage workspaces</span>
-                </DropdownMenuItem>
-              </div>
-            </DropdownMenuContent>
-          )}
-        </DropdownMenu>
-      )}
-    </div>
-  )
-  
-  // Mobile workspace selector
-  const MobileWorkspaceSelector = () => (
-    <div className="border-b pb-3 px-4">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          {isWorkspaceLoaded && currentWorkspace ? (
-            <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors bg-accent text-accent-foreground">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
-                  style={{ backgroundColor: currentWorkspace.color }}
-                >
-                  {currentWorkspace.name.charAt(0)}
-                </div>
-                <div className="flex flex-col items-start max-w-[120px]">
-                  <span className="text-sm font-medium truncate w-full">{currentWorkspace.name}</span>
-                  <span className="text-xs text-muted-foreground">Current workspace</span>
-                </div>
-              </div>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            </button>
-          ) : (
-            <button 
-              className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors"
-              onClick={() => router.push('/budgets')}
-            >
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-md flex items-center justify-center bg-muted">
-                  <Plus className="h-4 w-4" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium">Select Workspace</span>
-                  <span className="text-xs text-muted-foreground">No workspace loaded</span>
-                </div>
-              </div>
-            </button>
-          )}
-        </DropdownMenuTrigger>
-        {isWorkspaceLoaded && currentWorkspace && (
-          <DropdownMenuContent align="start" className="w-[220px]">
-            <div className="px-2 py-1.5">
-              <h3 className="text-sm font-medium mb-1">Switch workspace</h3>
-              <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
             </div>
-            {availableWorkspaces.map(workspace => (
-              <DropdownMenuItem 
-                key={workspace.id}
-                className="flex items-center gap-2 py-2"
-                onClick={() => switchWorkspace(workspace)}
-              >
-                <div 
-                  className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium"
-                  style={{ backgroundColor: workspace.color }}
-                >
-                  {workspace.name.charAt(0)}
-                </div>
-                <span className="text-sm">{workspace.name}</span>
-                {workspace.id === currentWorkspace.id && (
-                  <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
-                )}
-              </DropdownMenuItem>
-            ))}
-            <div className="border-t mt-1 pt-1">
-              <DropdownMenuItem onClick={() => router.push('/budgets')}>
-                <span className="text-sm">Manage workspaces</span>
-              </DropdownMenuItem>
-            </div>
-          </DropdownMenuContent>
-        )}
+          )}
+          <div className="border-t mt-1 pt-1">
+            <DropdownMenuItem onClick={() => router.push('/budgets')}>
+              <span className="text-sm">Manage workspaces</span>
+            </DropdownMenuItem>
+          </div>
+        </DropdownMenuContent>
       </DropdownMenu>
     </div>
   )

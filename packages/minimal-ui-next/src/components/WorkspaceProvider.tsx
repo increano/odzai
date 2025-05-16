@@ -42,15 +42,42 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const loadWorkspaceData = async (id: string) => {
     try {
-      // TODO: replace with actual API call once implemented
-      // const response = await fetch(`/api/budgets/${id}`)
-      // if (!response.ok) throw new Error('Failed to fetch workspace data')
-      // const data = await response.json()
+      // Try to get the workspace details from the API
+      const response = await fetch(`/api/budgets/${id}`)
       
-      // Mock workspace data for now
+      // If the API is available and returns a valid response, use that data
+      if (response.ok) {
+        const workspaceData = await response.json()
+        setCurrentWorkspace(workspaceData)
+        setCurrentWorkspaceId(id)
+        setIsWorkspaceLoaded(true)
+        return
+      }
+      
+      // If we couldn't get the workspace data from the API, try to get the list of available workspaces
+      const budgetsResponse = await fetch('/api/budgets')
+      if (budgetsResponse.ok) {
+        const budgets = await budgetsResponse.json()
+        // Find the workspace with the matching ID
+        const matchingWorkspace = budgets.find((budget: any) => budget.id === id)
+        
+        if (matchingWorkspace) {
+          // Use the workspace data from the list
+          setCurrentWorkspace({
+            id,
+            name: matchingWorkspace.name,
+            color: matchingWorkspace.color || DEFAULT_WORKSPACE_COLOR
+          })
+          setCurrentWorkspaceId(id)
+          setIsWorkspaceLoaded(true)
+          return
+        }
+      }
+      
+      // Fallback to a simple workspace object if we couldn't get the data from the API
       const workspaceData = {
         id,
-        name: `Workspace ${id}`,
+        name: id, // Just use the ID as the name instead of "Workspace [id]"
         color: DEFAULT_WORKSPACE_COLOR
       }
 
@@ -83,8 +110,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       .then(() => {
         setLoadingWorkspace(false)
         toast.success('Workspace loaded successfully')
-        // Redirect to home page
-        router.push('/')
+        
+        // Only redirect to home page if not already there
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          router.push('/')
+        }
       })
       .catch(() => {
         setLoadingWorkspace(false)
