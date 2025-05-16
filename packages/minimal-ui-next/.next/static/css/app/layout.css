@@ -1236,6 +1236,9 @@ video {
 .border-border {
   border-color: hsl(var(--border));
 }
+.border-current {
+  border-color: currentColor;
+}
 .border-destructive\/20 {
   border-color: hsl(var(--destructive) / 0.2);
 }
@@ -1256,9 +1259,6 @@ video {
 }
 .border-yellow-500\/50 {
   border-color: rgb(234 179 8 / 0.5);
-}
-.border-current {
-  border-color: currentColor;
 }
 .border-t-transparent {
   border-top-color: transparent;
@@ -1699,6 +1699,9 @@ video {
 }
 .ring-offset-background {
   --tw-ring-offset-color: hsl(var(--background));
+}
+.filter {
+  filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 .transition {
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-backdrop-filter;

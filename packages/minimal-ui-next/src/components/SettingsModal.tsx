@@ -107,6 +107,13 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   const [workspacesError, setWorkspacesError] = useState<string | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(currentWorkspaceId || '');
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
+  // Search filter
+  const [searchQuery, setSearchQuery] = useState('');
+  
   // New workspace modal state
   const [createWorkspaceModalOpen, setCreateWorkspaceModalOpen] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
@@ -134,8 +141,12 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   useEffect(() => {
     if (currentWorkspaceId) {
       setSelectedWorkspaceId(currentWorkspaceId);
+      // Refresh the workspaces list to update the active status
+      if (open) {
+        fetchWorkspaces();
+      }
     }
-  }, [currentWorkspaceId]);
+  }, [currentWorkspaceId, open]);
 
   // Fetch workspaces from the API
   const fetchWorkspaces = async () => {
@@ -170,12 +181,15 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
           year: 'numeric'
         });
         
+        // Set status based on whether this is the currently loaded workspace
+        const isActive = workspace.id === currentWorkspaceId;
+        
         return {
           id: workspace.id,
           name: workspace.name,
           size: parseFloat(randomSize),
           created: formattedDate,
-          status: Math.random() > 0.3 ? 'active' : 'inactive'
+          status: isActive ? 'active' : 'inactive'
         };
       });
       
@@ -208,12 +222,51 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     onOpenChange(false);
   };
   
-  const handleDeleteWorkspace = () => {
-    // Handle actual workspace deletion
-    console.log(`Workspace "${workspaceToDelete}" deleted`);
-    setDeleteWorkspaceModalOpen(false);
-    setWorkspaceToDelete("");
-    setConfirmWorkspaceName("");
+  const handleDeleteWorkspace = async () => {
+    // Find the workspace ID from the name
+    const workspaceToDeleteObj = workspaces.find(w => w.name === workspaceToDelete);
+    
+    if (!workspaceToDeleteObj) {
+      toast.error(`Workspace "${workspaceToDelete}" not found`);
+      setDeleteWorkspaceModalOpen(false);
+      setWorkspaceToDelete("");
+      setConfirmWorkspaceName("");
+      return;
+    }
+    
+    try {
+      // Make API call to delete the workspace
+      const response = await fetch(`/api/budgets/${workspaceToDeleteObj.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete workspace');
+      }
+      
+      // Show success message
+      toast.success(`Workspace "${workspaceToDelete}" deleted successfully`);
+      
+      // If the deleted workspace was the current one, clear the current workspace
+      if (workspaceToDeleteObj.id === currentWorkspaceId) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('odzai-current-workspace');
+          // Reload the page to ensure the workspace is unloaded properly
+          window.location.href = '/';
+        }
+      } else {
+        // Just refresh the workspaces list
+        fetchWorkspaces();
+      }
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete workspace');
+    } finally {
+      // Close the modal and reset the state
+      setDeleteWorkspaceModalOpen(false);
+      setWorkspaceToDelete("");
+      setConfirmWorkspaceName("");
+    }
   };
   
   const openDeleteWorkspaceModal = (workspaceName: string) => {
@@ -276,6 +329,24 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       setIsCreatingWorkspace(false);
     }
   };
+
+  // Filter workspaces based on search query
+  const filteredWorkspaces = workspaces.filter(workspace => 
+    workspace.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  // Calculate current workspaces to display
+  const indexOfLastWorkspace = currentPage * itemsPerPage;
+  const indexOfFirstWorkspace = indexOfLastWorkspace - itemsPerPage;
+  const currentWorkspaces = filteredWorkspaces.slice(indexOfFirstWorkspace, indexOfLastWorkspace);
+  
+  // Change page
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+  
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredWorkspaces.length / itemsPerPage);
 
   return (
     <>
@@ -423,6 +494,45 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                         <Button variant="outline" onClick={() => setCreateWorkspaceModalOpen(true)}>New workspace</Button>
                       </div>
                       
+                      {/* Search Input */}
+                      <div className="relative mb-4">
+                        <Input
+                          placeholder="Search workspaces..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setCurrentPage(1); // Reset to first page when searching
+                          }}
+                          className="pl-9"
+                        />
+                        <svg 
+                          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8"></circle>
+                          <path d="m21 21-4.3-4.3"></path>
+                        </svg>
+                        {searchQuery && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                            onClick={() => {
+                              setSearchQuery('');
+                              setCurrentPage(1);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      
                       <div className="border rounded-md overflow-hidden">
                         <table className="w-full text-sm">
                           <thead className="bg-muted/50 border-b">
@@ -457,7 +567,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                 </td>
                               </tr>
                             ) : (
-                              workspaces.map(workspace => (
+                              currentWorkspaces.map(workspace => (
                                 <tr key={workspace.id} className="border-b">
                                   <td className="p-3">
                                     <div className="flex items-center">
@@ -491,7 +601,13 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
                                         {workspace.status === 'inactive' ? (
-                                          <DropdownMenuItem className="flex gap-2 cursor-pointer">
+                                          <DropdownMenuItem 
+                                            className="flex gap-2 cursor-pointer"
+                                            onClick={() => {
+                                              loadWorkspace(workspace.id);
+                                              toast.success(`Activated workspace: ${workspace.name}`);
+                                            }}
+                                          >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                                             <span>Activate</span>
                                           </DropdownMenuItem>
@@ -516,6 +632,50 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                           </tbody>
                         </table>
                       </div>
+                      
+                      {/* Pagination */}
+                      {filteredWorkspaces.length > itemsPerPage && (
+                        <div className="flex justify-between items-center mt-4">
+                          <div className="text-sm text-muted-foreground">
+                            Showing {indexOfFirstWorkspace + 1}-{Math.min(indexOfLastWorkspace, filteredWorkspaces.length)} of {filteredWorkspaces.length} workspaces
+                          </div>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
+                              className="h-8 w-8 p-0"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <path d="m15 18-6-6 6-6" />
+                              </svg>
+                            </Button>
+                            {Array.from({ length: totalPages }, (_, i) => (
+                              <Button
+                                key={i + 1}
+                                variant={currentPage === i + 1 ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => handlePageChange(i + 1)}
+                                className="h-8 w-8 p-0"
+                              >
+                                {i + 1}
+                              </Button>
+                            ))}
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={currentPage === totalPages}
+                              className="h-8 w-8 p-0"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                <path d="m9 18 6-6-6-6" />
+                              </svg>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
                   
