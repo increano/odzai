@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "./ui/dropdown-menu";
+import { useWorkspace } from "./WorkspaceProvider";
+import { toast } from "sonner";
 import { 
   Settings, 
   Users, 
@@ -51,6 +53,14 @@ interface SettingsModalProps {
   defaultTab?: string;
 }
 
+interface Workspace {
+  id: string;
+  name: string;
+  size?: number;
+  created?: string;
+  status?: 'active' | 'inactive';
+}
+
 // Helper component for section headings
 const SectionHeading = ({ title }: { title: string }) => (
   <div className="px-3 pt-5 pb-2 text-left">
@@ -61,6 +71,9 @@ const SectionHeading = ({ title }: { title: string }) => (
 );
 
 const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsModalProps) => {
+  // Get workspace context
+  const { currentWorkspaceId, loadWorkspace } = useWorkspace();
+  
   // Initial state values
   const [workspaceName, setWorkspaceName] = useState("Fabrice Muhirwa's Notion");
   const [workspaceIcon, setWorkspaceIcon] = useState("/placeholder-icon.png");
@@ -88,6 +101,17 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   const [workspaceToDelete, setWorkspaceToDelete] = useState<string>("");
   const [confirmWorkspaceName, setConfirmWorkspaceName] = useState("");
   
+  // Workspaces state
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [isLoadingWorkspaces, setIsLoadingWorkspaces] = useState(false);
+  const [workspacesError, setWorkspacesError] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(currentWorkspaceId || '');
+  
+  // New workspace modal state
+  const [createWorkspaceModalOpen, setCreateWorkspaceModalOpen] = useState(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState("");
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  
   // The values to display are either the current values (if live changes)
   // or the original values (if not live changes)
   const displayName = liveChanges ? workspaceName : originalValues.workspaceName;
@@ -97,6 +121,71 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   const handleProfilePictureError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     e.currentTarget.src = "";
     e.currentTarget.alt = username.substring(0, 2).toUpperCase();
+  };
+
+  // Function to fetch workspaces when the dialog is opened
+  useEffect(() => {
+    if (open) {
+      fetchWorkspaces();
+    }
+  }, [open]);
+
+  // Update selectedWorkspaceId when currentWorkspaceId changes
+  useEffect(() => {
+    if (currentWorkspaceId) {
+      setSelectedWorkspaceId(currentWorkspaceId);
+    }
+  }, [currentWorkspaceId]);
+
+  // Fetch workspaces from the API
+  const fetchWorkspaces = async () => {
+    setIsLoadingWorkspaces(true);
+    setWorkspacesError(null);
+
+    try {
+      const response = await fetch('/api/budgets');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch workspaces');
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data to match our Workspace interface
+      const formattedWorkspaces = data.map((workspace: any) => {
+        // Calculate a random size in MB (1-10 MB range)
+        const randomSize = (Math.random() * 9 + 1).toFixed(1);
+        
+        // Generate a random date within the last 6 months
+        const now = new Date();
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const randomTimestamp = sixMonthsAgo.getTime() + Math.random() * (now.getTime() - sixMonthsAgo.getTime());
+        const randomDate = new Date(randomTimestamp);
+        
+        // Format the date
+        const formattedDate = randomDate.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        
+        return {
+          id: workspace.id,
+          name: workspace.name,
+          size: parseFloat(randomSize),
+          created: formattedDate,
+          status: Math.random() > 0.3 ? 'active' : 'inactive'
+        };
+      });
+      
+      setWorkspaces(formattedWorkspaces);
+    } catch (error) {
+      console.error('Error fetching workspaces:', error);
+      setWorkspacesError(error instanceof Error ? error.message : 'Failed to load workspaces');
+    } finally {
+      setIsLoadingWorkspaces(false);
+    }
   };
 
   const handleSave = () => {
@@ -130,6 +219,62 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   const openDeleteWorkspaceModal = (workspaceName: string) => {
     setWorkspaceToDelete(workspaceName);
     setDeleteWorkspaceModalOpen(true);
+  };
+
+  // Handle workspace switch
+  const handleSwitchWorkspace = () => {
+    if (selectedWorkspaceId && selectedWorkspaceId !== currentWorkspaceId) {
+      loadWorkspace(selectedWorkspaceId);
+      toast.success(`Switching to workspace: ${workspaces.find(w => w.id === selectedWorkspaceId)?.name}`);
+    }
+  };
+
+  // Handle creating a new workspace
+  const handleCreateWorkspace = async () => {
+    if (!newWorkspaceName.trim()) {
+      toast.error("Workspace name cannot be empty");
+      return;
+    }
+    
+    setIsCreatingWorkspace(true);
+    
+    try {
+      // Create a new workspace via API
+      const response = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newWorkspaceName.trim(),
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create workspace');
+      }
+      
+      const data = await response.json();
+      
+      // Refresh the workspaces list
+      fetchWorkspaces();
+      
+      // Close the modal and reset the form
+      setCreateWorkspaceModalOpen(false);
+      setNewWorkspaceName("");
+      
+      toast.success(`Workspace "${newWorkspaceName.trim()}" created successfully`);
+      
+      // Optionally switch to the new workspace
+      if (data.id) {
+        loadWorkspace(data.id);
+      }
+    } catch (error) {
+      console.error('Error creating workspace:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create workspace');
+    } finally {
+      setIsCreatingWorkspace(false);
+    }
   };
 
   return (
@@ -275,7 +420,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                             Workspaces are separate environments for organizing your financial data and budgets.
                           </p>
                         </div>
-                        <Button variant="outline">New workspace</Button>
+                        <Button variant="outline" onClick={() => setCreateWorkspaceModalOpen(true)}>New workspace</Button>
                       </div>
                       
                       <div className="border rounded-md overflow-hidden">
@@ -290,159 +435,84 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                             </tr>
                           </thead>
                           <tbody>
-                            <tr className="border-b">
-                              <td className="p-3">
-                                <div className="flex items-center">
-                                  <span>Personal Budget</span>
-                                  <Button variant="ghost" size="sm" className="p-1 h-auto ml-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
-                                    </svg>
-                                  </Button>
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <span>3.2</span>
-                              </td>
-                              <td className="p-3">
-                                <span>Jan 12, 2024</span>
-                              </td>
-                              <td className="p-3">
-                                <div className="flex items-center">
-                                  <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-                                  <span>Active</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="p-1 h-auto">
-                                      <MoreVertical className="h-5 w-5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem className="flex gap-2 cursor-pointer">
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                      <span>Activate</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="flex gap-2 cursor-pointer">
-                                      <Pencil className="h-4 w-4" />
-                                      <span>Update</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="flex gap-2 cursor-pointer text-destructive focus:text-destructive"
-                                      onClick={() => openDeleteWorkspaceModal("Personal Budget")}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span>Delete</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
-                            <tr className="border-b">
-                              <td className="p-3">
-                                <div className="flex items-center">
-                                  <span>Family Expenses</span>
-                                  <Button variant="ghost" size="sm" className="p-1 h-auto ml-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
-                                    </svg>
-                                  </Button>
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <span>5.7</span>
-                              </td>
-                              <td className="p-3">
-                                <span>Mar 23, 2024</span>
-                              </td>
-                              <td className="p-3">
-                                <div className="flex items-center">
-                                  <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-                                  <span>Active</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="p-1 h-auto">
-                                      <MoreVertical className="h-5 w-5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem className="flex gap-2 cursor-pointer">
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                      <span>Activate</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="flex gap-2 cursor-pointer">
-                                      <Pencil className="h-4 w-4" />
-                                      <span>Update</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="flex gap-2 cursor-pointer text-destructive focus:text-destructive"
-                                      onClick={() => openDeleteWorkspaceModal("Family Expenses")}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span>Delete</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
-                            <tr className="border-b">
-                              <td className="p-3">
-                                <div className="flex items-center">
-                                  <span>Business Finances</span>
-                                  <Button variant="ghost" size="sm" className="p-1 h-auto ml-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                      <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                                      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
-                                    </svg>
-                                  </Button>
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <span>8.3</span>
-                              </td>
-                              <td className="p-3">
-                                <span>Apr 05, 2024</span>
-                              </td>
-                              <td className="p-3">
-                                <div className="flex items-center">
-                                  <span className="flex h-2 w-2 rounded-full bg-amber-500 mr-2"></span>
-                                  <span>Inactive</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="p-1 h-auto">
-                                      <MoreVertical className="h-5 w-5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem className="flex gap-2 cursor-pointer">
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                                      <span>Activate</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="flex gap-2 cursor-pointer">
-                                      <Pencil className="h-4 w-4" />
-                                      <span>Update</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      className="flex gap-2 cursor-pointer text-destructive focus:text-destructive"
-                                      onClick={() => openDeleteWorkspaceModal("Business Finances")}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span>Delete</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            </tr>
+                            {isLoadingWorkspaces ? (
+                              <tr>
+                                <td colSpan={5} className="p-6 text-center">
+                                  <div className="flex justify-center items-center space-x-2">
+                                    <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-primary animate-spin"></div>
+                                    <span className="text-muted-foreground">Loading workspaces...</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : workspacesError ? (
+                              <tr>
+                                <td colSpan={5} className="p-6 text-center text-destructive">
+                                  {workspacesError}
+                                </td>
+                              </tr>
+                            ) : workspaces.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                                  No workspaces found. Create your first workspace to get started.
+                                </td>
+                              </tr>
+                            ) : (
+                              workspaces.map(workspace => (
+                                <tr key={workspace.id} className="border-b">
+                                  <td className="p-3">
+                                    <div className="flex items-center">
+                                      <span>{workspace.name}</span>
+                                      <Button variant="ghost" size="sm" className="p-1 h-auto ml-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                                        </svg>
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td className="p-3">
+                                    <span>{workspace.size}</span>
+                                  </td>
+                                  <td className="p-3">
+                                    <span>{workspace.created}</span>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="flex items-center">
+                                      <span className={`flex h-2 w-2 rounded-full ${workspace.status === 'active' ? 'bg-green-500' : 'bg-amber-500'} mr-2`}></span>
+                                      <span>{workspace.status === 'active' ? 'Active' : 'Inactive'}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="p-1 h-auto">
+                                          <MoreVertical className="h-5 w-5" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        {workspace.status === 'inactive' ? (
+                                          <DropdownMenuItem className="flex gap-2 cursor-pointer">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                            <span>Activate</span>
+                                          </DropdownMenuItem>
+                                        ) : null}
+                                        <DropdownMenuItem className="flex gap-2 cursor-pointer">
+                                          <Pencil className="h-4 w-4" />
+                                          <span>Update</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          className="flex gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                          onClick={() => openDeleteWorkspaceModal(workspace.name)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          <span>Delete</span>
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -464,16 +534,37 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">
                           <div className="relative w-full max-w-md">
-                            <select 
-                              className="w-full rounded-md border border-input py-2 pl-3 pr-10 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                              defaultValue="personal"
-                            >
-                              <option value="personal">Personal Budget</option>
-                              <option value="family">Family Expenses</option>
-                              <option value="business">Business Finances</option>
-                            </select>
+                            {isLoadingWorkspaces ? (
+                              <div className="flex items-center px-3 py-2 border rounded-md">
+                                <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-primary animate-spin mr-2"></div>
+                                <span className="text-muted-foreground">Loading workspaces...</span>
+                              </div>
+                            ) : (
+                              <select 
+                                className="w-full rounded-md border border-input py-2 pl-3 pr-10 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                                value={selectedWorkspaceId || ''}
+                                onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+                              >
+                                {workspaces.length === 0 ? (
+                                  <option value="" disabled>No workspaces available</option>
+                                ) : (
+                                  workspaces.map(workspace => (
+                                    <option key={workspace.id} value={workspace.id}>
+                                      {workspace.name}
+                                    </option>
+                                  ))
+                                )}
+                              </select>
+                            )}
                           </div>
-                          <Button variant="outline" size="sm">Switch</Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled={isLoadingWorkspaces || workspaces.length === 0 || selectedWorkspaceId === currentWorkspaceId}
+                            onClick={handleSwitchWorkspace}
+                          >
+                            Switch
+                          </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Select the workspace you want to configure
@@ -1677,6 +1768,54 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Workspace Modal */}
+      <Dialog open={createWorkspaceModalOpen} onOpenChange={setCreateWorkspaceModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create new workspace</DialogTitle>
+            <DialogDescription>
+              Create a new workspace to organize your financial data.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Workspace name</Label>
+              <Input
+                id="name"
+                placeholder="Enter workspace name"
+                value={newWorkspaceName}
+                onChange={(e) => setNewWorkspaceName(e.target.value)}
+                disabled={isCreatingWorkspace}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setCreateWorkspaceModalOpen(false)}
+              disabled={isCreatingWorkspace}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateWorkspace}
+              disabled={isCreatingWorkspace || !newWorkspaceName.trim()}
+            >
+              {isCreatingWorkspace ? (
+                <>
+                  <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-current animate-spin mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                'Create workspace'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

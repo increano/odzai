@@ -258,12 +258,19 @@ export function Sidebar({ className }: SidebarProps) {
     }
   }
 
+  // Function to open settings to the account tab
+  const openAccountSettings = () => {
+    if (openSettingsModal) {
+      openSettingsModal("account")
+    }
+  }
+
   // Function to handle workspace unloading
   const handleUnloadWorkspace = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('odzai-current-workspace')
-      // Force a page reload to reset the workspace context
-      window.location.href = '/budgets'
+      // Open settings modal instead of redirecting
+      openWorkspaceSettings()
     }
   }
 
@@ -334,7 +341,7 @@ export function Sidebar({ className }: SidebarProps) {
     { 
       name: 'Settings', 
       icon: Settings, 
-      onClick: openWorkspaceSettings
+      onClick: openAccountSettings
     },
     { 
       name: 'Help', 
@@ -547,7 +554,7 @@ export function Sidebar({ className }: SidebarProps) {
               </div>
             )}
             <div className="border-t mt-1 pt-1">
-              <DropdownMenuItem onClick={() => router.push('/budgets')}>
+              <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
                 <span className="text-sm">Manage workspaces</span>
               </DropdownMenuItem>
             </div>
@@ -633,7 +640,7 @@ export function Sidebar({ className }: SidebarProps) {
             </div>
           )}
           <div className="border-t mt-1 pt-1">
-            <DropdownMenuItem onClick={() => router.push('/budgets')}>
+            <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
               <span className="text-sm">Manage workspaces</span>
             </DropdownMenuItem>
           </div>
