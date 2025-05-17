@@ -1,14 +1,9 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
-  "/transactions/page": "app/transactions/page.js",
-  "/api/gocardless/status/route": "app/api/gocardless/status/route.js",
+  "/bank-connection/callback/page": "app/bank-connection/callback/page.js",
+  "/bank-connection/page": "app/bank-connection/page.js",
   "/api/gocardless/countries/route": "app/api/gocardless/countries/route.js",
   "/api/gocardless/banks/route": "app/api/gocardless/banks/route.js",
-  "/bank-connection/callback/page": "app/bank-connection/callback/page.js",
-  "/api/gocardless/connect/route": "app/api/gocardless/connect/route.js",
-  "/api/budgets/route": "app/api/budgets/route.js",
-  "/api/budgets/[id]/route": "app/api/budgets/[id]/route.js",
   "/reports/page": "app/reports/page.js",
   "/accounts/page": "app/accounts/page.js"
 }
