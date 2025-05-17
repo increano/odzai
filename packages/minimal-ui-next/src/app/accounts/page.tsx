@@ -1,14 +1,15 @@
 'use client'
 
-import { CreditCard, DollarSign, Wallet, Building, ArrowUpRight, ArrowDownRight, PlusCircle } from 'lucide-react'
+import { CreditCard, DollarSign, Wallet, Building, ArrowUpRight, ArrowDownRight, PlusCircle, Plus, Settings } from 'lucide-react'
 import { DashboardLayout, DashboardContent } from '@/components/dashboard-layout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { CreateAccountDialog } from '@/components/accounts/create-account-dialog'
 import { WorkspaceRequired } from '@/components/workspace-required'
+import { SettingsModal } from '@/components/accounts/SettingsModal'
 
 // Define the Account interface to match API response
 interface Account {
@@ -27,6 +28,7 @@ export default function AccountsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const searchParams = useSearchParams();
   const isNewWorkspace = searchParams.get('empty') === 'true';
   
@@ -114,7 +116,19 @@ export default function AccountsPage() {
     <DashboardLayout>
       <DashboardContent 
         title="Accounts"
-        actions={<Button onClick={handleAddAccount}>Add Account</Button>}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsSettingsOpen(true)}
+              aria-label="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleAddAccount}>Add Account</Button>
+          </>
+        }
       >
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
@@ -197,6 +211,7 @@ export default function AccountsPage() {
   return (
     <WorkspaceRequired>
       {content}
+      <SettingsModal open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
     </WorkspaceRequired>
   );
 } 

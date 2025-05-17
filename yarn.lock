@@ -88,6 +88,7 @@ __metadata:
   resolution: "@actual-app/minimal-ui-next@workspace:packages/minimal-ui-next"
   dependencies:
     "@actual-app/api": "workspace:*"
+    "@radix-ui/react-accordion": "npm:^1.2.10"
     "@radix-ui/react-avatar": "npm:^1.1.9"
     "@radix-ui/react-checkbox": "npm:^1.3.1"
     "@radix-ui/react-dialog": "npm:^1.1.13"
@@ -107,8 +108,9 @@ __metadata:
     "@types/react": "npm:^18.2.42"
     "@types/react-day-picker": "npm:^5.3.0"
     "@types/react-dom": "npm:^18.2.17"
+    "@types/uuid": "npm:^9.0.8"
     autoprefixer: "npm:^10.4.16"
-    class-variance-authority: "npm:^0.7.0"
+    class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
     concurrently: "npm:^8.2.2"
     cors: "npm:^2.8.5"
@@ -129,6 +131,7 @@ __metadata:
     tailwindcss-animate: "npm:^1.0.7"
     ts-node: "npm:^10.9.1"
     typescript: "npm:^5.3.3"
+    uuid: "npm:^9.0.1"
   languageName: unknown
   linkType: soft
 
@@ -3602,6 +3605,33 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@radix-ui/react-accordion@npm:^1.2.10":
+  version: 1.2.10
+  resolution: "@radix-ui/react-accordion@npm:1.2.10"
+  dependencies:
+    "@radix-ui/primitive": "npm:1.1.2"
+    "@radix-ui/react-collapsible": "npm:1.1.10"
+    "@radix-ui/react-collection": "npm:1.1.6"
+    "@radix-ui/react-compose-refs": "npm:1.1.2"
+    "@radix-ui/react-context": "npm:1.1.2"
+    "@radix-ui/react-direction": "npm:1.1.1"
+    "@radix-ui/react-id": "npm:1.1.1"
+    "@radix-ui/react-primitive": "npm:2.1.2"
+    "@radix-ui/react-use-controllable-state": "npm:1.2.2"
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-dom": "*"
+    react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-dom":
+      optional: true
+  checksum: 10/e68659bdc0b5dd7f7a977daa16e914f49d7ebcba99a796b3bd962bcd8e0dcf675fdece78d23a20702c9b68a8239d683442252a2c1179d55624ff56ef9a598eb3
+  languageName: node
+  linkType: hard
+
 "@radix-ui/react-arrow@npm:1.1.6":
   version: 1.1.6
   resolution: "@radix-ui/react-arrow@npm:1.1.6"
@@ -3667,6 +3697,32 @@ __metadata:
     "@types/react-dom":
       optional: true
   checksum: 10/50b9e0a6bd6fd7d1b708b5f2c0bc73d1302c9643c53904c46f3b511522a5a0934934dd8b806c5bd187a3c78abc945f6ef4dfa14717887481ddf43000c9e52b0e
+  languageName: node
+  linkType: hard
+
+"@radix-ui/react-collapsible@npm:1.1.10":
+  version: 1.1.10
+  resolution: "@radix-ui/react-collapsible@npm:1.1.10"
+  dependencies:
+    "@radix-ui/primitive": "npm:1.1.2"
+    "@radix-ui/react-compose-refs": "npm:1.1.2"
+    "@radix-ui/react-context": "npm:1.1.2"
+    "@radix-ui/react-id": "npm:1.1.1"
+    "@radix-ui/react-presence": "npm:1.1.4"
+    "@radix-ui/react-primitive": "npm:2.1.2"
+    "@radix-ui/react-use-controllable-state": "npm:1.2.2"
+    "@radix-ui/react-use-layout-effect": "npm:1.1.1"
+  peerDependencies:
+    "@types/react": "*"
+    "@types/react-dom": "*"
+    react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+  peerDependenciesMeta:
+    "@types/react":
+      optional: true
+    "@types/react-dom":
+      optional: true
+  checksum: 10/ac99b9ef36fd079eaa23a27bfdf3f215508eaef170a541d5deb277b797910962b6149923c96f053a3c2b7f7a9efd1be12e56c8f0821845002139372cdee0f0bd
   languageName: node
   linkType: hard
 
@@ -9974,7 +10030,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"class-variance-authority@npm:^0.7.0":
+"class-variance-authority@npm:^0.7.1":
   version: 0.7.1
   resolution: "class-variance-authority@npm:0.7.1"
   dependencies:

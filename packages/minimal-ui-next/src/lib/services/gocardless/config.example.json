@@ -1,0 +1,10 @@
+{
+  "// NOTE": "This is an example configuration file. Copy to config.json and fill with your actual credentials",
+  "secretId": "YOUR_GOCARDLESS_SECRET_ID",
+  "secretKey": "YOUR_GOCARDLESS_SECRET_KEY",
+  "settings": {
+    "maxHistoryDays": 90,
+    "enabledCountries": ["GB", "DE", "FR", "ES", "IT", "NL", "BE"],
+    "redirectUri": "http://localhost:3001/gocardless/callback"
+  }
+} 

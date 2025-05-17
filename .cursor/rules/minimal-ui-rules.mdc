@@ -9,5 +9,7 @@ When necessary use the following commands to run the minimal-ui-next project:
 ```bash
 cd packages/minimal-ui-next && ./start-services.sh
 ```
-
-
+or
+```bash
+cd packages/minimal-ui-next && yarn start:all
+```

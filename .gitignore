@@ -8,6 +8,10 @@ export-2020-01-10.csv
 
 # Secrets
 .secret-tokens
+# GoCardless config files
+**/gocardless/config.json
+**/services/gocardless/config.json
+**/secrets/*.json
 
 # MacOS
 .DS_Store

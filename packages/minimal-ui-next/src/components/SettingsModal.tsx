@@ -44,7 +44,11 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  X
+  X,
+  Loader2,
+  CheckCircle,
+  LinkIcon,
+  RefreshCw
 } from "lucide-react";
 
 interface SettingsModalProps {
@@ -100,6 +104,14 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   const [workspaceToDelete, setWorkspaceToDelete] = useState<string>("");
   const [confirmWorkspaceName, setConfirmWorkspaceName] = useState("");
   
+  // GoCardless API configuration state
+  const [goCardlessConfigOpen, setGoCardlessConfigOpen] = useState(false);
+  const [goCardlessSecretId, setGoCardlessSecretId] = useState("");
+  const [goCardlessSecretKey, setGoCardlessSecretKey] = useState("");
+  const [isConfiguredGoCardless, setIsConfiguredGoCardless] = useState(false);
+  const [isSubmittingGoCardless, setIsSubmittingGoCardless] = useState(false);
+  const [goCardlessStats, setGoCardlessStats] = useState<any>(null);
+  
   // Workspaces state
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [isLoadingWorkspaces, setIsLoadingWorkspaces] = useState(false);
@@ -133,8 +145,24 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   useEffect(() => {
     if (open) {
       fetchWorkspaces();
+      checkGoCardlessStatus();
     }
   }, [open]);
+
+  // Check GoCardless configuration status
+  const checkGoCardlessStatus = async () => {
+    try {
+      const response = await fetch('/api/gocardless/status');
+      const data = await response.json();
+      
+      setIsConfiguredGoCardless(data.isConfigured);
+      if (data.isConfigured && data.stats) {
+        setGoCardlessStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Failed to check GoCardless status:', error);
+    }
+  };
 
   // Update selectedWorkspaceId when currentWorkspaceId changes
   useEffect(() => {
@@ -280,21 +308,20 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   // Handle creating a new workspace
   const handleCreateWorkspace = async () => {
     if (!newWorkspaceName.trim()) {
-      toast.error("Workspace name cannot be empty");
+      toast.error('Please enter a workspace name');
       return;
     }
     
     setIsCreatingWorkspace(true);
     
     try {
-      // Create a new workspace via API - using the same endpoint as in budgets/client.tsx
-      const response = await fetch('/api/budgets/create', {
+      const response = await fetch('/api/budgets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          budgetName: newWorkspaceName.trim(),
+          name: newWorkspaceName.trim(),
         }),
       });
       
@@ -304,21 +331,24 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       
       const data = await response.json();
       
-      // Refresh the workspaces list
+      // Close the modal and clear the form
+      setCreateWorkspaceModalOpen(false);
+      setNewWorkspaceName('');
+      
+      // Show success message
+      toast.success('Workspace created successfully');
+      
+      // Refresh the list of workspaces
       fetchWorkspaces();
       
-      // Close the modal and reset the form
-      setCreateWorkspaceModalOpen(false);
-      setNewWorkspaceName("");
-      
-      toast.success(`Workspace "${newWorkspaceName.trim()}" created successfully`);
-      
-      // Optionally switch to the new workspace
-      if (data.budgets && data.budgets.length > 0) {
-        // Find the newly created budget (it should be the one with matching name)
-        const newBudget = data.budgets.find((budget: any) => budget.name === newWorkspaceName.trim());
-        if (newBudget && newBudget.id) {
-          loadWorkspace(newBudget.id);
+      // Optionally, switch to the new workspace
+      if (data && data.id) {
+        // Store the new workspace ID
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('odzai-current-workspace', data.id);
+          // Redirect to the new workspace
+          loadWorkspace(data.id);
+          window.location.href = '/?empty=true';
         }
       }
     } catch (error) {
@@ -326,6 +356,50 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       toast.error(error instanceof Error ? error.message : 'Failed to create workspace');
     } finally {
       setIsCreatingWorkspace(false);
+    }
+  };
+  
+  // Handle GoCardless configuration
+  const handleGoCardlessSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!goCardlessSecretId || !goCardlessSecretKey) {
+      toast.error('Secret ID and Secret Key are required');
+      return;
+    }
+    
+    setIsSubmittingGoCardless(true);
+    
+    try {
+      const response = await fetch('/api/admin/gocardless/setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secretId: goCardlessSecretId,
+          secretKey: goCardlessSecretKey
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to configure GoCardless');
+      }
+      
+      toast.success('GoCardless configured successfully');
+      setIsConfiguredGoCardless(true);
+      setGoCardlessConfigOpen(false);
+      
+      if (data.stats) {
+        setGoCardlessStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error configuring GoCardless:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to configure GoCardless');
+    } finally {
+      setIsSubmittingGoCardless(false);
     }
   };
 
@@ -346,6 +420,49 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   
   // Calculate total pages
   const totalPages = Math.ceil(filteredWorkspaces.length / itemsPerPage);
+
+  // Add this function to handle bank connection
+  const handleConnectBank = () => {
+    // Close the settings modal
+    onOpenChange(false);
+    
+    // Navigate to the bank connection page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/bank-connection';
+    }
+  };
+
+  // Add this function to handle syncing accounts
+  const handleSyncAccounts = async () => {
+    toast.info("Syncing your connected accounts...", {
+      duration: 2000,
+    });
+    
+    try {
+      const response = await fetch('/api/gocardless/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to sync accounts');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`Synced ${data.updatedAccounts || 0} account(s) successfully`);
+      } else {
+        toast.error('No accounts were updated during sync');
+      }
+    } catch (error) {
+      console.error('Error syncing accounts:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to sync accounts');
+    }
+  };
 
   return (
     <>
@@ -1353,17 +1470,140 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                     </p>
                   </div>
                   
-                  <div className="flex flex-col items-center justify-center py-12 px-4 space-y-4 bg-muted/30 rounded-lg border border-dashed">
-                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Plug className="h-8 w-8 text-muted-foreground" />
+                  {/* GoCardless Integration */}
+                  <div className="border rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-md bg-blue-50 flex items-center justify-center">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M12 18C15.3137 18 18 15.3137 18 12C18 8.68629 15.3137 6 12 6C8.68629 6 6 8.68629 6 12C6 15.3137 8.68629 18 12 18Z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M12 14C13.1046 14 14 13.1046 14 12C14 10.8954 13.1046 10 12 10C10.8954 10 10 10.8954 10 12C10 13.1046 10.8954 14 12 14Z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="text-base font-medium">GoCardless</h4>
+                          <p className="text-sm text-muted-foreground">Connect to European banks using GoCardless</p>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                          Available
+                        </span>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-medium text-center">Coming Soon</h3>
-                    <p className="text-sm text-muted-foreground text-center max-w-md">
-                      Integrations with banks, financial services, and other tools are currently in development and will be available in a future update.
+                    
+                    <div className="space-y-6">
+                      {/* API Configuration */}
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h5 className="text-sm font-medium">API Configuration</h5>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Enter your GoCardless API credentials to enable bank synchronization
+                            </p>
+                          </div>
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="whitespace-nowrap"
+                            onClick={() => setGoCardlessConfigOpen(true)}
+                          >
+                            {isConfiguredGoCardless ? 'Reconfigure' : 'Configure'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Connected Banks */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-medium">Connected Banks</h5>
+                          {isConfiguredGoCardless && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={handleSyncAccounts}
+                            >
+                              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                              Sync Now
+                            </Button>
+                          )}
+                        </div>
+                        <div className="border rounded-md p-5 bg-muted/30 flex flex-col items-center justify-center text-center">
+                          {!isConfiguredGoCardless ? (
+                            <>
+                              <p className="text-sm">No banks connected yet</p>
+                              <p className="text-xs text-muted-foreground mt-1">Configure API credentials before connecting banks</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm">Ready to connect your bank</p>
+                              <p className="text-xs text-muted-foreground mt-1">GoCardless is configured and ready to use</p>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="mt-3"
+                                onClick={handleConnectBank}
+                              >
+                                <LinkIcon className="mr-2 h-4 w-4" />
+                                Connect Bank
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Usage Information */}
+                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                        <div className="flex items-start space-x-3">
+                          <svg className="h-5 w-5 text-amber-700 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                            <line x1="12" y1="9" x2="12" y2="13" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-amber-800">Usage Information</p>
+                            <ul className="mt-1 text-xs text-amber-700 space-y-1 list-disc pl-5">
+                              <li>Free tier supports up to 50 bank connections per month</li>
+                              <li>You can sync each bank up to 4 times per day</li>
+                              <li>Manual sync is required - automatic sync is not available</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Documentation Link */}
+                      <div className="flex items-center justify-between pt-2">
+                        <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 16v-4" />
+                            <path d="M12 8h.01" />
+                          </svg>
+                          <span>Learn about bank synchronization</span>
+                        </button>
+                        <a 
+                          href="https://bankaccountdata.gocardless.com/overview/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary flex items-center hover:underline"
+                        >
+                          <span>GoCardless Dashboard</span>
+                          <svg className="ml-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Other Integrations Coming Soon */}
+                  <div className="flex flex-col items-center justify-center py-6 px-4 space-y-4 bg-muted/30 rounded-lg border border-dashed">
+                    <p className="text-sm text-muted-foreground text-center">
+                      More integrations with financial services and tools coming soon
                     </p>
-                    <Button variant="outline" className="mt-2" disabled>
-                      Check back later
-                    </Button>
                   </div>
                 </div>
               </TabsContent>
@@ -1924,55 +2164,117 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       <Dialog open={createWorkspaceModalOpen} onOpenChange={setCreateWorkspaceModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Create new workspace</DialogTitle>
+            <DialogTitle>Create New Workspace</DialogTitle>
             <DialogDescription>
-              Create a new workspace to organize your financial data.
+              Add a new workspace to organize your finances independently.
             </DialogDescription>
           </DialogHeader>
-          
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Workspace name</Label>
+              <Label htmlFor="workspaceName">Workspace Name</Label>
               <Input
-                id="name"
+                id="workspaceName"
                 placeholder="Enter workspace name"
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
-                disabled={isCreatingWorkspace}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isCreatingWorkspace && newWorkspaceName.trim()) {
-                    e.preventDefault();
-                    handleCreateWorkspace();
-                  }
-                }}
+                autoComplete="off"
               />
             </div>
           </div>
-          
           <DialogFooter>
-            <Button 
-              type="button"
-              variant="outline" 
-              onClick={() => setCreateWorkspaceModalOpen(false)}
-              disabled={isCreatingWorkspace}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button"
+            <Button
+              type="submit"
               onClick={handleCreateWorkspace}
-              disabled={isCreatingWorkspace || !newWorkspaceName.trim()}
+              disabled={isCreatingWorkspace}
             >
               {isCreatingWorkspace ? (
                 <>
-                  <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-current animate-spin mr-2"></div>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
                   Creating...
                 </>
               ) : (
-                'Create workspace'
+                "Create Workspace"
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* GoCardless Configuration Modal */}
+      <Dialog open={goCardlessConfigOpen} onOpenChange={setGoCardlessConfigOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Configure GoCardless API</DialogTitle>
+            <DialogDescription>
+              Enter your GoCardless API credentials to enable bank synchronization.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleGoCardlessSave}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="secretId">Secret ID</Label>
+                <Input
+                  id="secretId"
+                  placeholder="nordigen_secret_id_1234567890"
+                  value={goCardlessSecretId}
+                  onChange={(e) => setGoCardlessSecretId(e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="secretKey">Secret Key</Label>
+                <Input
+                  id="secretKey"
+                  type="password"
+                  placeholder="Enter your GoCardless Secret Key"
+                  value={goCardlessSecretKey}
+                  onChange={(e) => setGoCardlessSecretKey(e.target.value)}
+                  autoComplete="off"
+                  required
+                />
+              </div>
+              
+              <div className="text-xs text-muted-foreground mt-1">
+                Create these credentials in your <a href="https://bankaccountdata.gocardless.com/overview/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">GoCardless dashboard</a> under Developers → User secrets.
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={isSubmittingGoCardless}
+              >
+                {isSubmittingGoCardless ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Configuration"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

@@ -7,34 +7,49 @@ interface DashboardLayoutProps {
   children: ReactNode
 }
 
+interface DashboardContentProps {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
-    <div className="h-full">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {children}
     </div>
   )
 }
 
 export function DashboardContent({
+  title, 
+  subtitle, 
+  actions, 
   children,
-  className,
-  title,
-  actions,
-}: {
-  children: ReactNode
-  className?: string
-  title?: string
-  actions?: ReactNode
-}) {
+  className 
+}: DashboardContentProps) {
   return (
-    <div className={cn("p-6", className)}>
-      {(title || actions) && (
-        <div className="mb-6 flex items-center justify-between">
-          {title && <h1 className="text-2xl font-bold tracking-tight">{title}</h1>}
-          {actions && <div className="flex items-center gap-4">{actions}</div>}
+    <div className={cn("space-y-4", className)}>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
+          {subtitle && (
+            <p className="text-muted-foreground">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {actions && (
+          <div className="flex space-x-2">
+            {actions}
         </div>
       )}
+      </div>
+      <div>
       {children}
+      </div>
     </div>
   )
 } 

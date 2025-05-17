@@ -1,8 +1,4 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js",
-  "/transactions/[accountId]/page": "app/transactions/[accountId]/page.js",
-  "/reports/page": "app/reports/page.js",
-  "/accounts/page": "app/accounts/page.js",
-  "/budget/page": "app/budget/page.js"
+  "/api/gocardless/status/route": "app/api/gocardless/status/route.js",
+  "/api/gocardless/setup/route": "app/api/gocardless/setup/route.js"
 }

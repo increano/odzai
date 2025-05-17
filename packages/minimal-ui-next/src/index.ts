@@ -6,6 +6,8 @@ import { Application } from 'express';
 import fs from 'fs';
 import cors from 'cors';
 import { Request, Response, NextFunction } from 'express';
+import { goCardlessController } from './lib/controllers/gocardless.controller';
+import { accountLinkController } from './lib/controllers/account-link.controller';
 
 // Global error handlers to prevent server crashes
 process.on('uncaughtException', (error) => {
@@ -72,6 +74,9 @@ app.get('/', (req, res) => {
     });
     
     console.log('Actual Budget engine initialized successfully');
+
+    // Initialize GoCardless integration
+    await goCardlessController.init();
     
     // Check if there are any budgets
     const budgets = await actualAPI.getBudgets();
@@ -1914,4 +1919,38 @@ app.post('/api/accounts/:id/lock-transactions', ensureBudgetLoaded, async (req: 
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
+});
+
+// GoCardless API Endpoints
+app.post('/api/gocardless/setup', async (req, res) => {
+  await goCardlessController.setup(req, res);
+});
+
+app.get('/api/gocardless/status', async (req, res) => {
+  await goCardlessController.getStatus(req, res);
+});
+
+app.get('/api/gocardless/banks', ensureBudgetLoaded, async (req, res) => {
+  await goCardlessController.getBanksByCountry(req, res);
+});
+
+app.post('/api/gocardless/connect', ensureBudgetLoaded, async (req, res) => {
+  await goCardlessController.connectBank(req, res);
+});
+
+app.get('/api/gocardless/accounts', ensureBudgetLoaded, async (req, res) => {
+  await goCardlessController.getAccounts(req, res);
+});
+
+app.post('/api/gocardless/reset', ensureBudgetLoaded, async (req, res) => {
+  await goCardlessController.reset(req, res);
+});
+
+// Account linking endpoints
+app.post('/api/accounts/link', ensureBudgetLoaded, async (req, res) => {
+  await accountLinkController.linkAccount(req, res);
+});
+
+app.post('/api/accounts/:accountId/sync', ensureBudgetLoaded, async (req, res) => {
+  await accountLinkController.syncTransactions(req, res);
 }); 
