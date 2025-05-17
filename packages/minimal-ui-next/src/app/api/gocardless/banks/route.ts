@@ -14,9 +14,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Country parameter is required' }, { status: 400 });
     }
     
+    // Add the sandbox test bank to all country results
+    const sandboxBank = {
+      id: 'SANDBOXFINANCE_SFIN0000',
+      name: 'Sandbox Finance (Test)',
+      logo: 'https://cdn.gocardless.com/icons/SANDBOX_TEST.png'
+    };
+    
     // Comprehensive data based on GoCardless Bank Account Data Coverage
     const banksByCountry: Record<string, any[]> = {
       'AT': [
+        sandboxBank,
         { id: 'ERSTE_AT', name: 'Erste Bank und Sparkassen', logo: 'https://cdn.gocardless.com/icons/ERSTE_AT.png' },
         { id: 'RAIFFEISEN_AT', name: 'Raiffeisen Bank', logo: 'https://cdn.gocardless.com/icons/RAIFFEISEN_AT.png' },
         { id: 'BAWAG_AT', name: 'BAWAG P.S.K.', logo: 'https://cdn.gocardless.com/icons/BAWAG_AT.png' },
@@ -24,6 +32,7 @@ export async function GET(request: Request) {
         { id: 'VOLKSBANK_AT', name: 'Volksbank', logo: 'https://cdn.gocardless.com/icons/VOLKSBANK_AT.png' }
       ],
       'BE': [
+        sandboxBank,
         { id: 'KBC_BE', name: 'KBC Bank', logo: 'https://cdn.gocardless.com/icons/KBC_BE.png' },
         { id: 'BNP_PARIBAS_FORTIS_BE', name: 'BNP Paribas Fortis', logo: 'https://cdn.gocardless.com/icons/BNP_FORTIS_BE.png' },
         { id: 'ING_BE', name: 'ING Belgium', logo: 'https://cdn.gocardless.com/icons/ING_BE.png' },
@@ -54,6 +63,7 @@ export async function GET(request: Request) {
         { id: 'DEGROOF_PETERCAM_BE', name: 'Degroof Petercam', logo: 'https://cdn.gocardless.com/icons/DEGROOF_PETERCAM_BE.png' }
       ],
       'CZ': [
+        sandboxBank,
         { id: 'CSOB_CZ', name: 'ČSOB', logo: 'https://cdn.gocardless.com/icons/CSOB_CZ.png' },
         { id: 'CESKA_SPORITELNA_CZ', name: 'Česká spořitelna', logo: 'https://cdn.gocardless.com/icons/CESKA_SPORITELNA_CZ.png' },
         { id: 'KOMERCNI_BANKA_CZ', name: 'Komerční banka', logo: 'https://cdn.gocardless.com/icons/KOMERCNI_BANKA_CZ.png' },
@@ -61,6 +71,7 @@ export async function GET(request: Request) {
         { id: 'RAIFFEISEN_CZ', name: 'Raiffeisenbank', logo: 'https://cdn.gocardless.com/icons/RAIFFEISEN_CZ.png' }
       ],
       'DE': [
+        sandboxBank,
         { id: 'DEUTSCHE_BANK_DE', name: 'Deutsche Bank', logo: 'https://cdn.gocardless.com/icons/DEUTSCHE_DE.png' },
         { id: 'COMMERZBANK_DE', name: 'Commerzbank', logo: 'https://cdn.gocardless.com/icons/COMMERZBANK_DE.png' },
         { id: 'SPARKASSE_DE', name: 'Sparkasse', logo: 'https://cdn.gocardless.com/icons/SPARKASSE_DE.png' },
@@ -73,6 +84,7 @@ export async function GET(request: Request) {
         { id: 'N26_DE', name: 'N26', logo: 'https://cdn.gocardless.com/icons/N26_DE.png' }
       ],
       'DK': [
+        sandboxBank,
         { id: 'DANSKE_BANK_DK', name: 'Danske Bank', logo: 'https://cdn.gocardless.com/icons/DANSKE_BANK_DK.png' },
         { id: 'NORDEA_DK', name: 'Nordea', logo: 'https://cdn.gocardless.com/icons/NORDEA_DK.png' },
         { id: 'JYSKE_BANK_DK', name: 'Jyske Bank', logo: 'https://cdn.gocardless.com/icons/JYSKE_BANK_DK.png' },
@@ -80,12 +92,14 @@ export async function GET(request: Request) {
         { id: 'SYDBANK_DK', name: 'Sydbank', logo: 'https://cdn.gocardless.com/icons/SYDBANK_DK.png' }
       ],
       'EE': [
+        sandboxBank,
         { id: 'SWEDBANK_EE', name: 'Swedbank', logo: 'https://cdn.gocardless.com/icons/SWEDBANK_EE.png' },
         { id: 'SEB_EE', name: 'SEB', logo: 'https://cdn.gocardless.com/icons/SEB_EE.png' },
         { id: 'LHV_EE', name: 'LHV Pank', logo: 'https://cdn.gocardless.com/icons/LHV_EE.png' },
         { id: 'COOP_PANK_EE', name: 'Coop Pank', logo: 'https://cdn.gocardless.com/icons/COOP_PANK_EE.png' }
       ],
       'ES': [
+        sandboxBank,
         { id: 'SANTANDER_ES', name: 'Banco Santander', logo: 'https://cdn.gocardless.com/icons/SANTANDER_ES.png' },
         { id: 'BBVA_ES', name: 'BBVA', logo: 'https://cdn.gocardless.com/icons/BBVA_ES.png' },
         { id: 'CAIXABANK_ES', name: 'CaixaBank', logo: 'https://cdn.gocardless.com/icons/CAIXABANK_ES.png' },
@@ -97,6 +111,7 @@ export async function GET(request: Request) {
         { id: 'BANKINTER_ES', name: 'Bankinter', logo: 'https://cdn.gocardless.com/icons/BANKINTER_ES.png' }
       ],
       'FI': [
+        sandboxBank,
         { id: 'NORDEA_FI', name: 'Nordea', logo: 'https://cdn.gocardless.com/icons/NORDEA_FI.png' },
         { id: 'OP_FI', name: 'OP Financial Group', logo: 'https://cdn.gocardless.com/icons/OP_FI.png' },
         { id: 'DANSKE_BANK_FI', name: 'Danske Bank', logo: 'https://cdn.gocardless.com/icons/DANSKE_BANK_FI.png' },
@@ -104,6 +119,7 @@ export async function GET(request: Request) {
         { id: 'AKTIA_FI', name: 'Aktia Bank', logo: 'https://cdn.gocardless.com/icons/AKTIA_FI.png' }
       ],
       'FR': [
+        sandboxBank,
         { id: 'CREDIT_AGRICOLE_FR', name: 'Crédit Agricole', logo: 'https://cdn.gocardless.com/icons/CREDIT_AGRICOLE_FR.png' },
         { id: 'BNP_PARIBAS_FR', name: 'BNP Paribas', logo: 'https://cdn.gocardless.com/icons/BNP_PARIBAS_FR.png' },
         { id: 'SOCIETE_GENERALE_FR', name: 'Société Générale', logo: 'https://cdn.gocardless.com/icons/SOCIETE_GENERALE_FR.png' },
@@ -116,6 +132,7 @@ export async function GET(request: Request) {
         { id: 'LA_BANQUE_POSTALE_FR', name: 'La Banque Postale', logo: 'https://cdn.gocardless.com/icons/LA_BANQUE_POSTALE_FR.png' }
       ],
       'GB': [
+        sandboxBank,
         { id: 'HSBC_GB', name: 'HSBC UK', logo: 'https://cdn.gocardless.com/icons/HSBC_GB.png' },
         { id: 'BARCLAYS_GB', name: 'Barclays', logo: 'https://cdn.gocardless.com/icons/BARCLAYS_GB.png' },
         { id: 'LLOYDS_GB', name: 'Lloyds Bank', logo: 'https://cdn.gocardless.com/icons/LLOYDS_GB.png' },
@@ -130,6 +147,7 @@ export async function GET(request: Request) {
         { id: 'FIRST_DIRECT_GB', name: 'First Direct', logo: 'https://cdn.gocardless.com/icons/FIRST_DIRECT_GB.png' }
       ],
       'IE': [
+        sandboxBank,
         { id: 'AIB_IE', name: 'AIB', logo: 'https://cdn.gocardless.com/icons/AIB_IE.png' },
         { id: 'BOI_IE', name: 'Bank of Ireland', logo: 'https://cdn.gocardless.com/icons/BOI_IE.png' },
         { id: 'ULSTER_BANK_IE', name: 'Ulster Bank', logo: 'https://cdn.gocardless.com/icons/ULSTER_BANK_IE.png' },
@@ -137,6 +155,7 @@ export async function GET(request: Request) {
         { id: 'KBC_IE', name: 'KBC Bank Ireland', logo: 'https://cdn.gocardless.com/icons/KBC_IE.png' }
       ],
       'IT': [
+        sandboxBank,
         { id: 'UNICREDIT_IT', name: 'UniCredit', logo: 'https://cdn.gocardless.com/icons/UNICREDIT_IT.png' },
         { id: 'INTESA_SANPAOLO_IT', name: 'Intesa Sanpaolo', logo: 'https://cdn.gocardless.com/icons/INTESA_SANPAOLO_IT.png' },
         { id: 'MONTE_PASCHI_IT', name: 'Monte dei Paschi di Siena', logo: 'https://cdn.gocardless.com/icons/MONTE_PASCHI_IT.png' },
@@ -147,18 +166,21 @@ export async function GET(request: Request) {
         { id: 'FINECO_IT', name: 'FinecoBank', logo: 'https://cdn.gocardless.com/icons/FINECO_IT.png' }
       ],
       'LT': [
+        sandboxBank,
         { id: 'SWEDBANK_LT', name: 'Swedbank', logo: 'https://cdn.gocardless.com/icons/SWEDBANK_LT.png' },
         { id: 'SEB_LT', name: 'SEB', logo: 'https://cdn.gocardless.com/icons/SEB_LT.png' },
         { id: 'LUMINOR_LT', name: 'Luminor Bank', logo: 'https://cdn.gocardless.com/icons/LUMINOR_LT.png' },
         { id: 'CITADELE_LT', name: 'Citadele', logo: 'https://cdn.gocardless.com/icons/CITADELE_LT.png' }
       ],
       'LV': [
+        sandboxBank,
         { id: 'SWEDBANK_LV', name: 'Swedbank', logo: 'https://cdn.gocardless.com/icons/SWEDBANK_LV.png' },
         { id: 'SEB_LV', name: 'SEB', logo: 'https://cdn.gocardless.com/icons/SEB_LV.png' },
         { id: 'CITADELE_LV', name: 'Citadele', logo: 'https://cdn.gocardless.com/icons/CITADELE_LV.png' },
         { id: 'LUMINOR_LV', name: 'Luminor Bank', logo: 'https://cdn.gocardless.com/icons/LUMINOR_LV.png' }
       ],
       'NL': [
+        sandboxBank,
         { id: 'ING_NL', name: 'ING', logo: 'https://cdn.gocardless.com/icons/ING_NL.png' },
         { id: 'RABOBANK_NL', name: 'Rabobank', logo: 'https://cdn.gocardless.com/icons/RABOBANK_NL.png' },
         { id: 'ABN_AMRO_NL', name: 'ABN AMRO', logo: 'https://cdn.gocardless.com/icons/ABN_AMRO_NL.png' },
@@ -167,6 +189,7 @@ export async function GET(request: Request) {
         { id: 'BUNQ_NL', name: 'bunq', logo: 'https://cdn.gocardless.com/icons/BUNQ_NL.png' }
       ],
       'NO': [
+        sandboxBank,
         { id: 'DNB_NO', name: 'DNB', logo: 'https://cdn.gocardless.com/icons/DNB_NO.png' },
         { id: 'NORDEA_NO', name: 'Nordea', logo: 'https://cdn.gocardless.com/icons/NORDEA_NO.png' },
         { id: 'SPAREBANK1_NO', name: 'SpareBank 1', logo: 'https://cdn.gocardless.com/icons/SPAREBANK1_NO.png' },
@@ -174,6 +197,7 @@ export async function GET(request: Request) {
         { id: 'DANSKE_BANK_NO', name: 'Danske Bank', logo: 'https://cdn.gocardless.com/icons/DANSKE_BANK_NO.png' }
       ],
       'PL': [
+        sandboxBank,
         { id: 'PKO_BP_PL', name: 'PKO Bank Polski', logo: 'https://cdn.gocardless.com/icons/PKO_BP_PL.png' },
         { id: 'PEKAO_PL', name: 'Bank Pekao', logo: 'https://cdn.gocardless.com/icons/PEKAO_PL.png' },
         { id: 'SANTANDER_PL', name: 'Santander Bank Polska', logo: 'https://cdn.gocardless.com/icons/SANTANDER_PL.png' },
@@ -183,6 +207,7 @@ export async function GET(request: Request) {
         { id: 'MILLENNIUM_PL', name: 'Bank Millennium', logo: 'https://cdn.gocardless.com/icons/MILLENNIUM_PL.png' }
       ],
       'PT': [
+        sandboxBank,
         { id: 'CGD_PT', name: 'Caixa Geral de Depósitos', logo: 'https://cdn.gocardless.com/icons/CGD_PT.png' },
         { id: 'MILLENNIUM_BCP_PT', name: 'Millennium BCP', logo: 'https://cdn.gocardless.com/icons/MILLENNIUM_BCP_PT.png' },
         { id: 'SANTANDER_PT', name: 'Santander Totta', logo: 'https://cdn.gocardless.com/icons/SANTANDER_PT.png' },
@@ -190,6 +215,7 @@ export async function GET(request: Request) {
         { id: 'BPI_PT', name: 'Banco BPI', logo: 'https://cdn.gocardless.com/icons/BPI_PT.png' }
       ],
       'RO': [
+        sandboxBank,
         { id: 'BCR_RO', name: 'Banca Comercială Română', logo: 'https://cdn.gocardless.com/icons/BCR_RO.png' },
         { id: 'BRD_RO', name: 'BRD - Groupe Société Générale', logo: 'https://cdn.gocardless.com/icons/BRD_RO.png' },
         { id: 'BANCA_TRANSILVANIA_RO', name: 'Banca Transilvania', logo: 'https://cdn.gocardless.com/icons/BANCA_TRANSILVANIA_RO.png' },
@@ -197,6 +223,7 @@ export async function GET(request: Request) {
         { id: 'ING_RO', name: 'ING Bank', logo: 'https://cdn.gocardless.com/icons/ING_RO.png' }
       ],
       'SE': [
+        sandboxBank,
         { id: 'NORDEA_SE', name: 'Nordea', logo: 'https://cdn.gocardless.com/icons/NORDEA_SE.png' },
         { id: 'SEB_SE', name: 'SEB', logo: 'https://cdn.gocardless.com/icons/SEB_SE.png' },
         { id: 'HANDELSBANKEN_SE', name: 'Handelsbanken', logo: 'https://cdn.gocardless.com/icons/HANDELSBANKEN_SE.png' },
@@ -205,6 +232,7 @@ export async function GET(request: Request) {
         { id: 'SKANDIABANKEN_SE', name: 'Skandiabanken', logo: 'https://cdn.gocardless.com/icons/SKANDIABANKEN_SE.png' }
       ],
       'SK': [
+        sandboxBank,
         { id: 'SLOVENSKA_SPORITELNA_SK', name: 'Slovenská sporiteľňa', logo: 'https://cdn.gocardless.com/icons/SLOVENSKA_SPORITELNA_SK.png' },
         { id: 'VUB_BANKA_SK', name: 'VÚB Banka', logo: 'https://cdn.gocardless.com/icons/VUB_BANKA_SK.png' },
         { id: 'TATRA_BANKA_SK', name: 'Tatra banka', logo: 'https://cdn.gocardless.com/icons/TATRA_BANKA_SK.png' },

@@ -119,6 +119,47 @@ app.get('/api/budgets', async (req: Request, res: Response) => {
   }
 });
 
+// Add POST endpoint for /api/budgets (to support the request in SettingsModal.tsx)
+app.post('/api/budgets', async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Budget name is required' });
+    }
+    
+    console.log(`Creating new budget via /api/budgets endpoint: ${name}`);
+    
+    // Use the internal send function to access the create-budget handler directly
+    const result = await actualAPI.internal.send('create-budget', { budgetName: name });
+    
+    if (result.error) {
+      console.error('Error creating budget:', result.error);
+      return res.status(500).json({ error: result.error });
+    }
+    
+    // Find the created budget by name to get its ID
+    const budgets = await actualAPI.getBudgets();
+    const createdBudget = budgets.find(budget => budget.name === name);
+    
+    if (!createdBudget) {
+      throw new Error('Budget was created but could not be found in the list');
+    }
+    
+    res.json({
+      success: true,
+      id: createdBudget.id,
+      name: createdBudget.name
+    });
+  } catch (error) {
+    console.error('Failed to create budget:', error);
+    res.status(500).json({ 
+      error: 'Failed to create workspace',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Create a new budget
 app.post('/api/budgets/create', async (req: Request, res: Response) => {
   try {

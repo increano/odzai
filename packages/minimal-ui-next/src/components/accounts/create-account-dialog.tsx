@@ -166,7 +166,9 @@ function GoCardlessConnectionForm({ onSuccess, onOpenChange }: { onSuccess?: () 
   const [selectedCountry, setSelectedCountry] = useState<string>('')
   const [bankList, setBankList] = useState<{ id: string, name: string, logo: string }[]>([])
   const [isLoadingBanks, setIsLoadingBanks] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedBank, setSelectedBank] = useState<string>('')
 
   // Check if GoCardless is already configured at system level
   useEffect(() => {
@@ -235,44 +237,71 @@ function GoCardlessConnectionForm({ onSuccess, onOpenChange }: { onSuccess?: () 
 
   const handleBankSelect = async (bankId: string) => {
     try {
-      setError(null)
-      const response = await fetch('/api/gocardless/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          institutionId: bankId,
-          country: selectedCountry
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to initiate bank connection')
-      }
-
-      const data = await response.json()
+      setError(null);
+      setSelectedBank(bankId);
+      setIsConnecting(true);
       
-      // Open bank authorization link in new tab
-      if (data.link) {
-        window.open(data.link, '_blank')
+      console.log('Connecting to bank:', bankId, 'in country:', selectedCountry);
+      
+      // For debugging - can uncomment this to bypass the fetch call during testing
+      // toast.success('Debug mode: Bank connection would open here');
+      // setIsConnecting(false);
+      // return;
+      
+      try {
+        const response = await fetch('/api/gocardless/connect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            institutionId: bankId,
+            country: selectedCountry
+          }),
+        });
+
+        const data = await response.json();
         
-        // Show instructions to user about redirect
-        toast.success('Bank authorization page opened in a new tab. Please complete the authorization process and return to this page.')
+        if (!response.ok) {
+          console.error('Error response from API:', data);
+          throw new Error(data.error || 'Failed to initiate bank connection');
+        }
         
-        // Store requisition ID for later use (e.g. localStorage or context)
-        localStorage.setItem('gocardless_requisition_id', data.requisitionId)
+        console.log('Bank connection response:', data);
         
-        // Here, ideally we would have a polling mechanism to check when the user completes auth
-        // For now, we'll just close this dialog and let the user select accounts later
-        // In a production app, you'd want to handle this more gracefully
+        // Check if we have either link or redirectUrl
+        if (data.link || data.redirectUrl) {
+          const redirectUrl = data.link || data.redirectUrl;
+          toast.success('Bank authorization page opened in a new tab. Please complete the authorization process and return to this page.');
+          
+          // Store requisition ID for later use
+          if (data.requisitionId) {
+            localStorage.setItem('gocardless_requisition_id', data.requisitionId);
+          }
+          
+          // Open bank authentication page in new tab
+          window.open(redirectUrl, '_blank');
+        } else {
+          throw new Error('No redirect URL provided in the response');
+        }
+      } catch (fetchError: unknown) {
+        // Handle network errors specifically
+        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+          console.error('Network error:', fetchError);
+          throw new Error('Network error connecting to the server. Please check your internet connection and try again.');
+        }
+        
+        // Re-throw other errors
+        throw fetchError;
       }
     } catch (err) {
-      console.error('Error connecting to bank:', err)
-      setError(err instanceof Error ? err.message : 'Failed to connect to bank')
+      console.error('Error connecting to bank:', err);
+      setError(err instanceof Error ? err.message : 'Failed to connect to bank');
+      toast.error(err instanceof Error ? err.message : 'Failed to connect to bank');
+    } finally {
+      setIsConnecting(false);
     }
-  }
+  };
 
   // Render a message if GoCardless is not configured at system level
   if (isLoading) {
@@ -341,31 +370,51 @@ function GoCardlessConnectionForm({ onSuccess, onOpenChange }: { onSuccess?: () 
                 <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                {bankList.map(bank => (
-                  <div 
-                    key={bank.id}
-                    onClick={() => handleBankSelect(bank.id)}
-                    className="flex items-center p-3 border rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
-                  >
-                    <div className="w-8 h-8 mr-2 flex-shrink-0">
-                      {bank.logo ? (
-                        <img src={bank.logo} alt={bank.name} className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center rounded-full">
-                          <span className="text-xs">{bank.name.substring(0, 2)}</span>
+              <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                <ul className="divide-y divide-gray-100">
+                  {bankList.map(bank => (
+                    <li 
+                      key={bank.id}
+                      onClick={() => !isConnecting && handleBankSelect(bank.id)}
+                      className={`flex items-center p-3 hover:bg-accent hover:text-accent-foreground ${
+                        !isConnecting ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+                      } transition-colors ${
+                        selectedBank === bank.id ? 'bg-accent' : ''
+                      } ${
+                        bank.id === 'SANDBOXFINANCE_SFIN0000' ? 'bg-green-50 border-green-200' : ''
+                      }`}
+                    >
+                      {selectedBank === bank.id && isConnecting ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
                         </div>
-                      )}
+                      ) : null}
+                      <div className="w-8 h-8 mr-3 flex-shrink-0 flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                        {bank.logo ? (
+                          <img 
+                            src={bank.logo} 
+                            alt={bank.name} 
+                            className="w-full h-full object-contain" 
+                          />
+                        ) : (
+                          <span className="text-xs font-medium">{bank.name.substring(0, 2)}</span>
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{bank.name}</span>
+                        {bank.id === 'SANDBOXFINANCE_SFIN0000' && (
+                          <span className="text-xs text-green-600">Recommended for testing</span>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                  
+                  {bankList.length === 0 && (
+                    <div className="text-center py-4 text-muted-foreground">
+                      No banks available for the selected country.
                     </div>
-                    <span className="text-sm font-medium">{bank.name}</span>
-                  </div>
-                ))}
-                
-                {bankList.length === 0 && (
-                  <div className="col-span-2 text-center py-4 text-muted-foreground">
-                    No banks available for the selected country.
-                  </div>
-                )}
+                  )}
+                </ul>
               </div>
             )}
           </div>
@@ -392,7 +441,7 @@ export function CreateAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Create New Account</DialogTitle>
           <DialogDescription>

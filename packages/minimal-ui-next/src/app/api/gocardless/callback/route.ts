@@ -1,26 +1,21 @@
 import { NextResponse } from 'next/server';
 
-// In a real implementation, this would be stored securely in environment variables
+// GoCardless API credentials should be stored in environment variables
 const GOCARDLESS_API_URL = 'https://bankaccountdata.gocardless.com/api/v2';
 
-// Function to get an access token from GoCardless - same as in connect/route.ts
-// In production, this would be a shared utility function
+// Function to get an access token from GoCardless
 async function getAccessToken() {
   try {
-    // This would use real credentials in production
-    const secretId = process.env.GOCARDLESS_SECRET_ID || 'demo-secret-id';
-    const secretKey = process.env.GOCARDLESS_SECRET_KEY || 'demo-secret-key';
+    // Use actual credentials from environment variables
+    const secretId = process.env.GOCARDLESS_SECRET_ID;
+    const secretKey = process.env.GOCARDLESS_SECRET_KEY;
+    
+    if (!secretId || !secretKey) {
+      throw new Error('GoCardless credentials not configured. Please set GOCARDLESS_SECRET_ID and GOCARDLESS_SECRET_KEY environment variables.');
+    }
     
     console.log('Getting GoCardless access token...');
     
-    // For demo purposes, return a mock token
-    // In production, this would make a real API call to GoCardless
-    return {
-      access: 'demo-access-token-' + Math.random().toString(36).substring(2, 10),
-      access_expires: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
-    };
-    
-    /* In production, uncomment and use this code:
     const response = await fetch(`${GOCARDLESS_API_URL}/token/new/`, {
       method: 'POST',
       headers: {
@@ -39,7 +34,6 @@ async function getAccessToken() {
     }
     
     return await response.json();
-    */
   } catch (error) {
     console.error('Error getting access token:', error);
     throw error;
@@ -73,42 +67,6 @@ export async function POST(request: Request) {
       
       console.log('Successfully obtained access token');
       
-      // For demonstration, return mock account data
-      // In production, you would fetch real accounts using the token
-      return NextResponse.json({
-        success: true,
-        accounts: [
-          {
-            id: 'acc1',
-            name: 'Current Account',
-            balance: {
-              amount: 125000, // $1,250.00
-              currency: 'USD'
-            },
-            iban: 'GB29NWBK60161331926819'
-          },
-          {
-            id: 'acc2',
-            name: 'Savings Account',
-            balance: {
-              amount: 585000, // $5,850.00
-              currency: 'USD'
-            },
-            iban: 'GB29NWBK60161331926820'
-          },
-          {
-            id: 'acc3',
-            name: 'Credit Card',
-            balance: {
-              amount: -32500, // -$325.00
-              currency: 'USD'
-            },
-            accountNumber: '4111 **** **** 1234'
-          }
-        ]
-      });
-      
-      /* In production, uncomment and use this code:
       // First check requisition status
       const requisitionResponse = await fetch(`${GOCARDLESS_API_URL}/requisitions/${requisitionId}/`, {
         method: 'GET',
@@ -192,7 +150,6 @@ export async function POST(request: Request) {
         success: true,
         accounts
       });
-      */
     } catch (error) {
       console.error('Error in GoCardless accounts flow:', error);
       return NextResponse.json({ 

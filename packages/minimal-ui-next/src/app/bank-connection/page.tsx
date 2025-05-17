@@ -132,6 +132,8 @@ export default function BankConnection() {
     setIsConnecting(true);
     
     try {
+      console.log('Connecting to bank:', selectedBank, 'in country:', selectedCountry);
+      
       const response = await fetch('/api/gocardless/connect', {
         method: 'POST',
         headers: {
@@ -139,31 +141,36 @@ export default function BankConnection() {
         },
         body: JSON.stringify({
           country: selectedCountry,
-          bankId: selectedBank,
+          institutionId: selectedBank,
           accountId: accountId || undefined,
         }),
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const data = await response.json();
+        console.error('Error response from API:', data);
         throw new Error(data.error || 'Failed to connect to bank');
       }
       
-      const data = await response.json();
+      console.log('Bank connection response:', data);
       
       // Store the requisition ID in session storage for the callback to use
-      if (typeof window !== 'undefined' && data.requisitionId) {
-        window.sessionStorage.setItem('gocardless_requisition_id', data.requisitionId);
+      if (typeof window !== 'undefined') {
+        if (data.requisitionId) {
+          window.sessionStorage.setItem('gocardless_requisition_id', data.requisitionId);
+        }
         if (accountId) {
           window.sessionStorage.setItem('gocardless_account_id', accountId);
         }
       }
       
       // Redirect to the bank's authentication page
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
+      const redirectUrl = data.redirectUrl || data.link;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
       } else {
-        throw new Error('No redirect URL provided');
+        throw new Error('No redirect URL provided in the response');
       }
     } catch (error) {
       console.error('Error connecting to bank:', error);
@@ -262,31 +269,38 @@ export default function BankConnection() {
                     No banks found for this search. Please try a different term.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[300px] overflow-y-auto p-1">
-                    {filteredBanks.map((bank) => (
-                      <div
-                        key={bank.id}
-                        className={`flex items-center p-3 border rounded-md cursor-pointer hover:bg-accent transition-colors ${
-                          selectedBank === bank.id ? 'bg-accent border-primary' : ''
-                        }`}
-                        onClick={() => handleBankSelect(bank.id)}
-                      >
-                        <div className="flex-shrink-0 w-10 h-10 bg-muted rounded-md flex items-center justify-center mr-3">
-                          {bank.logo ? (
-                            <img
-                              src={bank.logo}
-                              alt={bank.name}
-                              className="w-8 h-8 object-contain"
-                            />
-                          ) : (
-                            <Building className="h-6 w-6 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{bank.name}</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="max-h-[400px] overflow-y-auto border rounded-md">
+                    <ul className="divide-y divide-gray-100">
+                      {filteredBanks.map((bank) => (
+                        <li
+                          key={bank.id}
+                          className={`flex items-center p-3 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors ${
+                            selectedBank === bank.id ? 'bg-accent' : ''
+                          } ${
+                            bank.id === 'SANDBOXFINANCE_SFIN0000' ? 'bg-green-50 border-green-200' : ''
+                          }`}
+                          onClick={() => handleBankSelect(bank.id)}
+                        >
+                          <div className="w-8 h-8 mr-3 flex-shrink-0 flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                            {bank.logo ? (
+                              <img
+                                src={bank.logo}
+                                alt={bank.name}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <span className="text-xs font-medium">{bank.name.substring(0, 2)}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{bank.name}</span>
+                            {bank.id === 'SANDBOXFINANCE_SFIN0000' && (
+                              <span className="text-xs text-green-600">Recommended for testing</span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

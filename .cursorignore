@@ -1,0 +1,20 @@
+# Ignore environment variables files with secrets
+**/.env
+**/.env.*
+**/.env.local
+**/packages/minimal-ui-next/.env*
+
+# Node modules
+**/node_modules/
+
+# Build directories
+**/.next/
+**/dist/
+**/build/
+**/out/
+
+# Other sensitive files
+**/.secret-tokens
+**/gocardless/config.json
+**/services/gocardless/config.json
+**/secrets/*.json 

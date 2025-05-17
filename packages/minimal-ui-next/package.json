@@ -5,9 +5,9 @@
   "description": "Minimal UI Next for Odzai",
   "scripts": {
     "start:api": "ts-node --transpile-only src/index.ts",
-    "dev": "next dev",
+    "dev": "NEXT_PUBLIC_API_URL=http://localhost:3001 next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "NEXT_PUBLIC_API_URL=http://localhost:3001 next start",
     "lint": "next lint",
     "start:all": "concurrently \"yarn start:api\" \"yarn dev\"",
     "setup:gocardless": "node setup-gocardless.js"

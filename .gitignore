@@ -12,6 +12,10 @@ export-2020-01-10.csv
 **/gocardless/config.json
 **/services/gocardless/config.json
 **/secrets/*.json
+# Environment variables with credentials
+**/.env.local
+**/packages/minimal-ui-next/.env*
+packages/minimal-ui-next/.env.local
 
 # MacOS
 .DS_Store
