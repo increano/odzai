@@ -30,6 +30,14 @@ const app = express();
 const wsApp = expressWs(app as unknown as expressWs.Application);
 const port = process.env.PORT || 3001;
 
+// Configure CORS to allow API requests
+app.use(cors({
+  origin: ['http://localhost:3000', process.env.NEXT_PUBLIC_FRONTEND_URL].filter(Boolean) as string[],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // Track budget loaded state
 let budgetLoaded = false;
 
@@ -548,6 +556,7 @@ app.get('/api/accounts', ensureBudgetLoaded, async (req: Request, res: Response)
   try {
     const accounts = await actualAPI.getAccounts();
     console.log('Accounts found:', accounts.length);
+    console.log('Raw account data sample:', accounts.length > 0 ? JSON.stringify(accounts[0], null, 2) : 'No accounts');
     
     // Enhance accounts with current balances
     const enhancedAccounts = await Promise.all(accounts.map(async (account) => {
@@ -556,21 +565,42 @@ app.get('/api/accounts', ensureBudgetLoaded, async (req: Request, res: Response)
         const transactions = await actualAPI.getTransactions(account.id, undefined, undefined);
         const balance = transactions.reduce((sum, trans) => sum + trans.amount, 0);
         
-        return {
+        const enhancedAccount = {
           ...account,
           calculated_balance: balance,
           // Add a budget_category field to show if it's on or off budget
           budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
         };
+        
+        // Handle missing required fields
+        if (!enhancedAccount.type) {
+          enhancedAccount.type = 'checking'; // Default type
+        }
+        
+        // Log if id is missing (which should not happen)
+        if (!enhancedAccount.id) {
+          console.error('Account missing ID:', enhancedAccount);
+        }
+        
+        return enhancedAccount;
       } catch (error) {
         console.error(`Error fetching transactions for account ${account.id}:`, error);
-        return {
+        const fallbackAccount = {
           ...account,
           calculated_balance: 0,
           budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
         };
+        
+        // Handle missing required fields
+        if (!fallbackAccount.type) {
+          fallbackAccount.type = 'checking'; // Default type
+        }
+        
+        return fallbackAccount;
       }
     }));
+    
+    console.log('Enhanced accounts count:', enhancedAccounts.length);
     
     res.json(enhancedAccounts);
   } catch (error) {
@@ -589,16 +619,33 @@ app.post('/api/accounts', ensureBudgetLoaded, async (req: Request, res: Response
       return res.status(400).json({ error: 'Account details are required' });
     }
     
+    console.log('Creating account:', JSON.stringify(account, null, 2));
+    console.log('Initial balance:', initialBalance);
+    
     // Convert offBudget boolean to the format expected by Actual API (0/1)
     if (account.offBudget !== undefined) {
       account.offbudget = account.offBudget ? true : false;
       delete account.offBudget; // Remove the original property
     }
     
+    // Ensure account has a type
+    if (!account.type) {
+      account.type = 'checking'; // Default type if not specified
+    }
+    
     // Create the account and get its ID
     const accountId = await actualAPI.createAccount(account, initialBalance);
+    console.log('Created account with ID:', accountId);
     
-    res.json({ success: true, id: accountId });
+    // Get the newly created account details
+    const accounts = await actualAPI.getAccounts();
+    const createdAccount = accounts.find(acc => acc.id === accountId);
+    
+    res.json({ 
+      success: true, 
+      id: accountId,
+      account: createdAccount || { id: accountId, ...account }
+    });
   } catch (error) {
     console.error('Failed to create account:', error);
     res.status(500).json({ 

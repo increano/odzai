@@ -43,13 +43,38 @@ export default function AccountsPage() {
   const fetchAccounts = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/accounts');
+      // Get the current workspace ID from localStorage
+      const workspaceId = typeof window !== 'undefined' 
+        ? localStorage.getItem('odzai-current-workspace')
+        : null;
+      
+      console.log('Fetching accounts for workspace:', workspaceId);
+      
+      // Include workspace ID in the request
+      const url = workspaceId 
+        ? `/api/accounts?workspaceId=${encodeURIComponent(workspaceId)}`
+        : '/api/accounts';
+      
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch accounts');
       }
       const data = await response.json();
       console.log('Fetched accounts:', data);
-      setAccounts(data);
+      console.log('Accounts array type:', Array.isArray(data) ? 'array' : typeof data);
+      console.log('Accounts length:', Array.isArray(data) ? data.length : 'not an array');
+      
+      // Ensure data is an array before setting state
+      if (Array.isArray(data)) {
+        setAccounts(data);
+      } else if (data && typeof data === 'object' && Array.isArray(data.accounts)) {
+        // Handle case where accounts are nested in an object
+        console.log('Found nested accounts array with length:', data.accounts.length);
+        setAccounts(data.accounts);
+      } else {
+        console.error('Unexpected response format:', data);
+        setAccounts([]);
+      }
     } catch (err) {
       console.error('Error fetching accounts:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');

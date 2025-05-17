@@ -53,106 +53,85 @@ async function getAccessToken() {
 export async function POST(request: Request) {
   try {
     // Parse request body to get accounts to link
-    const { accounts } = await request.json();
+    const body = await request.json();
     
-    if (!accounts || !Array.isArray(accounts) || accounts.length === 0) {
+    if (!body.accounts || !Array.isArray(body.accounts) || body.accounts.length === 0) {
       return NextResponse.json({ error: 'At least one account is required' }, { status: 400 });
     }
     
-    try {
-      // Get an access token for GoCardless - needed to verify the accounts
-      const tokenData = await getAccessToken();
-      
-      if (!tokenData.access) {
-        throw new Error('Failed to obtain access token');
-      }
-      
-      console.log('Successfully obtained access token for account linking');
-      
-      // For demonstration, simulate successful account linking
-      // In production, you would validate account IDs with GoCardless using the token
-      const linkedAccounts = accounts.map(account => ({
-        id: `actual-${account.id}`,
-        name: account.name,
-        type: account.name.toLowerCase().includes('credit') ? 'credit' : 'checking',
-        offBudget: false,
-        balance: account.balance.amount,
-        linkedBankAccount: {
-          id: account.id,
-          institution: 'GoCardless',
-          requisitionId: account.requisitionId
-        }
-      }));
-      
-      // Simulate a delay to make it feel more realistic
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return NextResponse.json({
-        success: true,
-        accounts: linkedAccounts,
-      });
-      
-      /* In production, uncomment and use this code:
-      // Process each account
-      const linkedAccounts = [];
-      
-      for (const account of accounts) {
-        // Validate this account exists in GoCardless using the token
-        const accountResponse = await fetch(`${GOCARDLESS_API_URL}/accounts/${account.id}/`, {
+    // Forward request to the Express backend
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    
+    const results = [];
+    const errors = [];
+    
+    // Process each account
+    for (const account of body.accounts) {
+      try {
+        // Create a new account in Actual using the Express backend
+        const response = await fetch(`${apiUrl}/api/accounts`, {
+          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${tokenData.access}`,
-            'Accept': 'application/json'
-          }
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            account: {
+              name: account.name,
+              // Use typical values for account properties
+              offbudget: false,
+              // Needed to make sure the account appears in the UI
+              type: account.name.toLowerCase().includes('credit') ? 'credit' : 'checking',
+              // Add important metadata
+              metadata: {
+                gocardless_account_id: account.id,
+                gocardless_requisition_id: account.requisitionId,
+                iban: account.iban,
+                accountNumber: account.accountNumber
+              }
+            },
+            // Convert balance to cents (integer)
+            initialBalance: account.balance.amount
+          }),
         });
         
-        if (!accountResponse.ok) {
-          console.error(`Failed to validate account ${account.id}`);
-          continue;
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Failed to create account: ${response.statusText}`);
         }
         
-        // If this is linking to an existing account
-        if (account.existingAccountId) {
-          // Update existing account with GoCardless connection info
-          // This would call your Actual Budget API
-          const updatedAccount = await updateActualAccount(account.existingAccountId, {
-            bankAccountId: account.id,
-            requisitionId: account.requisitionId,
-          });
-          
-          linkedAccounts.push(updatedAccount);
-        } else {
-          // Create a new account with GoCardless connection info
-          // This would call your Actual Budget API
-          const newAccount = await createActualAccount({
-            name: account.name,
-            // Figure out account type based on name or other attributes
-            type: account.name.toLowerCase().includes('credit') ? 'credit' : 'checking',
-            offbudget: false,
-            balance: account.balance.amount,
-            bankAccountId: account.id,
-            requisitionId: account.requisitionId,
-          });
-          
-          linkedAccounts.push(newAccount);
-        }
+        const data = await response.json();
+        results.push({
+          externalId: account.id,
+          actualId: data.id,
+          name: account.name,
+          success: true
+        });
+      } catch (err) {
+        console.error(`Error creating account ${account.name}:`, err);
+        errors.push({
+          name: account.name,
+          error: err instanceof Error ? err.message : 'Unknown error'
+        });
       }
-      
-      return NextResponse.json({
-        success: true,
-        accounts: linkedAccounts,
-      });
-      */
-    } catch (error) {
-      console.error('Error in account linking flow:', error);
+    }
+    
+    if (errors.length > 0 && results.length === 0) {
+      // All accounts failed
       return NextResponse.json({ 
-        error: error instanceof Error ? error.message : 'Failed to link accounts'
+        error: 'Failed to link accounts',
+        details: errors
       }, { status: 500 });
     }
+    
+    return NextResponse.json({
+      success: true,
+      accounts: results,
+      errors: errors.length > 0 ? errors : undefined
+    });
   } catch (error) {
     console.error('Error linking accounts:', error);
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Internal server error',
-      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      error: error instanceof Error ? error.message : 'Internal server error'
     }, { status: 500 });
   }
 } 

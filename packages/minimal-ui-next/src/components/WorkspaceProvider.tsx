@@ -48,6 +48,28 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // If the API is available and returns a valid response, use that data
       if (response.ok) {
         const workspaceData = await response.json()
+        
+        // Also load the budget on the Express server
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+          const loadResponse = await fetch(`${apiUrl}/api/budgets/load`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ budgetId: id }),
+          })
+          
+          if (!loadResponse.ok) {
+            console.error('Failed to load budget on Express server, but continuing with frontend data')
+          } else {
+            console.log('Budget loaded successfully on Express server')
+          }
+        } catch (expressError) {
+          console.error('Error loading budget on Express server:', expressError)
+          // Continue even if Express load fails
+        }
+        
         setCurrentWorkspace(workspaceData)
         setCurrentWorkspaceId(id)
         setIsWorkspaceLoaded(true)
@@ -62,6 +84,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const matchingWorkspace = budgets.find((budget: any) => budget.id === id)
         
         if (matchingWorkspace) {
+          // Load the budget on the Express server
+          try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+            await fetch(`${apiUrl}/api/budgets/load`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ budgetId: id }),
+            })
+          } catch (expressError) {
+            console.error('Error loading budget on Express server:', expressError)
+            // Continue even if Express load fails
+          }
+          
           // Use the workspace data from the list
           setCurrentWorkspace({
             id,
@@ -77,10 +114,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Fallback to a simple workspace object if we couldn't get the data from the API
       const workspaceData = {
         id,
-        name: id, // Just use the ID as the name instead of "Workspace [id]"
+        name: id, // Just use the ID as the name
         color: DEFAULT_WORKSPACE_COLOR
       }
-
+      
       setCurrentWorkspace(workspaceData)
       setCurrentWorkspaceId(id)
       setIsWorkspaceLoaded(true)

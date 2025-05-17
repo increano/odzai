@@ -158,7 +158,14 @@ export default function BankConnection() {
       // Store the requisition ID in session storage for the callback to use
       if (typeof window !== 'undefined') {
         if (data.requisitionId) {
+          console.log(`Storing requisition ID in session storage: ${data.requisitionId}`);
           window.sessionStorage.setItem('gocardless_requisition_id', data.requisitionId);
+          
+          // Also store the reference for correlation
+          if (data.reference) {
+            console.log(`Storing reference in session storage: ${data.reference}`);
+            window.sessionStorage.setItem('gocardless_reference', data.reference);
+          }
         }
         if (accountId) {
           window.sessionStorage.setItem('gocardless_account_id', accountId);

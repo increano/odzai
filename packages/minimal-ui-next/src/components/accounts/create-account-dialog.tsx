@@ -276,7 +276,14 @@ function GoCardlessConnectionForm({ onSuccess, onOpenChange }: { onSuccess?: () 
           
           // Store requisition ID for later use
           if (data.requisitionId) {
-            localStorage.setItem('gocardless_requisition_id', data.requisitionId);
+            console.log(`Storing requisition ID in session storage: ${data.requisitionId}`);
+            sessionStorage.setItem('gocardless_requisition_id', data.requisitionId);
+            
+            // Also store the reference for correlation
+            if (data.reference) {
+              console.log(`Storing reference in session storage: ${data.reference}`);
+              sessionStorage.setItem('gocardless_reference', data.reference);
+            }
           }
           
           // Open bank authentication page in new tab

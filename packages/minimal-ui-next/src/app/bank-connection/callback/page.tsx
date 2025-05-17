@@ -36,16 +36,62 @@ export default function BankConnectionCallback() {
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [isLinking, setIsLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requisitionId, setRequisitionId] = useState<string | null>(null);
 
-  // Get requisition ID from session storage or URL
-  const requisitionId = typeof window !== 'undefined' 
-    ? window.sessionStorage.getItem('gocardless_requisition_id') 
-    : null;
+  // Get reference parameter from URL
+  const reference = searchParams.get('ref');
   
   // Get account ID from session storage (if linking to existing account)
   const existingAccountId = typeof window !== 'undefined'
     ? window.sessionStorage.getItem('gocardless_account_id')
     : null;
+
+  // Retrieve the requisition ID either from session storage or from the server using the reference
+  useEffect(() => {
+    async function getRequisitionId() {
+      // First check session storage
+      if (typeof window !== 'undefined') {
+        const storedRequisitionId = window.sessionStorage.getItem('gocardless_requisition_id');
+        if (storedRequisitionId) {
+          console.log(`Using requisition ID from session storage: ${storedRequisitionId}`);
+          setRequisitionId(storedRequisitionId);
+          return;
+        }
+      }
+
+      // If we have a reference parameter but no requisition ID, try to get it from the server
+      if (reference) {
+        try {
+          console.log(`Looking up requisition ID for reference: ${reference}`);
+          
+          // Call our lookup endpoint to get the requisition ID from the reference
+          const response = await fetch(`/api/gocardless/lookup-requisition?reference=${reference}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.requisitionId) {
+              console.log(`Found requisition ID: ${data.requisitionId}`);
+              setRequisitionId(data.requisitionId);
+              // Also store it in session storage for future use
+              if (typeof window !== 'undefined') {
+                window.sessionStorage.setItem('gocardless_requisition_id', data.requisitionId);
+              }
+              return;
+            }
+          }
+          
+          // If we couldn't find a requisition ID, show an error
+          setError("Missing requisition information. Please start the process again.");
+        } catch (e) {
+          console.error("Error looking up requisition ID:", e);
+          setError("Error retrieving connection information. Please try again.");
+        }
+      } else {
+        setError("Missing connection reference. Please start the process again.");
+      }
+    }
+    
+    getRequisitionId();
+  }, [reference]);
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -126,6 +172,15 @@ export default function BankConnectionCallback() {
     setIsLinking(true);
     
     try {
+      console.log('Linking accounts:', selectedAccountIds.map(id => {
+        const account = accounts.find(acc => acc.id === id);
+        return {
+          id,
+          name: account?.name,
+          balance: account?.balance
+        };
+      }));
+      
       const response = await fetch('/api/accounts/link', {
         method: 'POST',
         headers: {
@@ -147,9 +202,12 @@ export default function BankConnectionCallback() {
         }),
       });
       
+      // Parse the response data first
+      const responseData = await response.json();
+      console.log('Account link response:', responseData);
+      
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to link accounts');
+        throw new Error(responseData.error || 'Failed to link accounts');
       }
       
       toast.success('Bank accounts linked successfully');

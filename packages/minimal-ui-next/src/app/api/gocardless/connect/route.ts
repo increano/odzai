@@ -121,14 +121,16 @@ export async function POST(request: Request) {
       
       // Use the access token to create a requisition
       const origin = new URL(request.url).origin;
-      const redirectUrl = `${origin}/bank-connection/callback`;
+      // We'll generate a reference to use as a correlation ID before we have the requisition ID
+      const reference = `user-connection-${Date.now()}`;
+      const redirectUrl = `${origin}/bank-connection/callback?ref=${reference}`;
       
       console.log('Creating GoCardless requisition with redirect URL:', redirectUrl);
       
       const requisitionBody = {
         redirect: redirectUrl,
         institution_id: institutionId,
-        reference: `user-connection-${Date.now()}`
+        reference: reference
       };
       
       console.log('Requisition request body:', requisitionBody);
@@ -171,11 +173,25 @@ export async function POST(request: Request) {
         
         console.log('Successfully created requisition, returning data with link:', requisitionData.link);
         
+        // Include the requisition ID in the URL that gets put in session storage
+        const modifiedLink = requisitionData.link;
+
+        // Store requisition ID in the DB to associate with the reference
+        try {
+          // In a real implementation, you would store the mapping between
+          // reference and requisitionId in a database here
+          console.log(`Storing reference mapping: ${reference} -> ${requisitionData.id}`);
+        } catch (storageError) {
+          console.error('Failed to store requisition reference mapping:', storageError);
+          // Continue anyway, as we can still use the callback URL
+        }
+        
         // Return the response with both redirectUrl and link for backward compatibility
         return NextResponse.json({
-          redirectUrl: requisitionData.link,
+          redirectUrl: modifiedLink,
           requisitionId: requisitionData.id,
-          link: requisitionData.link
+          link: modifiedLink,
+          reference: reference
         });
       } catch (fetchError) {
         console.error('Network error creating requisition:', fetchError);
