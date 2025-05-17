@@ -1,27 +1,13 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
-The minimal-ui application is accessible with this command: 
- ```bash
-cd packages/minimal-ui 
-```
+Description: The minimal-ui-next is a copy of the minimal-ui we should keep the same features and functionality but a Next.js frontend
 
-The minimal-ui ui is located here 
- ```bash
-cd packages/minimal-ui/src/
-```
-
-Use the following command to run the minimal-ui :
+When necessary use the following commands to run the minimal-ui-next project:
 ```bash
-cd packages/minimal-ui && ACTUAL_DATA_DIR=../../data yarn start
+cd packages/minimal-ui-next && ./start-services.sh
 ```
 
-The minimal-ui-next is a copy of the minimal-ui we should keep the same features and functionality but a Next.js frontend
-
-Use the following command to run the minimal-ui-next :
-```bash
-./start-services.sh
-```
 

@@ -18,9 +18,6 @@ export function MainNav() {
         <Button asChild variant={pathname === '/' ? 'default' : 'ghost'} className="h-9">
           <Link href="/">Home</Link>
         </Button>
-        <Button asChild variant={pathname === '/budgets' ? 'default' : 'ghost'} className="h-9">
-          <Link href="/budgets">Budgets</Link>
-        </Button>
         <Button asChild variant={pathname === '/accounts' ? 'default' : 'ghost'} className="h-9">
           <Link href="/accounts">Accounts</Link>
         </Button>

@@ -1057,9 +1057,6 @@ video {
      -moz-user-select: none;
           user-select: none;
 }
-.grid-cols-2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 .grid-cols-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -1824,8 +1821,8 @@ video {
   background-color: hsl(var(--primary) / 0.9);
 }
 
-.hover\:bg-red-100\/30:hover {
-  background-color: rgb(254 226 226 / 0.3);
+.hover\:bg-red-50\/30:hover {
+  background-color: rgb(254 242 242 / 0.3);
 }
 
 .hover\:bg-secondary\/80:hover {

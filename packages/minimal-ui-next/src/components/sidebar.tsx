@@ -19,7 +19,8 @@ import {
   Clock,
   Building2,
   ChevronDown,
-  Plus
+  Plus,
+  LogOut
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -95,6 +96,7 @@ type NavigationItem = {
   href?: string;
   icon: React.FC<{ className?: string }>;
   onClick?: () => void;
+  className?: string;
 }
 
 // Create a type for grouped navigation
@@ -265,12 +267,21 @@ export function Sidebar({ className }: SidebarProps) {
     }
   }
 
-  // Function to handle workspace unloading
-  const handleUnloadWorkspace = () => {
+  // Handle user logout
+  const handleLogout = () => {
+    // Clear the current workspace from localStorage
     if (typeof window !== 'undefined') {
       localStorage.removeItem('odzai-current-workspace')
-      // Open settings modal instead of redirecting
-      openWorkspaceSettings()
+      
+      // You would typically clear auth tokens here too
+      // localStorage.removeItem('auth-token')
+      
+      // Show toast notification
+      toast.success('Logged out successfully')
+      
+      // Redirect to login page or home page
+      // For now, just reload the page which will show the workspace selection
+      window.location.href = '/'
     }
   }
 
@@ -286,7 +297,6 @@ export function Sidebar({ className }: SidebarProps) {
     {
       title: 'MANAGEMENT',
       items: [
-        { name: 'Workspaces', href: '/budgets', icon: Wallet },
         { name: 'Accounts', href: '/accounts', icon: CreditCard },
         { name: 'Transactions', href: '/transactions', icon: Receipt },
         { name: 'Budget', href: '/budget', icon: LayoutDashboard },
@@ -301,41 +311,6 @@ export function Sidebar({ className }: SidebarProps) {
     },
   ]
 
-  // Test section shown between planning and settings
-  const TestSection = ({ collapsed }: { collapsed: boolean }) => (
-    <div className="mb-6">
-      {!collapsed && (
-        <div className="mb-2 px-3">
-          <h3 className="text-xs font-semibold text-muted-foreground tracking-wider">
-            TEST
-          </h3>
-        </div>
-      )}
-      <div className="grid gap-1">
-        <button
-          onClick={handleUnloadWorkspace}
-          disabled={!isWorkspaceLoaded}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
-            isWorkspaceLoaded ? "text-red-500 hover:bg-red-100/30" : "text-muted-foreground opacity-50"
-          )}
-          title={collapsed ? "Unload Workspace (Test)" : undefined}
-        >
-          <Wallet className={cn(
-            "h-5 w-5 transition-all duration-300 ease-in-out",
-            collapsed ? "mr-0" : "mr-0"
-          )} />
-          <span className={cn(
-            "transition-all duration-300 ease-in-out whitespace-nowrap",
-            collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"
-          )}>
-            Unload Workspace
-          </span>
-        </button>
-      </div>
-    </div>
-  )
-
   // Settings navigation items (kept separate for the footer)
   const settingsNavigation = [
     { 
@@ -348,6 +323,12 @@ export function Sidebar({ className }: SidebarProps) {
       href: '/help', 
       icon: HelpCircle 
     },
+    {
+      name: 'Logout',
+      icon: LogOut,
+      onClick: handleLogout,
+      className: "text-red-500 hover:bg-red-50/30"
+    }
   ]
 
   // Component for rendering a navigation group in desktop sidebar
@@ -370,7 +351,8 @@ export function Sidebar({ className }: SidebarProps) {
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 pathname === item.href
                   ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50"
+                  : "hover:bg-accent/50",
+                item.className
               )}
               title={collapsed ? item.name : undefined}
             >
@@ -391,7 +373,8 @@ export function Sidebar({ className }: SidebarProps) {
               onClick={item.onClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
-                "hover:bg-accent/50"
+                "hover:bg-accent/50",
+                item.className
               )}
               title={collapsed ? item.name : undefined}
             >
@@ -430,7 +413,8 @@ export function Sidebar({ className }: SidebarProps) {
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 pathname === item.href
                   ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50"
+                  : "hover:bg-accent/50",
+                item.className
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -442,7 +426,8 @@ export function Sidebar({ className }: SidebarProps) {
               onClick={item.onClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
-                "hover:bg-accent/50"
+                "hover:bg-accent/50",
+                item.className
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -697,7 +682,8 @@ export function Sidebar({ className }: SidebarProps) {
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                         pathname === item.href
                           ? "bg-accent text-accent-foreground"
-                          : "hover:bg-accent/50"
+                          : "hover:bg-accent/50",
+                        item.className
                       )}
                     >
                       <item.icon className="h-5 w-5" />
@@ -709,7 +695,8 @@ export function Sidebar({ className }: SidebarProps) {
                       onClick={item.onClick}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
-                        "hover:bg-accent/50"
+                        "hover:bg-accent/50",
+                        item.className
                       )}
                     >
                       <item.icon className="h-5 w-5" />
@@ -769,7 +756,6 @@ export function Sidebar({ className }: SidebarProps) {
           {navigationGroups.map((group) => (
             <NavGroup key={group.title} group={group} collapsed={collapsed} />
           ))}
-          <TestSection collapsed={collapsed} />
         </div>
         <div className="mt-auto border-t p-4">
           {!collapsed && (
@@ -789,7 +775,8 @@ export function Sidebar({ className }: SidebarProps) {
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                     pathname === item.href
                       ? "bg-accent text-accent-foreground"
-                      : "hover:bg-accent/50"
+                      : "hover:bg-accent/50",
+                    item.className
                   )}
                   title={collapsed ? item.name : undefined}
                 >
@@ -807,7 +794,8 @@ export function Sidebar({ className }: SidebarProps) {
                   onClick={item.onClick}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-left",
-                    "hover:bg-accent/50"
+                    "hover:bg-accent/50",
+                    item.className
                   )}
                   title={collapsed ? item.name : undefined}
                 >

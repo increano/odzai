@@ -56,7 +56,6 @@ interface SettingsModalProps {
 interface Workspace {
   id: string;
   name: string;
-  size?: number;
   created?: string;
   status?: 'active' | 'inactive';
 }
@@ -164,9 +163,6 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       
       // Transform the data to match our Workspace interface
       const formattedWorkspaces = data.map((workspace: any) => {
-        // Calculate a random size in MB (1-10 MB range)
-        const randomSize = (Math.random() * 9 + 1).toFixed(1);
-        
         // Generate a random date within the last 6 months
         const now = new Date();
         const sixMonthsAgo = new Date();
@@ -187,7 +183,6 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
         return {
           id: workspace.id,
           name: workspace.name,
-          size: parseFloat(randomSize),
           created: formattedDate,
           status: isActive ? 'active' : 'inactive'
         };
@@ -292,14 +287,14 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     setIsCreatingWorkspace(true);
     
     try {
-      // Create a new workspace via API
-      const response = await fetch('/api/budgets', {
+      // Create a new workspace via API - using the same endpoint as in budgets/client.tsx
+      const response = await fetch('/api/budgets/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: newWorkspaceName.trim(),
+          budgetName: newWorkspaceName.trim(),
         }),
       });
       
@@ -319,8 +314,12 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       toast.success(`Workspace "${newWorkspaceName.trim()}" created successfully`);
       
       // Optionally switch to the new workspace
-      if (data.id) {
-        loadWorkspace(data.id);
+      if (data.budgets && data.budgets.length > 0) {
+        // Find the newly created budget (it should be the one with matching name)
+        const newBudget = data.budgets.find((budget: any) => budget.name === newWorkspaceName.trim());
+        if (newBudget && newBudget.id) {
+          loadWorkspace(newBudget.id);
+        }
       }
     } catch (error) {
       console.error('Error creating workspace:', error);
@@ -538,7 +537,6 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                           <thead className="bg-muted/50 border-b">
                             <tr>
                               <th className="text-left p-3 font-medium">Workspace</th>
-                              <th className="text-left p-3 font-medium">Size (MB)</th>
                               <th className="text-left p-3 font-medium">Created</th>
                               <th className="text-left p-3 font-medium">Status</th>
                               <th className="text-right p-3 font-medium"></th>
@@ -547,7 +545,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                           <tbody>
                             {isLoadingWorkspaces ? (
                               <tr>
-                                <td colSpan={5} className="p-6 text-center">
+                                <td colSpan={4} className="p-6 text-center">
                                   <div className="flex justify-center items-center space-x-2">
                                     <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-primary animate-spin"></div>
                                     <span className="text-muted-foreground">Loading workspaces...</span>
@@ -556,13 +554,13 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                               </tr>
                             ) : workspacesError ? (
                               <tr>
-                                <td colSpan={5} className="p-6 text-center text-destructive">
+                                <td colSpan={4} className="p-6 text-center text-destructive">
                                   {workspacesError}
                                 </td>
                               </tr>
                             ) : workspaces.length === 0 ? (
                               <tr>
-                                <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                                <td colSpan={4} className="p-6 text-center text-muted-foreground">
                                   No workspaces found. Create your first workspace to get started.
                                 </td>
                               </tr>
@@ -572,16 +570,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                   <td className="p-3">
                                     <div className="flex items-center">
                                       <span>{workspace.name}</span>
-                                      <Button variant="ghost" size="sm" className="p-1 h-auto ml-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                                          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
-                                        </svg>
-                                      </Button>
                                     </div>
-                                  </td>
-                                  <td className="p-3">
-                                    <span>{workspace.size}</span>
                                   </td>
                                   <td className="p-3">
                                     <span>{workspace.created}</span>
@@ -1950,12 +1939,19 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                 value={newWorkspaceName}
                 onChange={(e) => setNewWorkspaceName(e.target.value)}
                 disabled={isCreatingWorkspace}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isCreatingWorkspace && newWorkspaceName.trim()) {
+                    e.preventDefault();
+                    handleCreateWorkspace();
+                  }
+                }}
               />
             </div>
           </div>
           
           <DialogFooter>
             <Button 
+              type="button"
               variant="outline" 
               onClick={() => setCreateWorkspaceModalOpen(false)}
               disabled={isCreatingWorkspace}
@@ -1963,6 +1959,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
               Cancel
             </Button>
             <Button 
+              type="button"
               onClick={handleCreateWorkspace}
               disabled={isCreatingWorkspace || !newWorkspaceName.trim()}
             >
