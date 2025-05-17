@@ -58,6 +58,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ budgetId: id }),
+            credentials: 'include'
           })
           
           if (!loadResponse.ok) {
@@ -93,6 +94,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ budgetId: id }),
+              credentials: 'include'
             })
           } catch (expressError) {
             console.error('Error loading budget on Express server:', expressError)

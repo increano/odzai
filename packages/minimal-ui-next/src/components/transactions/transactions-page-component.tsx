@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CreateTransactionDialog } from '@/components/transactions/create-transaction-dialog'
 import { WorkspaceRequired } from '@/components/workspace-required'
 import Link from 'next/link'
+import { useWorkspace } from '@/components/WorkspaceProvider'
 
 // Interface for transactions
 interface Transaction {
@@ -46,6 +47,7 @@ export interface TransactionsPageComponentProps {
 export function TransactionsPageComponent({ defaultAccountId }: TransactionsPageComponentProps) {
   const searchParams = useSearchParams();
   const accountIdFromQuery = searchParams.get('accountId');
+  const { currentWorkspaceId } = useWorkspace();
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -58,7 +60,15 @@ export function TransactionsPageComponent({ defaultAccountId }: TransactionsPage
   useEffect(() => {
     async function fetchAccounts() {
       try {
-        const response = await fetch('/api/accounts');
+        // Include the workspaceId in the request
+        const url = currentWorkspaceId 
+          ? `/api/accounts?workspaceId=${currentWorkspaceId}`
+          : '/api/accounts';
+          
+        const response = await fetch(url, {
+          credentials: 'include' // Include cookies for session persistence
+        });
+        
         if (!response.ok) {
           throw new Error('Failed to fetch accounts');
         }
@@ -71,7 +81,7 @@ export function TransactionsPageComponent({ defaultAccountId }: TransactionsPage
     }
     
     fetchAccounts();
-  }, []);
+  }, [currentWorkspaceId]);
   
   // Fetch transactions when account is selected
   useEffect(() => {
@@ -80,17 +90,25 @@ export function TransactionsPageComponent({ defaultAccountId }: TransactionsPage
       setError(null);
       
       try {
-        let response;
+        let url;
         
         if (selectedAccountId && selectedAccountId !== 'all') {
           // Fetch transactions for specific account
           console.log(`Fetching transactions for account ${selectedAccountId}`);
-          response = await fetch(`/api/transactions/${selectedAccountId}`);
+          url = currentWorkspaceId 
+            ? `/api/transactions/${selectedAccountId}?workspaceId=${currentWorkspaceId}`
+            : `/api/transactions/${selectedAccountId}`;
         } else {
           // Fetch all transactions
           console.log('Fetching transactions for all accounts');
-          response = await fetch('/api/transactions/all');
+          url = currentWorkspaceId 
+            ? `/api/transactions/all?workspaceId=${currentWorkspaceId}`
+            : '/api/transactions/all';
         }
+        
+        const response = await fetch(url, {
+          credentials: 'include' // Include cookies for session persistence
+        });
         
         if (!response.ok) {
           throw new Error('Failed to fetch transactions');
@@ -110,7 +128,7 @@ export function TransactionsPageComponent({ defaultAccountId }: TransactionsPage
     }
     
     fetchTransactions();
-  }, [selectedAccountId]);
+  }, [selectedAccountId, currentWorkspaceId]);
   
   // Handle account selection change
   const handleAccountChange = (accountId: string) => {
@@ -240,13 +258,21 @@ export function TransactionsPageComponent({ defaultAccountId }: TransactionsPage
             const fetchTransactions = async () => {
               try {
                 setIsLoading(true);
-                let response;
+                let url;
                 
                 if (selectedAccountId && selectedAccountId !== 'all') {
-                  response = await fetch(`/api/transactions/${selectedAccountId}`);
+                  url = currentWorkspaceId 
+                    ? `/api/transactions/${selectedAccountId}?workspaceId=${currentWorkspaceId}`
+                    : `/api/transactions/${selectedAccountId}`;
                 } else {
-                  response = await fetch('/api/transactions/all');
+                  url = currentWorkspaceId 
+                    ? `/api/transactions/all?workspaceId=${currentWorkspaceId}`
+                    : '/api/transactions/all';
                 }
+                
+                const response = await fetch(url, {
+                  credentials: 'include'
+                });
                 
                 if (response.ok) {
                   const data = await response.json();

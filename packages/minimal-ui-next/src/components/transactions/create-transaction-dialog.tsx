@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { format } from 'date-fns'
+import { useWorkspace } from '@/components/WorkspaceProvider'
 
 interface Account {
   id: string;
@@ -53,6 +54,9 @@ export function CreateTransactionDialog({
   const [categoryId, setCategoryId] = useState<string>('');
   const [accountId, setAccountId] = useState<string>(defaultAccountId || '');
   
+  // Get current workspace ID
+  const { currentWorkspaceId } = useWorkspace();
+  
   // Data state
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -84,7 +88,15 @@ export function CreateTransactionDialog({
   const fetchAccounts = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/accounts');
+      // Include workspaceId in the request
+      const url = currentWorkspaceId 
+        ? `/api/accounts?workspaceId=${currentWorkspaceId}`
+        : '/api/accounts';
+        
+      const response = await fetch(url, {
+        credentials: 'include'
+      });
+      
       if (!response.ok) {
         throw new Error('Failed to fetch accounts');
       }
@@ -102,7 +114,10 @@ export function CreateTransactionDialog({
   const fetchCategories = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/categories');
+      // Include workspaceId in the request if we create an endpoint for categories
+      const response = await fetch('/api/categories', {
+        credentials: 'include'
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch categories');
       }
@@ -164,8 +179,12 @@ export function CreateTransactionDialog({
         category: categoryId || null
       };
       
-      // Send to API
-      const response = await fetch('/api/transactions', {
+      // Send to API with workspace ID
+      const url = currentWorkspaceId 
+        ? `/api/transactions?workspaceId=${currentWorkspaceId}`
+        : '/api/transactions';
+        
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,6 +193,7 @@ export function CreateTransactionDialog({
           accountId,
           transaction
         }),
+        credentials: 'include'
       });
       
       if (!response.ok) {
