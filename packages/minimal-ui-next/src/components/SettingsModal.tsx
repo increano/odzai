@@ -133,6 +133,12 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   // Track default workspace ID locally for immediate UI updates
   const [defaultWorkspaceId, setDefaultWorkspaceId] = useState<string | null>(null);
   
+  // Add loading state for Set as Default button
+  const [setDefaultLoading, setSetDefaultLoading] = useState(false);
+  
+  // Add loading state for Remove Default button
+  const [removeDefaultLoading, setRemoveDefaultLoading] = useState(false);
+  
   // Add user profile state
   const [username, setUsername] = useState("fmuhirwa");
   const [profilePicture, setProfilePicture] = useState("/placeholder-avatar.png");
@@ -563,10 +569,15 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     );
     
     if (!workspaceToDeleteObj) {
-      toast.error(`Workspace "${workspaceToDelete}" not found`);
+      // First close UI state
       setDeleteWorkspaceModalOpen(false);
       setWorkspaceToDelete("");
       setConfirmWorkspaceName("");
+      
+      // Then show toast notification after animation
+      setTimeout(() => {
+        toast.error(`Workspace "${workspaceToDelete}" not found`);
+      }, 300);
       return;
     }
     
@@ -580,32 +591,59 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
         throw new Error('Failed to delete workspace');
       }
       
-      // Show success message
-      toast.success(`Workspace "${workspaceToDelete}" deleted successfully`);
+      // First handle UI state transitions
+      const deletedWorkspaceName = workspaceToDelete;
+      const isCurrentWorkspace = workspaceToDeleteObj.id === currentWorkspaceId;
       
-      // If the deleted workspace was the current one, clear the current workspace
-      if (workspaceToDeleteObj.id === currentWorkspaceId) {
-        // Remove from optimized storage
-        storage.remove('odzai-current-workspace');
-        
-        // Use router.push with a Promise to handle navigation properly
-        Promise.resolve().then(() => {
-          router.push('/');
-        }).catch(error => {
-          console.error('Error navigating:', error);
-        });
-      } else {
-        // Just refresh the workspaces list
-        fetchWorkspaces();
-      }
-    } catch (error) {
-      console.error('Error deleting workspace:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to delete workspace');
-    } finally {
-      // Close the modal and reset the state
+      // Close the modal first
       setDeleteWorkspaceModalOpen(false);
       setWorkspaceToDelete("");
       setConfirmWorkspaceName("");
+      
+      // Show success message after modal animation completes
+      setTimeout(() => {
+        toast.success(`Workspace "${deletedWorkspaceName}" deleted successfully`);
+      }, 300);
+      
+      // If the deleted workspace was the current one, clear the current workspace
+      if (isCurrentWorkspace) {
+        // Remove from optimized storage
+        storage.remove('odzai-current-workspace');
+        
+        // Wait for modal to close before navigation
+        setTimeout(() => {
+          // Use proper navigation after modal close
+          navigateAfterModalClose(
+            router,
+            NavigationType.PUSH,
+            '/',
+            {
+              suppressToast: true,
+              delay: 100
+            }
+          ).catch(error => {
+            console.error('Error navigating after workspace deletion:', error);
+          });
+        }, 300);
+      } else {
+        // Wait for modal to close before refreshing data
+        setTimeout(() => {
+          // Just refresh the workspaces list
+          fetchWorkspaces();
+        }, 300);
+      }
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+      
+      // First close UI state
+      setDeleteWorkspaceModalOpen(false);
+      setWorkspaceToDelete("");
+      setConfirmWorkspaceName("");
+      
+      // Then show error toast after animation
+      setTimeout(() => {
+        toast.error(error instanceof Error ? error.message : 'Failed to delete workspace');
+      }, 300);
     }
   };
   
@@ -681,11 +719,17 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   // Handle creating a new workspace
   const handleCreateWorkspace = async () => {
     if (!newWorkspaceName.trim()) {
-      toast.error('Please enter a workspace name');
+      // Delay error toast to prevent UI conflicts
+      setTimeout(() => {
+        toast.error('Please enter a workspace name');
+      }, 50);
       return;
     }
     
     setIsCreatingWorkspace(true);
+    
+    // Check if this is the first workspace ever
+    const isFirstWorkspace = workspaces.length === 0;
     
     try {
       const response = await fetch('/api/budgets', {
@@ -704,46 +748,66 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       
       const data = await response.json();
       
-      // Close the modal and clear the form
+      // First update UI state - handle modal closing
       setCreateWorkspaceModalOpen(false);
       setNewWorkspaceName('');
       
-      // Show success message
-      toast.success('Workspace created successfully');
+      // Delay success message until after animations
+      setTimeout(() => {
+        toast.success('Workspace created successfully');
+      }, 300);
       
-      // Refresh the list of workspaces
-      fetchWorkspaces();
-      
-      // Optionally, switch to the new workspace
-      if (data && data.id) {
-        // Close the main settings modal
-        onOpenChange(false);
+      // Delay data operations
+      setTimeout(() => {
+        // Refresh the list of workspaces
+        fetchWorkspaces();
         
-        // Store the new workspace ID using optimized storage
-        storage.set('odzai-current-workspace', data.id);
-        
-        // Wait for modals to close before navigating
-        setTimeout(() => {
-          // Load the workspace and then navigate
-          Promise.resolve()
-            .then(() => {
-              // First load the workspace
-              loadWorkspace(data.id);
-              
-              // Wait a bit for loading to start before showing success
-              setTimeout(() => {
-                toast.success(`Switched to new workspace: ${newWorkspaceName}`);
-              }, 500);
-            })
-            .catch(error => {
-              console.error('Error during workspace switch:', error);
+        // ONLY auto-switch if this is the first workspace ever
+        if (isFirstWorkspace && data && data.id) {
+          // Close the main settings modal
+          onOpenChange(false);
+          
+          // Store the new workspace ID using optimized storage
+          storage.set('odzai-current-workspace', data.id);
+          
+          // Use proper sequencing for navigation after modal close
+          navigateAfterModalClose(
+            router,
+            NavigationType.REFRESH,
+            undefined,
+            {
+              suppressToast: true,
+              callback: async () => {
+                try {
+                  // Load the workspace
+                  await loadWorkspace(data.id);
+                  
+                  // Show success toast after all operations are complete
+                  setTimeout(() => {
+                    toast.success(`Switched to new workspace: ${newWorkspaceName}`);
+                  }, 300);
+                } catch (error) {
+                  console.error('Error during workspace switch:', error);
+                  setTimeout(() => {
+                    toast.error('Error switching to new workspace');
+                  }, 300);
+                }
+              }
+            }
+          ).catch(error => {
+            console.error('Error during workspace switch navigation:', error);
+            setTimeout(() => {
               toast.error('Error switching to new workspace');
-            });
-        }, 500);
-      }
+            }, 300);
+          });
+        }
+      }, 300); // Wait for modal closing animation
     } catch (error) {
       console.error('Error creating workspace:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create workspace');
+      // Delay error toast notification
+      setTimeout(() => {
+        toast.error(error instanceof Error ? error.message : 'Failed to create workspace');
+      }, 300);
     } finally {
       setIsCreatingWorkspace(false);
     }
@@ -754,7 +818,10 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     e.preventDefault();
     
     if (!goCardlessSecretId || !goCardlessSecretKey) {
-      toast.error('Secret ID and Secret Key are required');
+      // Delay toast to prevent UI conflicts
+      setTimeout(() => {
+        toast.error('Secret ID and Secret Key are required');
+      }, 50);
       return;
     }
     
@@ -778,16 +845,26 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
         throw new Error(data.error || 'Failed to configure GoCardless');
       }
       
-      toast.success('GoCardless configured successfully');
+      // First update UI state
       setIsConfiguredGoCardless(true);
       setGoCardlessConfigOpen(false);
       
       if (data.stats) {
         setGoCardlessStats(data.stats);
       }
+      
+      // Delay success toast after animation
+      setTimeout(() => {
+        toast.success('GoCardless configured successfully');
+      }, 300);
+      
     } catch (error) {
       console.error('Error configuring GoCardless:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to configure GoCardless');
+      
+      // Delay error toast after animation
+      setTimeout(() => {
+        toast.error(error instanceof Error ? error.message : 'Failed to configure GoCardless');
+      }, 300);
     } finally {
       setIsSubmittingGoCardless(false);
     }
@@ -833,9 +910,12 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
 
   // Add this function to handle syncing accounts
   const handleSyncAccounts = async () => {
-    toast.info("Syncing your connected accounts...", {
-      duration: 2000,
-    });
+    // Delay info toast to prevent UI conflicts
+    setTimeout(() => {
+      toast.info("Syncing your connected accounts...", {
+        duration: 2000,
+      });
+    }, 50);
     
     try {
       const response = await fetch('/api/gocardless/sync', {
@@ -852,14 +932,22 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       
       const data = await response.json();
       
-      if (data.success) {
-        toast.success(`Synced ${data.updatedAccounts || 0} account(s) successfully`);
-      } else {
-        toast.error('No accounts were updated during sync');
-      }
+      // Delay success/info toast after potential UI transitions
+      setTimeout(() => {
+        if (data.success) {
+          toast.success(`Synced ${data.updatedAccounts || 0} account(s) successfully`);
+        } else {
+          toast.error('No accounts were updated during sync');
+        }
+      }, 300);
+      
     } catch (error) {
       console.error('Error syncing accounts:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to sync accounts');
+      
+      // Delay error toast after potential UI transitions
+      setTimeout(() => {
+        toast.error(error instanceof Error ? error.message : 'Failed to sync accounts');
+      }, 300);
     }
   };
 
@@ -1324,89 +1412,150 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    disabled={isClosing}
-                                    onClick={async () => {
-                                      // Show loading state in the button
-                                      const buttonEl = document.activeElement as HTMLButtonElement;
-                                      if (buttonEl) {
-                                        buttonEl.disabled = true;
-                                        buttonEl.innerHTML = '<svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Removing...';
-                                      }
+                                    disabled={isClosing || removeDefaultLoading}
+                                    onClick={() => {
+                                      // Use React state for loading instead of direct DOM manipulation
+                                      setRemoveDefaultLoading(true);
                                       
-                                      try {
-                                        // Use async/await for cleaner error handling
-                                        const success = await clearDefaultWorkspace();
-                                        if (success) {
-                                          toast.success('Default workspace removed');
-                                          
-                                          // Update local state immediately for responsive UI
-                                          setDefaultWorkspaceId(null);
-                                          
-                                          // Refresh data without closing modal
-                                          fetchWorkspaces();
-                                        }
-                                      } catch (error) {
-                                        console.error('Error clearing default workspace:', error);
-                                        toast.error('Failed to clear default workspace');
-                                      } finally {
-                                        // Re-enable button with original text
-                                        if (buttonEl) {
-                                          setTimeout(() => {
-                                            buttonEl.disabled = false;
-                                            buttonEl.innerHTML = '<svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Remove Default';
-                                          }, 300);
-                                        }
-                                      }
+                                      // Optimistic UI update
+                                      setDefaultWorkspaceId(null);
+                                      
+                                      // Delay API operation to separate UI updates
+                                      setTimeout(() => {
+                                        // Call the API function to clear default workspace
+                                        clearDefaultWorkspace()
+                                          .then((success) => {
+                                            if (success) {
+                                              // Delay toast to avoid UI conflicts
+                                              setTimeout(() => {
+                                                toast.success('Default workspace removed');
+                                              }, 300);
+                                              
+                                              // Refresh data with small delay
+                                              setTimeout(() => {
+                                                fetchWorkspaces();
+                                              }, 400);
+                                            } else {
+                                              // Revert optimistic update if failed
+                                              setDefaultWorkspaceId(selectedWorkspaceId);
+                                              
+                                              // Delay error toast
+                                              setTimeout(() => {
+                                                toast.error('Failed to clear default workspace');
+                                              }, 300);
+                                            }
+                                          })
+                                          .catch((error) => {
+                                            console.error('Error clearing default workspace:', error);
+                                            
+                                            // Revert optimistic update
+                                            setDefaultWorkspaceId(selectedWorkspaceId);
+                                            
+                                            // Delay error toast
+                                            setTimeout(() => {
+                                              toast.error('Failed to clear default workspace');
+                                            }, 300);
+                                          })
+                                          .finally(() => {
+                                            // Reset loading state with proper timing
+                                            setTimeout(() => {
+                                              setRemoveDefaultLoading(false);
+                                            }, 300);
+                                          });
+                                      }, 50);
                                     }}
                                     className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
                                   >
-                                    <X className="h-4 w-4 mr-1" />
-                                    Remove Default
+                                    {removeDefaultLoading ? (
+                                      <>
+                                        <span className="animate-spin h-4 w-4 mr-1 rounded-full border-2 border-t-transparent border-current" />
+                                        Removing...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <X className="h-4 w-4 mr-1" />
+                                        Remove Default
+                                      </>
+                                    )}
                                   </Button>
                                 ) : (
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    disabled={isLoadingWorkspaces || workspaces.length === 0 || !selectedWorkspaceId || isClosing}
-                                    onClick={async () => {
+                                    disabled={isLoadingWorkspaces || workspaces.length === 0 || !selectedWorkspaceId || isClosing || setDefaultLoading}
+                                    onClick={() => {
                                       if (selectedWorkspaceId) {
-                                        // Show loading state in the button
-                                        const buttonEl = document.activeElement as HTMLButtonElement;
-                                        if (buttonEl) {
-                                          buttonEl.disabled = true;
-                                          buttonEl.innerHTML = '<svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Setting...';
-                                        }
+                                        // Use React state instead of direct DOM manipulation
+                                        setSetDefaultLoading(true);
                                         
-                                        try {
-                                          // Use async/await for cleaner error handling
-                                          const success = await setAsDefaultWorkspace(selectedWorkspaceId);
-                                          if (success) {
-                                            toast.success('Default workspace set');
-                                            
-                                            // Update UI immediately
-                                            setDefaultWorkspaceId(selectedWorkspaceId);
-                                            
-                                            // Refresh data without closing modal 
-                                            fetchWorkspaces();
-                                          }
-                                        } catch (error) {
-                                          console.error('Error setting default workspace:', error);
-                                          toast.error('Failed to set default workspace');
-                                        } finally {
-                                          // Re-enable button with original text
-                                          if (buttonEl) {
-                                            setTimeout(() => {
-                                              buttonEl.disabled = false;
-                                              buttonEl.innerHTML = '<svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Set as Default';
-                                            }, 300);
-                                          }
-                                        }
+                                        // Optimistic UI update for immediate feedback
+                                        setDefaultWorkspaceId(selectedWorkspaceId);
+                                        
+                                        // Create a stable reference for the workspace ID
+                                        const workspaceIdToSet = selectedWorkspaceId;
+                                        
+                                        // Delay the actual API operation to separate UI updates
+                                        setTimeout(() => {
+                                          // Call the API function to set default workspace
+                                          setAsDefaultWorkspace(workspaceIdToSet)
+                                            .then((success) => {
+                                              if (success) {
+                                                // Delay toast notification to avoid UI conflicts
+                                                setTimeout(() => {
+                                                  toast.success('Default workspace set');
+                                                }, 300);
+                                                
+                                                // Refresh data with small delay for UI responsiveness
+                                                setTimeout(() => {
+                                                  fetchWorkspaces();
+                                                }, 400);
+                                              } else {
+                                                // Revert optimistic update if operation failed
+                                                setDefaultWorkspaceId(prev => 
+                                                  prev === workspaceIdToSet ? null : prev
+                                                );
+                                                
+                                                // Delay error toast
+                                                setTimeout(() => {
+                                                  toast.error('Failed to set default workspace');
+                                                }, 300);
+                                              }
+                                            })
+                                            .catch((error) => {
+                                              console.error('Error setting default workspace:', error);
+                                              
+                                              // Revert optimistic update
+                                              setDefaultWorkspaceId(prev => 
+                                                prev === workspaceIdToSet ? null : prev
+                                              );
+                                              
+                                              // Delay error toast
+                                              setTimeout(() => {
+                                                toast.error('Failed to set default workspace');
+                                              }, 300);
+                                            })
+                                            .finally(() => {
+                                              // Reset loading state with proper timing
+                                              setTimeout(() => {
+                                                setSetDefaultLoading(false);
+                                              }, 300);
+                                            });
+                                        }, 50);
                                       }
                                     }}
                                     className="hover:bg-green-50 hover:text-green-700"
                                   >
-                                    <Check className="h-4 w-4 mr-1" />
-                                    Set as Default
+                                    {setDefaultLoading ? (
+                                      <>
+                                        <span className="animate-spin h-4 w-4 mr-1 rounded-full border-2 border-t-transparent border-current" />
+                                        Setting...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Check className="h-4 w-4 mr-1" />
+                                        Set as Default
+                                      </>
+                                    )}
                                   </Button>
                                 )}
                               </>

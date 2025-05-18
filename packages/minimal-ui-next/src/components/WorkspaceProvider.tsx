@@ -102,7 +102,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           console.log('Default workspace differs from current workspace');
         }
         
-        toast.success('Default workspace set successfully')
+        // Delay toast notification to prevent UI freezes during transitions
+        // This follows the architecture guide recommendation for proper timing
+        setTimeout(() => {
+          toast.success('Default workspace set successfully');
+        }, 300); // Use standard animation duration
         
         // If the current workspace is not set, load the default one
         if (!currentWorkspaceId && id) {
@@ -115,7 +119,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       throw new Error('Failed to set default workspace')
     } catch (error) {
       console.error('Error setting default workspace:', error)
-      toast.error('Failed to set default workspace')
+      // Delay error toast notification as well
+      setTimeout(() => {
+        toast.error('Failed to set default workspace');
+      }, 300);
       return false
     }
   }
@@ -136,13 +143,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         // Update local state
         setDefaultWorkspaceId(null)
-        toast.success('Default workspace cleared')
+        
+        // Delay toast notification to prevent UI freezes during transitions
+        setTimeout(() => {
+          toast.success('Default workspace cleared');
+        }, 300);
+        
         return true
       }
       throw new Error('Failed to clear default workspace')
     } catch (error) {
       console.error('Error clearing default workspace:', error)
-      toast.error('Failed to clear default workspace')
+      // Delay error toast notification
+      setTimeout(() => {
+        toast.error('Failed to clear default workspace');
+      }, 300);
       return false
     }
   }
