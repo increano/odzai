@@ -230,6 +230,16 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     }
   };
 
+  // Function to close the modal properly with a refresh
+  const closeAndRefresh = () => {
+    onOpenChange(false);
+    // Use a slight delay before refreshing to ensure modal is fully closed
+    setTimeout(() => {
+      router.refresh();
+    }, 100);
+  };
+
+  // Modify the handle save function to use the new close method
   const handleSave = () => {
     // Update the original values with current values
     setOriginalValues({
@@ -238,8 +248,8 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     });
     
     // Here we would persist changes to backend
-    // For now, just close the modal
-    onOpenChange(false);
+    // Close and refresh the page to apply changes
+    closeAndRefresh();
   };
   
   const handleDeleteAccount = () => {
@@ -468,9 +478,26 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     }
   };
 
+  // Add a modified onOpenChange handler for the Dialog
+  const handleOpenChange = (open: boolean) => {
+    // If the dialog is closing
+    if (!open) {
+      // First call the provided onOpenChange to update parent state
+      onOpenChange(false);
+      
+      // Then refresh the UI to ensure all state is properly reset
+      setTimeout(() => {
+        router.refresh();
+      }, 100);
+    } else {
+      // Just open the dialog normally
+      onOpenChange(true);
+    }
+  };
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-6xl h-[80vh] flex flex-col">
           <DialogHeader className="border-b pb-4">
             <DialogTitle className="text-xl">Settings</DialogTitle>
@@ -865,7 +892,14 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    onClick={() => clearDefaultWorkspace()}
+                                    onClick={() => {
+                                      clearDefaultWorkspace().then((success) => {
+                                        if (success) {
+                                          // Close and refresh after clearing default
+                                          closeAndRefresh();
+                                        }
+                                      });
+                                    }}
                                     className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
                                   >
                                     <X className="h-4 w-4 mr-1" />
@@ -876,7 +910,16 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                     variant="outline" 
                                     size="sm"
                                     disabled={isLoadingWorkspaces || workspaces.length === 0 || !selectedWorkspaceId}
-                                    onClick={() => selectedWorkspaceId && setAsDefaultWorkspace(selectedWorkspaceId)}
+                                    onClick={() => {
+                                      if (selectedWorkspaceId) {
+                                        setAsDefaultWorkspace(selectedWorkspaceId).then((success) => {
+                                          if (success) {
+                                            // Close and refresh after setting default
+                                            closeAndRefresh();
+                                          }
+                                        });
+                                      }
+                                    }}
                                     className="hover:bg-green-50 hover:text-green-700"
                                   >
                                     <Check className="h-4 w-4 mr-1" />

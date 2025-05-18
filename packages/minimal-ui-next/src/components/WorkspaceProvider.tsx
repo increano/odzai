@@ -62,6 +62,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // Set a workspace as default
   const setAsDefaultWorkspace = async (id: string) => {
     try {
+      console.log('Setting workspace as default:', id);
+      
       const response = await fetch('/api/user/preferences', {
         method: 'POST',
         headers: {
@@ -71,8 +73,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       })
       
       if (response.ok) {
+        // Update local state
         setDefaultWorkspaceId(id)
+        
+        // If we're setting the default for a workspace that isn't loaded yet,
+        // check if we should load it
+        if (currentWorkspaceId !== id) {
+          console.log('Default workspace differs from current workspace');
+        }
+        
         toast.success('Default workspace set successfully')
+        
+        // If the current workspace is not set, load the default one
+        if (!currentWorkspaceId && id) {
+          console.log('No current workspace, loading the default one');
+          loadWorkspace(id);
+        }
+        
         return true
       }
       throw new Error('Failed to set default workspace')
@@ -86,6 +103,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // Clear default workspace setting
   const clearDefaultWorkspace = async () => {
     try {
+      console.log('Clearing default workspace');
+      
       const response = await fetch('/api/user/preferences', {
         method: 'POST',
         headers: {
@@ -95,6 +114,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       })
       
       if (response.ok) {
+        // Update local state
         setDefaultWorkspaceId(null)
         toast.success('Default workspace cleared')
         return true

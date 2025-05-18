@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, MouseEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import SettingsModal from './SettingsModal';
 
 // Define the context type
@@ -16,6 +17,7 @@ const SettingsModalContext = createContext<SettingsModalContextType | undefined>
 export function SettingsModalProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const [defaultTab, setDefaultTab] = useState<string>("account");
+  const router = useRouter();
 
   const openSettingsModal = (tabOrEvent: string | MouseEvent<HTMLElement>) => {
     // If it's an event, prevent default behavior
@@ -31,7 +33,22 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
     setIsOpen(true);
   };
   
-  const closeSettingsModal = () => setIsOpen(false);
+  const closeSettingsModal = () => {
+    setIsOpen(false);
+    // Refresh the router state to ensure clean UI after modal closes
+    setTimeout(() => {
+      router.refresh();
+    }, 100);
+  };
+
+  // Handle modal state changes
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      closeSettingsModal();
+    } else {
+      setIsOpen(true);
+    }
+  };
 
   return (
     <SettingsModalContext.Provider 
@@ -43,7 +60,7 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
       {children}
       <SettingsModal 
         open={isOpen} 
-        onOpenChange={setIsOpen}
+        onOpenChange={handleOpenChange}
         defaultTab={defaultTab}
       />
     </SettingsModalContext.Provider>
