@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { Sidebar } from '../components/sidebar';
 import { SettingsModalProvider } from '../components/SettingsModalProvider';
 import { WorkspaceProvider } from '../components/WorkspaceProvider';
+import AppErrorBoundary from '../components/AppErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,19 +22,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <WorkspaceProvider>
-          <SettingsModalProvider>
-            <div className="flex h-screen overflow-hidden bg-background">
-              <Sidebar />
-              <div className="flex-1 overflow-auto">
-                <main className="h-full">
-                  {children}
-                </main>
-                <Toaster position="top-right" />
+        <AppErrorBoundary>
+          <WorkspaceProvider>
+            <SettingsModalProvider>
+              <div className="flex h-screen overflow-hidden bg-background">
+                <Sidebar />
+                <div className="flex-1 overflow-auto">
+                  <main className="h-full">
+                    {children}
+                  </main>
+                  <Toaster position="top-right" richColors />
+                </div>
               </div>
-            </div>
-          </SettingsModalProvider>
-        </WorkspaceProvider>
+            </SettingsModalProvider>
+          </WorkspaceProvider>
+        </AppErrorBoundary>
       </body>
     </html>
   );

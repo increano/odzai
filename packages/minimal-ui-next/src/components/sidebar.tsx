@@ -109,6 +109,47 @@ type NavigationGroup = {
   items: NavigationItem[];
 }
 
+// Define our own type matching the currentWorkspace properties
+interface WorkspaceInfo {
+  id: string;
+  name: string;
+  color: string;
+  originalName?: string;
+  displayName?: string;
+}
+
+// Helper function to get the stored custom display name for a workspace
+const getStoredDisplayName = (id: string): string | null => {
+  try {
+    if (typeof window !== 'undefined') {
+      const storedNames = localStorage.getItem('odzai-workspace-names');
+      if (storedNames) {
+        const namesObj = JSON.parse(storedNames);
+        return namesObj[id] || null;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting stored display name:', error);
+    return null;
+  }
+};
+
+// Add this helper function near the top of the file, after imports and before the component
+const getCleanWorkspaceName = (name: string): string => {
+  if (!name) return '';
+  
+  // If the name contains a dash, extract the part before it
+  if (name.includes('-')) {
+    const namePart = name.split('-')[0];
+    // Capitalize first letter if it's not already
+    return namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
+  }
+  
+  // If no dash, return the name as is
+  return name;
+};
+
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -129,7 +170,7 @@ export function Sidebar({ className }: SidebarProps) {
   })
   
   // State for available workspaces from API
-  const [availableWorkspaces, setAvailableWorkspaces] = useState<{id: string, name: string, color?: string}[]>([])
+  const [availableWorkspaces, setAvailableWorkspaces] = useState<WorkspaceInfo[]>([])
   const [isLoadingWorkspaces, setIsLoadingWorkspaces] = useState(false)
   
   // State for tracking selected workspace when none is loaded
@@ -157,6 +198,29 @@ export function Sidebar({ className }: SidebarProps) {
     }
   }, [pathname, isWorkspaceLoaded])
 
+  // Add an effect to refresh state when URL changes (for router.refresh() to work properly)
+  useEffect(() => {
+    // When the pathname changes, make sure our workspace state is fresh
+    if (isWorkspaceLoaded && currentWorkspace) {
+      // Fetch the latest workspaces
+      fetchAvailableWorkspaces();
+    }
+  }, [pathname]);
+
+  // Update selectedWorkspaceId when currentWorkspaceId changes
+  useEffect(() => {
+    if (currentWorkspace && currentWorkspace.id) {
+      setSelectedWorkspaceId(currentWorkspace.id);
+    }
+  }, [currentWorkspace?.id]);
+
+  // Add a useEffect to refresh workspaces when the currentWorkspace changes
+  useEffect(() => {
+    if (currentWorkspace) {
+      fetchAvailableWorkspaces();
+    }
+  }, [currentWorkspace?.id, currentWorkspace?.name, currentWorkspace?.displayName]);
+
   // Fetch available workspaces on component mount
   useEffect(() => {
     fetchAvailableWorkspaces()
@@ -177,8 +241,14 @@ export function Sidebar({ className }: SidebarProps) {
       const workspacesWithColors = data.map((workspace: any, index: number) => {
         // Array of colors for workspaces if not provided by API
         const defaultColors = ["#FF7043", "#42A5F5", "#66BB6A", "#AB47BC", "#EC407A", "#7E57C2"]
+        
+        // Get clean name for display
+        const displayName = workspace.displayName || getCleanWorkspaceName(workspace.name);
+        
         return {
           ...workspace,
+          originalName: workspace.name, // Keep original full ID
+          name: displayName, // Use clean name for display
           color: workspace.color || defaultColors[index % defaultColors.length]
         }
       })
@@ -467,7 +537,7 @@ export function Sidebar({ className }: SidebarProps) {
                     )}
                     style={{ backgroundColor: currentWorkspace.color || '#FF7043' }}
                   >
-                    {currentWorkspace.name.charAt(0)}
+                    {(currentWorkspace.displayName || getStoredDisplayName(currentWorkspace.id) || getCleanWorkspaceName(currentWorkspace.name)).charAt(0)}
                     {isDefaultWorkspace(currentWorkspace.id) && (
                       <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
                     )}
@@ -476,7 +546,7 @@ export function Sidebar({ className }: SidebarProps) {
                     "flex flex-1 flex-col gap-0 whitespace-nowrap transition-all duration-300 ease-in-out",
                     collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"
                   )}>
-                    <span className="text-sm font-medium">{currentWorkspace.name}</span>
+                    <span className="text-sm font-medium">{currentWorkspace.displayName || getStoredDisplayName(currentWorkspace.id) || getCleanWorkspaceName(currentWorkspace.name)}</span>
                     <span className="text-xs text-muted-foreground flex items-center">
                       Workspace
                       {isDefaultWorkspace(currentWorkspace.id) && (
@@ -535,12 +605,12 @@ export function Sidebar({ className }: SidebarProps) {
                       className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative"
                       style={{ backgroundColor: workspace.color }}
                     >
-                      {workspace.name.charAt(0)}
+                      {(workspace.displayName || getStoredDisplayName(workspace.id) || workspace.name).charAt(0)}
                       {isDefaultWorkspace(workspace.id) && (
                         <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
                       )}
                     </div>
-                    <span className="text-sm">{workspace.name}</span>
+                    <span className="text-sm">{workspace.displayName || getStoredDisplayName(workspace.id) || workspace.name}</span>
                     {isDefaultWorkspace(workspace.id) && (
                       <span className="ml-auto text-xs text-green-600 font-medium flex items-center gap-0.5">
                         Default <Check className="h-3 w-3" />
@@ -569,7 +639,9 @@ export function Sidebar({ className }: SidebarProps) {
     <div className="flex flex-col px-4 py-3 border-b">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-medium">
-          {isWorkspaceLoaded ? currentWorkspace?.name : "Select a workspace"}
+          {isWorkspaceLoaded 
+            ? (currentWorkspace?.displayName || getStoredDisplayName(currentWorkspace?.id || '') || getCleanWorkspaceName(currentWorkspace?.name || '')) 
+            : "Select a workspace"}
         </h3>
         <Button 
           variant="outline" 
@@ -587,13 +659,13 @@ export function Sidebar({ className }: SidebarProps) {
             className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium relative"
             style={{ backgroundColor: currentWorkspace.color }}
           >
-            {currentWorkspace.name.charAt(0)}
+            {(currentWorkspace.displayName || getStoredDisplayName(currentWorkspace.id) || getCleanWorkspaceName(currentWorkspace.name)).charAt(0)}
             {isDefaultWorkspace(currentWorkspace.id) && (
               <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
             )}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-medium">{currentWorkspace.name}</span>
+            <span className="text-sm font-medium">{currentWorkspace.displayName || getStoredDisplayName(currentWorkspace.id) || getCleanWorkspaceName(currentWorkspace.name)}</span>
             <span className="text-xs text-muted-foreground flex items-center">
               Current workspace
               {isDefaultWorkspace(currentWorkspace.id) && (
@@ -653,13 +725,13 @@ export function Sidebar({ className }: SidebarProps) {
                     className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative"
                     style={{ backgroundColor: workspace.color }}
                   >
-                    {workspace.name.charAt(0)}
+                    {(workspace.displayName || getStoredDisplayName(workspace.id) || workspace.name).charAt(0)}
                     {isDefaultWorkspace(workspace.id) && (
                       <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
                     )}
                   </div>
                   <div className="flex-1">
-                    <span className="text-sm block">{workspace.name}</span>
+                    <span className="text-sm block">{workspace.displayName || getStoredDisplayName(workspace.id) || workspace.name}</span>
                     {isDefaultWorkspace(workspace.id) && (
                       <span className="text-xs text-green-600 font-medium flex items-center gap-0.5">
                         Default workspace <Check className="h-3 w-3 ml-0.5" />

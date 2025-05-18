@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { navigate, NavigationType, navigateAfterModalClose } from "../lib/navigation";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,7 @@ import {
 } from "./ui/dropdown-menu";
 import { useWorkspace } from "./WorkspaceProvider";
 import { toast } from "sonner";
+import { storage } from "../lib/storage";
 import { 
   Settings, 
   Users, 
@@ -53,6 +55,9 @@ import {
   Check
 } from "lucide-react";
 
+// Add this constant at the top of the file with other imports
+const DEFAULT_WORKSPACE_COLOR = '#FF7043';
+
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -62,9 +67,39 @@ interface SettingsModalProps {
 interface Workspace {
   id: string;
   name: string;
+  originalName?: string;
+  displayName?: string;
   created?: string;
   status?: 'active' | 'inactive';
+  color?: string;
 }
+
+// Add this helper function after imports and before component definitions
+const getCleanWorkspaceName = (name: string): string => {
+  if (!name) return '';
+  
+  // If the name contains a dash, extract the part before it
+  if (name.includes('-')) {
+    const namePart = name.split('-')[0];
+    // Capitalize first letter if it's not already
+    return namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
+  }
+  
+  // If no dash, return the name as is
+  return name;
+};
+
+// Function to get the stored custom display name for a workspace
+const getStoredDisplayName = (id: string): string | null => {
+  try {
+    // Using our optimized storage utility
+    const workspaceNames = storage.get<Record<string, string>>('odzai-workspace-names');
+    return workspaceNames?.[id] || null;
+  } catch (error) {
+    console.error('Error getting stored display name:', error);
+    return null;
+  }
+};
 
 // Helper component for section headings
 const SectionHeading = ({ title }: { title: string }) => (
@@ -80,7 +115,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   const router = useRouter();
   
   // Get workspace context
-  const { currentWorkspaceId, loadWorkspace, setAsDefaultWorkspace, clearDefaultWorkspace, isDefaultWorkspace } = useWorkspace();
+  const { currentWorkspaceId, loadWorkspace, setAsDefaultWorkspace, clearDefaultWorkspace, isDefaultWorkspace, refreshCurrentWorkspace } = useWorkspace();
   
   // Initial state values
   const [workspaceName, setWorkspaceName] = useState("Fabrice Muhirwa's Notion");
@@ -94,6 +129,9 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   
   // State to track whether to show changes live
   const [liveChanges, setLiveChanges] = useState(false);
+  
+  // Track default workspace ID locally for immediate UI updates
+  const [defaultWorkspaceId, setDefaultWorkspaceId] = useState<string | null>(null);
   
   // Add user profile state
   const [username, setUsername] = useState("fmuhirwa");
@@ -180,8 +218,22 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     }
   }, [currentWorkspaceId, open]);
 
-  // Fetch workspaces from the API
-  const fetchWorkspaces = async () => {
+  // Simple throttle function to prevent rapid consecutive calls
+  const throttle = (func: Function, delay: number) => {
+    let lastCall = 0;
+    return (...args: any[]) => {
+      const now = Date.now();
+      if (now - lastCall < delay) {
+        console.log('Throttled fetchWorkspaces call');
+        return;
+      }
+      lastCall = now;
+      return func(...args);
+    };
+  };
+  
+  // Main fetch function
+  const _fetchWorkspaces = async () => {
     setIsLoadingWorkspaces(true);
     setWorkspacesError(null);
 
@@ -194,62 +246,304 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       
       const data = await response.json();
       
-      // Transform the data to match our Workspace interface
-      const formattedWorkspaces = data.map((workspace: any) => {
-        // Generate a random date within the last 6 months
-        const now = new Date();
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        const randomTimestamp = sixMonthsAgo.getTime() + Math.random() * (now.getTime() - sixMonthsAgo.getTime());
-        const randomDate = new Date(randomTimestamp);
-        
-        // Format the date
-        const formattedDate = randomDate.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
+      // Transform the workspaces data to include clean display names
+      // Use a batched approach for large datasets
+      const batchSize = 10;
+      const totalWorkspaces = data.length;
+      const transformedWorkspaces = [];
+      
+      // Process in batches to avoid blocking the main thread
+      for (let i = 0; i < totalWorkspaces; i += batchSize) {
+        const batch = data.slice(i, i + batchSize).map((workspace: any) => {
+          // Use stored display name first, then fallback to API displayName or clean name
+          const storedName = getStoredDisplayName(workspace.id);
+          const displayName = storedName || workspace.displayName || getCleanWorkspaceName(workspace.name);
+          
+          // Generate a random date within the last 6 months
+          const now = new Date();
+          const sixMonthsAgo = new Date();
+          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+          const randomTimestamp = sixMonthsAgo.getTime() + Math.random() * (now.getTime() - sixMonthsAgo.getTime());
+          const randomDate = new Date(randomTimestamp);
+          
+          // Format the date
+          const formattedDate = randomDate.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+          });
+          
+          // Set status based on whether this is the currently loaded workspace
+          const isActive = workspace.id === currentWorkspaceId;
+          
+          return {
+            id: workspace.id,
+            name: workspace.name,
+            displayName: displayName,
+            originalName: workspace.name, // Keep the original name for API calls
+            created: formattedDate,
+            status: isActive ? 'active' : 'inactive',
+            color: workspace.color
+          };
         });
         
-        // Set status based on whether this is the currently loaded workspace
-        const isActive = workspace.id === currentWorkspaceId;
+        transformedWorkspaces.push(...batch);
         
-        return {
-          id: workspace.id,
-          name: workspace.name,
-          created: formattedDate,
-          status: isActive ? 'active' : 'inactive'
-        };
-      });
+        // If more batches remain, yield to the main thread briefly
+        if (i + batchSize < totalWorkspaces) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
       
-      setWorkspaces(formattedWorkspaces);
+      // Update state once after all processing is complete
+      setWorkspaces(transformedWorkspaces);
     } catch (error) {
       console.error('Error fetching workspaces:', error);
-      setWorkspacesError(error instanceof Error ? error.message : 'Failed to load workspaces');
+      setWorkspacesError(error instanceof Error ? error.message : 'An error occurred');
+      setWorkspaces([]);
     } finally {
       setIsLoadingWorkspaces(false);
     }
   };
+  
+  // Throttled version to prevent UI freezes from rapid calls
+  const fetchWorkspaces = throttle(_fetchWorkspaces, 500);
 
-  // Function to close the modal properly with a refresh
+    // Enhanced function using standardized navigation pattern
   const closeAndRefresh = () => {
+    // Mark that we're in a closing state
+    setIsClosing(true);
+    
+    // First close the modal without any refreshes
     onOpenChange(false);
-    // Use a slight delay before refreshing to ensure modal is fully closed
-    setTimeout(() => {
-      router.refresh();
-    }, 100);
+    
+    // Use standardized navigation after modal close
+    if (currentWorkspaceId) {
+      // Use the navigateAfterModalClose utility which handles all the timing concerns
+      navigateAfterModalClose(
+        router, 
+        NavigationType.REFRESH,
+        undefined,
+        {
+          suppressToast: true,
+          callback: async () => {
+            try {
+              // Refresh current workspace data
+              await refreshCurrentWorkspace();
+              
+              // Reset closing state
+              setIsClosing(false);
+            } catch (err: unknown) {
+              console.error('Error refreshing workspace during closeAndRefresh:', err);
+              setIsClosing(false);
+            }
+          }
+        }
+      ).catch((err: unknown) => {
+        console.error('Error during navigation in closeAndRefresh:', err);
+        setIsClosing(false);
+      });
+    } else {
+      // Reset closing state after animation completes
+      setTimeout(() => {
+        setIsClosing(false);
+      }, 300);
+    }
   };
 
-  // Modify the handle save function to use the new close method
-  const handleSave = () => {
-    // Update the original values with current values
-    setOriginalValues({
-      workspaceName: workspaceName,
-      workspaceIcon: workspaceIcon
-    });
+  // Update state to reflect selected workspace info
+  useEffect(() => {
+    if (selectedWorkspaceId && workspaces.length > 0) {
+      const selectedWorkspace = workspaces.find(w => w.id === selectedWorkspaceId);
+      if (selectedWorkspace) {
+        // Get the stored display name or fallback to other name options
+        const storedName = getStoredDisplayName(selectedWorkspaceId);
+        const displayName = storedName || selectedWorkspace.displayName || getCleanWorkspaceName(selectedWorkspace.name);
+        
+        // Update workspace name input with selected workspace's display name
+        setWorkspaceName(displayName);
+        
+        // If the workspace has a color property, we could use it as icon/avatar
+        const workspaceColor = selectedWorkspace.color || DEFAULT_WORKSPACE_COLOR;
+        // For now we don't have actual icons, but we could set a generated URL based on the name
+        setWorkspaceIcon(`/api/generate-avatar?name=${encodeURIComponent(selectedWorkspace.name)}`);
+        
+        // Update original values to compare against for detecting changes
+        setOriginalValues({
+          workspaceName: displayName,
+          workspaceIcon: `/api/generate-avatar?name=${encodeURIComponent(selectedWorkspace.name)}`
+        });
+      }
+    }
+  }, [selectedWorkspaceId, workspaces]);
+
+  // Function to update workspace name in storage
+  const updateStoredWorkspaceName = (id: string, displayName: string): void => {
+    try {
+      // Get current workspace names from optimized storage
+      let workspaceNames = storage.get<Record<string, string>>('odzai-workspace-names') || {};
+      
+      // Update in memory
+      workspaceNames = {
+        ...workspaceNames,
+        [id]: displayName
+      };
+      
+      // Store back using optimized batched storage
+      storage.set('odzai-workspace-names', workspaceNames);
+      console.log(`Updated workspace name in storage: ${id} => ${displayName}`);
+    } catch (error) {
+      console.error('Error updating stored workspace name:', error);
+    }
+  };
+
+  // Enhanced workspace name update function with better error handling and UI feedback
+  const updateWorkspaceName = async () => {
+    if (!selectedWorkspaceId || originalValues.workspaceName === workspaceName) {
+      return true; // No change needed
+    }
+
+    // Show loading state (handled by the Save button)
     
-    // Here we would persist changes to backend
-    // Close and refresh the page to apply changes
-    closeAndRefresh();
+    try {
+      // Find the selected workspace to get its original name
+      const selectedWorkspace = workspaces.find(w => w.id === selectedWorkspaceId);
+      if (!selectedWorkspace) {
+        throw new Error('Selected workspace not found');
+      }
+
+      // Use the originalName if available, otherwise fallback to name
+      const originalWorkspaceName = selectedWorkspace.originalName || selectedWorkspace.name;
+
+      // Update UI optimistically for immediate feedback
+      setWorkspaces(prevWorkspaces => 
+        prevWorkspaces.map(workspace => 
+          workspace.id === selectedWorkspaceId 
+            ? { 
+                ...workspace, 
+                displayName: workspaceName,
+                name: workspace.originalName 
+                  ? workspace.originalName.replace(/^[^-]+-/, `${workspaceName}-`)
+                  : workspaceName
+              } 
+            : workspace
+        )
+      );
+      
+      // Store locally for immediate UI update
+      updateStoredWorkspaceName(selectedWorkspaceId, workspaceName);
+
+      // Make API call to update workspace name - after UI is already updated
+      const response = await fetch(`/api/budgets/${selectedWorkspaceId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: workspaceName,
+          originalName: originalWorkspaceName
+        }),
+      });
+
+      if (!response.ok) {
+        // Rollback optimistic update if API call fails
+        setWorkspaces(prevWorkspaces => 
+          prevWorkspaces.map(workspace => 
+            workspace.id === selectedWorkspaceId ? selectedWorkspace : workspace
+          )
+        );
+        throw new Error('Failed to update workspace name');
+      }
+      
+      // Parse the response
+      const data = await response.json();
+      console.log('Workspace update response:', data);
+      
+      // If the updated workspace is the current one, refresh the context
+      if (selectedWorkspaceId === currentWorkspaceId) {
+        console.log('Refreshing current workspace after name update');
+        try {
+          // Refresh the workspace data in context
+          await refreshCurrentWorkspace();
+          console.log('Current workspace refreshed after name update');
+        } catch (error) {
+          console.error('Error refreshing current workspace:', error);
+          // Continue even if this fails - the UI is already updated
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating workspace name:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update workspace name');
+      return false;
+    }
+  };
+
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const handleSave = async () => {
+    // Show saving state
+    setIsSaving(true);
+    
+    try {
+      // First update the workspace name if changed
+      const nameUpdateSuccess = await updateWorkspaceName();
+      
+      if (nameUpdateSuccess) {
+        // Update localStorage directly for immediate UI update
+        if (selectedWorkspaceId && workspaceName !== originalValues.workspaceName) {
+          updateStoredWorkspaceName(selectedWorkspaceId, workspaceName);
+        }
+        
+        // Update the original values with current values
+        setOriginalValues({
+          workspaceName: workspaceName,
+          workspaceIcon: workspaceIcon
+        });
+        
+        // If this is the current workspace, trigger a refresh directly to ensure UI updates
+        // This happens BEFORE closing the modal to ensure the data is ready
+        if (selectedWorkspaceId === currentWorkspaceId) {
+          try {
+            console.log('Refreshing current workspace data before closing modal');
+            await refreshCurrentWorkspace();
+          } catch (err) {
+            console.error('Error refreshing workspace data:', err);
+            // Continue even if refresh fails
+          }
+        }
+        
+        // Show success message
+        toast.success('Settings saved successfully');
+        
+        // Use the standardized navigation pattern for closing modal and refreshing
+        // First close the modal to start animation
+        onOpenChange(false);
+        
+        // Then use proper timing for refresh
+        navigateAfterModalClose(
+          router,
+          NavigationType.REFRESH,
+          undefined,
+          {
+            suppressToast: true, // We already showed success toast
+            delay: 50, // A small delay is enough since we already refreshed data
+          }
+        ).catch((navError: unknown) => {
+          console.error('Error refreshing after save:', navError);
+        });
+      } else {
+        // Show error if save failed
+        toast.error('Failed to save changes');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('An error occurred while saving settings');
+    } finally {
+      // Reset saving state
+      setIsSaving(false);
+    }
   };
   
   const handleDeleteAccount = () => {
@@ -262,7 +556,11 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   
   const handleDeleteWorkspace = async () => {
     // Find the workspace ID from the name
-    const workspaceToDeleteObj = workspaces.find(w => w.name === workspaceToDelete);
+    const workspaceToDeleteObj = workspaces.find(w => 
+      w.name === workspaceToDelete || 
+      w.displayName === workspaceToDelete || 
+      getCleanWorkspaceName(w.name) === workspaceToDelete
+    );
     
     if (!workspaceToDeleteObj) {
       toast.error(`Workspace "${workspaceToDelete}" not found`);
@@ -287,11 +585,15 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       
       // If the deleted workspace was the current one, clear the current workspace
       if (workspaceToDeleteObj.id === currentWorkspaceId) {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('odzai-current-workspace');
-          // Use router instead of direct location change
+        // Remove from optimized storage
+        storage.remove('odzai-current-workspace');
+        
+        // Use router.push with a Promise to handle navigation properly
+        Promise.resolve().then(() => {
           router.push('/');
-        }
+        }).catch(error => {
+          console.error('Error navigating:', error);
+        });
       } else {
         // Just refresh the workspaces list
         fetchWorkspaces();
@@ -312,11 +614,67 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     setDeleteWorkspaceModalOpen(true);
   };
 
-  // Handle workspace switch
-  const handleSwitchWorkspace = () => {
-    if (selectedWorkspaceId && selectedWorkspaceId !== currentWorkspaceId) {
-      loadWorkspace(selectedWorkspaceId);
-      toast.success(`Switching to workspace: ${workspaces.find(w => w.id === selectedWorkspaceId)?.name}`);
+  // Use standardized navigation pattern 
+  const safeNavigate = (path: string) => {
+    navigate(router, NavigationType.PUSH, path, {
+      fallbackUrl: path,
+      suppressToast: true
+    }).catch((error: unknown) => {
+      console.error(`Navigation to ${path} failed:`, error);
+    });
+  };
+
+  // Improved workspace switching with standardized navigation pattern
+  const [isSwitching, setIsSwitching] = useState(false);
+  
+  const handleSwitchWorkspace = async () => {
+    if (!selectedWorkspaceId || selectedWorkspaceId === currentWorkspaceId || isSwitching) {
+      return;
+    }
+    
+    // Show switching state
+    setIsSwitching(true);
+    
+    try {
+      const selectedWorkspace = workspaces.find(w => w.id === selectedWorkspaceId);
+      const workspaceName = selectedWorkspace?.displayName || 
+                           getStoredDisplayName(selectedWorkspace?.id || '') || 
+                           getCleanWorkspaceName(selectedWorkspace?.name || '');
+      
+      // Show toast notification for better UX
+      toast.loading(`Preparing to switch to ${workspaceName}...`);
+      
+      // Close the modal first
+      onOpenChange(false);
+      
+      // Use the navigateAfterModalClose utility to ensure proper timing
+      navigateAfterModalClose(
+        router,
+        NavigationType.REFRESH, // Just refresh the page, the actual navigation will happen after loadWorkspace
+        undefined,
+        {
+          suppressToast: true,
+          callback: async () => {
+            try {
+              // Load the workspace after navigation is prepared
+              await loadWorkspace(selectedWorkspaceId);
+              setIsSwitching(false);
+            } catch (error) {
+              console.error('Error switching workspace:', error);
+              toast.error('Failed to switch workspace');
+              setIsSwitching(false);
+            }
+          }
+        }
+      ).catch((error: unknown) => {
+        console.error('Error during workspace switch navigation:', error);
+        toast.error('An error occurred while switching workspaces');
+        setIsSwitching(false);
+      });
+    } catch (error: unknown) {
+      console.error('Error during workspace switch:', error);
+      toast.error('An error occurred while switching workspaces');
+      setIsSwitching(false);
     }
   };
 
@@ -358,14 +716,30 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       
       // Optionally, switch to the new workspace
       if (data && data.id) {
-        // Store the new workspace ID
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('odzai-current-workspace', data.id);
-          // Load the workspace 
-          loadWorkspace(data.id);
-          // Use router.push with query params instead of direct location change
-          router.push('/?empty=true');
-        }
+        // Close the main settings modal
+        onOpenChange(false);
+        
+        // Store the new workspace ID using optimized storage
+        storage.set('odzai-current-workspace', data.id);
+        
+        // Wait for modals to close before navigating
+        setTimeout(() => {
+          // Load the workspace and then navigate
+          Promise.resolve()
+            .then(() => {
+              // First load the workspace
+              loadWorkspace(data.id);
+              
+              // Wait a bit for loading to start before showing success
+              setTimeout(() => {
+                toast.success(`Switched to new workspace: ${newWorkspaceName}`);
+              }, 500);
+            })
+            .catch(error => {
+              console.error('Error during workspace switch:', error);
+              toast.error('Error switching to new workspace');
+            });
+        }, 500);
       }
     } catch (error) {
       console.error('Error creating workspace:', error);
@@ -437,13 +811,24 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
   // Calculate total pages
   const totalPages = Math.ceil(filteredWorkspaces.length / itemsPerPage);
 
-  // Add this function to handle bank connection
+  // Add this function to handle bank connection using standardized navigation
   const handleConnectBank = () => {
-    // Close the settings modal
+    // Close the settings modal first
     onOpenChange(false);
     
-    // Use router.push instead of direct navigation
-    router.push('/bank-connection');
+    // Use standardized navigation pattern after modal close
+    navigateAfterModalClose(
+      router,
+      NavigationType.PUSH,
+      '/bank-connection',
+      {
+        suppressToast: false, // Show navigation toast
+        delay: 100 // Small delay is enough for this operation
+      }
+    ).catch((err: unknown) => {
+      console.error('Error navigating to bank connection:', err);
+      toast.error('Failed to navigate to bank connection page');
+    });
   };
 
   // Add this function to handle syncing accounts
@@ -478,17 +863,54 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     }
   };
 
-  // Add a modified onOpenChange handler for the Dialog
+  // Improved modal close handler using standardized navigation pattern
+  const [isClosing, setIsClosing] = useState(false);
+  
   const handleOpenChange = (open: boolean) => {
     // If the dialog is closing
     if (!open) {
+      // Mark that we're in a closing state - used to disable buttons
+      setIsClosing(true);
+      
       // First call the provided onOpenChange to update parent state
+      // This triggers the modal closing animation
       onOpenChange(false);
       
-      // Then refresh the UI to ensure all state is properly reset
-      setTimeout(() => {
-        router.refresh();
-      }, 100);
+      // Only refresh if there were changes made
+      const hasChanges = originalValues.workspaceName !== workspaceName;
+      
+      if (hasChanges) {
+        // Use standardized navigateAfterModalClose pattern
+        navigateAfterModalClose(
+          router,
+          NavigationType.REFRESH,
+          undefined,
+          {
+            suppressToast: true,
+            callback: async () => {
+              // First refresh workspace data
+              if (currentWorkspaceId) {
+                try {
+                  await refreshCurrentWorkspace();
+                } catch (err) {
+                  console.error('Error refreshing workspace after modal close:', err);
+                }
+              }
+              
+              // Reset closing state
+              setIsClosing(false);
+            }
+          }
+        ).catch((err: unknown) => {
+          console.error('Error during navigation after modal close:', err);
+          setIsClosing(false);
+        });
+      } else {
+        // Reset closing state after animation completes
+        setTimeout(() => {
+          setIsClosing(false);
+        }, 300);
+      }
     } else {
       // Just open the dialog normally
       onOpenChange(true);
@@ -717,7 +1139,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                 <tr key={workspace.id} className="border-b">
                                   <td className="p-3">
                                     <div className="flex items-center">
-                                      <span>{workspace.name}</span>
+                                      <span>{workspace.displayName || getStoredDisplayName(workspace.id) || getCleanWorkspaceName(workspace.name)}</span>
                                     </div>
                                   </td>
                                   <td className="p-3">
@@ -742,7 +1164,7 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                             className="flex gap-2 cursor-pointer"
                                             onClick={() => {
                                               loadWorkspace(workspace.id);
-                                              toast.success(`Activated workspace: ${workspace.name}`);
+                                              toast.success(`Activated workspace: ${workspace.displayName || getStoredDisplayName(workspace.id) || getCleanWorkspaceName(workspace.name)}`);
                                             }}
                                           >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
@@ -845,11 +1267,14 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                 {workspaces.length === 0 ? (
                                   <option value="" disabled>No workspaces available</option>
                                 ) : (
-                                  workspaces.map(workspace => (
-                                    <option key={workspace.id} value={workspace.id}>
-                                      {workspace.name}
-                                    </option>
-                                  ))
+                                  <>
+                                    <option value="" disabled>Select a workspace</option>
+                                    {workspaces.map(workspace => (
+                                      <option key={workspace.id} value={workspace.id}>
+                                        {workspace.displayName || getStoredDisplayName(workspace.id) || getCleanWorkspaceName(workspace.name)} {isDefaultWorkspace(workspace.id) ? '(Default)' : ''}
+                                      </option>
+                                    ))}
+                                  </>
                                 )}
                               </select>
                             )}
@@ -857,10 +1282,17 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            disabled={isLoadingWorkspaces || workspaces.length === 0 || selectedWorkspaceId === currentWorkspaceId}
+                            disabled={isLoadingWorkspaces || workspaces.length === 0 || selectedWorkspaceId === currentWorkspaceId || !selectedWorkspaceId || isSwitching || isClosing}
                             onClick={handleSwitchWorkspace}
                           >
-                            Switch
+                            {isSwitching ? (
+                              <>
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Switching...
+                              </>
+                            ) : (
+                              'Switch'
+                            )}
                           </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -892,13 +1324,39 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    onClick={() => {
-                                      clearDefaultWorkspace().then((success) => {
+                                    disabled={isClosing}
+                                    onClick={async () => {
+                                      // Show loading state in the button
+                                      const buttonEl = document.activeElement as HTMLButtonElement;
+                                      if (buttonEl) {
+                                        buttonEl.disabled = true;
+                                        buttonEl.innerHTML = '<svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Removing...';
+                                      }
+                                      
+                                      try {
+                                        // Use async/await for cleaner error handling
+                                        const success = await clearDefaultWorkspace();
                                         if (success) {
-                                          // Close and refresh after clearing default
-                                          closeAndRefresh();
+                                          toast.success('Default workspace removed');
+                                          
+                                          // Update local state immediately for responsive UI
+                                          setDefaultWorkspaceId(null);
+                                          
+                                          // Refresh data without closing modal
+                                          fetchWorkspaces();
                                         }
-                                      });
+                                      } catch (error) {
+                                        console.error('Error clearing default workspace:', error);
+                                        toast.error('Failed to clear default workspace');
+                                      } finally {
+                                        // Re-enable button with original text
+                                        if (buttonEl) {
+                                          setTimeout(() => {
+                                            buttonEl.disabled = false;
+                                            buttonEl.innerHTML = '<svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Remove Default';
+                                          }, 300);
+                                        }
+                                      }
                                     }}
                                     className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
                                   >
@@ -909,15 +1367,40 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    disabled={isLoadingWorkspaces || workspaces.length === 0 || !selectedWorkspaceId}
-                                    onClick={() => {
+                                    disabled={isLoadingWorkspaces || workspaces.length === 0 || !selectedWorkspaceId || isClosing}
+                                    onClick={async () => {
                                       if (selectedWorkspaceId) {
-                                        setAsDefaultWorkspace(selectedWorkspaceId).then((success) => {
+                                        // Show loading state in the button
+                                        const buttonEl = document.activeElement as HTMLButtonElement;
+                                        if (buttonEl) {
+                                          buttonEl.disabled = true;
+                                          buttonEl.innerHTML = '<svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Setting...';
+                                        }
+                                        
+                                        try {
+                                          // Use async/await for cleaner error handling
+                                          const success = await setAsDefaultWorkspace(selectedWorkspaceId);
                                           if (success) {
-                                            // Close and refresh after setting default
-                                            closeAndRefresh();
+                                            toast.success('Default workspace set');
+                                            
+                                            // Update UI immediately
+                                            setDefaultWorkspaceId(selectedWorkspaceId);
+                                            
+                                            // Refresh data without closing modal 
+                                            fetchWorkspaces();
                                           }
-                                        });
+                                        } catch (error) {
+                                          console.error('Error setting default workspace:', error);
+                                          toast.error('Failed to set default workspace');
+                                        } finally {
+                                          // Re-enable button with original text
+                                          if (buttonEl) {
+                                            setTimeout(() => {
+                                              buttonEl.disabled = false;
+                                              buttonEl.innerHTML = '<svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Set as Default';
+                                            }, 300);
+                                          }
+                                        }
                                       }
                                     }}
                                     className="hover:bg-green-50 hover:text-green-700"
@@ -931,26 +1414,55 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                           </div>
                         </div>
                         <p className="text-xs">
-                          {workspaces.find(w => isDefaultWorkspace(w.id)) 
-                            ? <span className="text-green-600 font-medium flex items-center">
-                                Current default workspace: {workspaces.find(w => isDefaultWorkspace(w.id))?.name}
+                            {workspaces.find(w => isDefaultWorkspace(w.id)) 
+                              ? <span className="text-green-600 font-medium flex items-center">
+                                Current default workspace: {(() => {
+                                  const defaultWorkspace = workspaces.find(w => isDefaultWorkspace(w.id));
+                                  return defaultWorkspace?.displayName || getStoredDisplayName(defaultWorkspace?.id || '') || getCleanWorkspaceName(defaultWorkspace?.name || '');
+                                })()}
                                 <Check className="h-3 w-3 ml-1" />
                               </span>
-                            : "No default workspace set"}
+                              : "No default workspace set"}
                         </p>
                       </div>
                     </div>
                     
                     {/* Workspace Name */}
                     <div className="space-y-4">
-                      <h4 className="text-base font-medium border-b pb-2">Name</h4>
+                      <h4 className="text-base font-medium border-b pb-2">Workspace Name</h4>
                       <div className="space-y-2">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="flex items-center gap-2 py-2 px-3 bg-muted rounded-md">
+                            {selectedWorkspaceId && (
+                              <div 
+                                className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative"
+                                style={{ backgroundColor: workspaces.find(w => w.id === selectedWorkspaceId)?.color || DEFAULT_WORKSPACE_COLOR }}
+                              >
+                                {workspaceName ? workspaceName.charAt(0).toUpperCase() : '?'}
+                                {isDefaultWorkspace(selectedWorkspaceId) && (
+                                  <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 border border-white"></div>
+                                )}
+                              </div>
+                            )}
+                            <span className="text-sm font-medium">
+                              {selectedWorkspaceId 
+                                ? `Editing: ${(() => {
+                                    const workspace = workspaces.find(w => w.id === selectedWorkspaceId);
+                                    return workspace?.displayName || getStoredDisplayName(workspace?.id || '') || getCleanWorkspaceName(workspace?.name || '');
+                                  })()}` 
+                                : "Select a workspace to edit"}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <Label htmlFor="workspace-name">Display name</Label>
                         <Input 
                           id="workspace-name" 
                           value={workspaceName}
                           onChange={(e) => setWorkspaceName(e.target.value)}
                           placeholder="Enter workspace name"
                           className="max-w-full"
+                          disabled={!selectedWorkspaceId}
                         />
                         <p className="text-xs text-muted-foreground">
                           You can use your organization or company name. Keep it simple.
@@ -2155,10 +2667,26 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
           </Tabs>
 
           <DialogFooter className="border-t pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isClosing || isSaving}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button 
+              onClick={handleSave}
+              disabled={isClosing || isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

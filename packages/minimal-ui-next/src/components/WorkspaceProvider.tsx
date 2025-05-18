@@ -3,11 +3,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { navigate, NavigationType, navigateAfterModalClose, TIMING } from '../lib/navigation'
+import { storage } from '../lib/storage'
 
 interface Workspace {
   id: string
   name: string
   color: string
+  originalName?: string // Add this to store the original full ID
+  displayName?: string // Add this to store the clean display name
 }
 
 interface WorkspaceContextType {
@@ -19,11 +23,27 @@ interface WorkspaceContextType {
   setAsDefaultWorkspace: (id: string) => Promise<boolean>
   clearDefaultWorkspace: () => Promise<boolean>
   isDefaultWorkspace: (id: string) => boolean
+  refreshCurrentWorkspace: () => Promise<boolean>
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined)
 
 const DEFAULT_WORKSPACE_COLOR = '#FF7043'
+
+// Helper function to get the clean name from a workspace ID
+const getCleanWorkspaceName = (name: string): string => {
+  if (!name) return '';
+  
+  // If the name contains a dash, extract the part before it
+  if (name.includes('-')) {
+    const namePart = name.split('-')[0];
+    // Capitalize first letter if it's not already
+    return namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase();
+  }
+  
+  // If no dash, return the name as is
+  return name;
+};
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [isWorkspaceLoaded, setIsWorkspaceLoaded] = useState(false)
@@ -132,7 +152,39 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return defaultWorkspaceId === id
   }
 
-  // Check localStorage and default workspace setting on mount
+// Function to get the stored custom display name for a workspace
+const getStoredDisplayName = (id: string): string | null => {
+  try {
+    // Using our optimized storage utility
+    const workspaceNames = storage.get<Record<string, string>>('odzai-workspace-names');
+    return workspaceNames?.[id] || null;
+  } catch (error) {
+    console.error('Error getting stored display name:', error);
+    return null;
+  }
+};
+
+// Function to update stored workspace name
+const updateStoredWorkspaceName = (id: string, displayName: string): void => {
+  try {
+    // Get current workspace names from optimized storage
+    let workspaceNames = storage.get<Record<string, string>>('odzai-workspace-names') || {};
+    
+    // Update in memory
+    workspaceNames = {
+      ...workspaceNames,
+      [id]: displayName
+    };
+    
+    // Store back using optimized batched storage
+    storage.set('odzai-workspace-names', workspaceNames);
+    console.log(`Updated workspace name in storage: ${id} => ${displayName}`);
+  } catch (error) {
+    console.error('Error updating stored workspace name:', error);
+  }
+};
+
+  // Check storage settings and default workspace on mount
   useEffect(() => {
     const initializeWorkspace = async () => {
       console.log('Initializing workspace...');
@@ -141,47 +193,47 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           // First check if we want to force a logout - useful for debugging
           const forceLogout = new URLSearchParams(window.location.search).get('forceLogout');
           if (forceLogout === 'true') {
-            console.log('Force logout requested, clearing localStorage');
-            localStorage.removeItem('odzai-current-workspace');
+            console.log('Force logout requested, clearing storage');
+            storage.remove('odzai-current-workspace');
           }
           
           // Force default workspace - useful for debugging
           const forceDefault = new URLSearchParams(window.location.search).get('forceDefault');
           if (forceDefault === 'true') {
-            console.log('Force default workspace requested, bypassing localStorage');
+            console.log('Force default workspace requested, bypassing storage');
             const defaultId = await fetchDefaultWorkspace();
             if (defaultId) {
               console.log('Loading forced default workspace:', defaultId);
               await loadWorkspaceData(defaultId);
-              // Update localStorage
-              localStorage.setItem('odzai-current-workspace', defaultId);
+              // Update storage
+              storage.set('odzai-current-workspace', defaultId);
               return;
             }
           }
           
-          // First check localStorage for current workspace
-          const storedWorkspaceId = localStorage.getItem('odzai-current-workspace');
-          console.log('Stored workspace ID from localStorage:', storedWorkspaceId);
-          
-          // Only proceed with localStorage if we're sure it has a value
-          if (storedWorkspaceId && storedWorkspaceId.trim() !== '') {
-            // If there's a workspace in localStorage, load it
-            console.log('Loading workspace from localStorage:', storedWorkspaceId);
-            await loadWorkspaceData(storedWorkspaceId);
-            // Return early to avoid the default workspace loading
-            return;
-          }
-          
-          // If no valid workspace in localStorage, check for default workspace in preferences
-          console.log('No workspace in localStorage, checking for default workspace');
-          const defaultId = await fetchDefaultWorkspace();
-          if (defaultId) {
-            // Load the default workspace
-            console.log('Loading default workspace:', defaultId);
-            await loadWorkspaceData(defaultId);
-            // Also update localStorage (only after successful loading)
-            console.log('Updating localStorage with default workspace ID');
-            localStorage.setItem('odzai-current-workspace', defaultId);
+                // First check storage for current workspace
+      const storedWorkspaceId = storage.get<string>('odzai-current-workspace');
+      console.log('Stored workspace ID from storage:', storedWorkspaceId);
+      
+      // Only proceed with storage if we're sure it has a value
+      if (storedWorkspaceId && storedWorkspaceId.trim() !== '') {
+        // If there's a workspace in storage, load it
+        console.log('Loading workspace from storage:', storedWorkspaceId);
+        await loadWorkspaceData(storedWorkspaceId);
+        // Return early to avoid the default workspace loading
+        return;
+      }
+      
+      // If no valid workspace in storage, check for default workspace in preferences
+      console.log('No workspace in storage, checking for default workspace');
+      const defaultId = await fetchDefaultWorkspace();
+      if (defaultId) {
+        // Load the default workspace
+        console.log('Loading default workspace:', defaultId);
+        await loadWorkspaceData(defaultId);
+        // Also update storage (only after successful loading)
+        console.log('Updating storage with default workspace ID');
+        storage.set('odzai-current-workspace', defaultId);
           } else {
             console.log('No default workspace found, user will need to select one');
           }
@@ -198,6 +250,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const loadWorkspaceData = async (id: string) => {
     console.log('Loading workspace data for ID:', id);
     try {
+      // Check if we have a custom name stored
+      const storedDisplayName = getStoredDisplayName(id);
+      
       // Try to get the workspace details from the API
       console.log(`Fetching workspace details from /api/budgets/${id}`);
       const response = await fetch(`/api/budgets/${id}`);
@@ -207,6 +262,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (response.ok) {
         const workspaceData = await response.json();
         console.log('Workspace data received:', workspaceData);
+        
+        // Extract the display name, using stored custom name first,
+        // then API-provided displayName, then generate from name
+        const displayName = storedDisplayName || 
+                           workspaceData.displayName || 
+                           getCleanWorkspaceName(workspaceData.name);
+        
+        // Save the display name to storage if it's from API or newly generated
+        if (!storedDisplayName && displayName !== workspaceData.name) {
+          updateStoredWorkspaceName(id, displayName);
+        }
+        
+        console.log('Using display name:', displayName);
         
         // Also load the budget on the Express server
         try {
@@ -251,7 +319,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
         
         console.log('Setting current workspace in state');
-        setCurrentWorkspace(workspaceData);
+        // Store the original name and set a clean display name
+        setCurrentWorkspace({
+          id: workspaceData.id,
+          originalName: workspaceData.name, // Store original full ID
+          name: workspaceData.name, // Keep the full name for backend operations
+          color: workspaceData.color || DEFAULT_WORKSPACE_COLOR,
+          displayName // Use the display name for UI
+        });
         setCurrentWorkspaceId(id);
         setIsWorkspaceLoaded(true);
         return;
@@ -283,11 +358,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
             // Continue even if Express load fails
           }
           
-          // Use the workspace data from the list
+          // Use the workspace data from the list with clean name
           setCurrentWorkspace({
             id,
-            name: matchingWorkspace.name,
-            color: matchingWorkspace.color || DEFAULT_WORKSPACE_COLOR
+            originalName: matchingWorkspace.name, // Store original full ID
+            name: getCleanWorkspaceName(matchingWorkspace.name), // Use clean name for display
+            color: matchingWorkspace.color || DEFAULT_WORKSPACE_COLOR,
+            displayName: matchingWorkspace.displayName || getCleanWorkspaceName(matchingWorkspace.name)
           })
           setCurrentWorkspaceId(id)
           setIsWorkspaceLoaded(true)
@@ -298,8 +375,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       // Fallback to a simple workspace object if we couldn't get the data from the API
       const workspaceData = {
         id,
-        name: id, // Just use the ID as the name
-        color: DEFAULT_WORKSPACE_COLOR
+        originalName: id, // Store original full ID 
+        name: getCleanWorkspaceName(id), // Use clean name for display
+        color: DEFAULT_WORKSPACE_COLOR,
+        displayName: getCleanWorkspaceName(id)
       }
 
       setCurrentWorkspace(workspaceData)
@@ -309,9 +388,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       console.error('Error loading workspace data:', error)
       toast.error('Failed to load workspace data')
       // Clear the workspace selection since loading failed
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('odzai-current-workspace')
-      }
+      storage.remove('odzai-current-workspace');
       setIsWorkspaceLoaded(false)
       setCurrentWorkspaceId(null)
       setCurrentWorkspace(null)
@@ -319,26 +396,87 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }
 
   const loadWorkspace = (id: string) => {
-    setLoadingWorkspace(true)
+    // Set loading state
+    setLoadingWorkspace(true);
     
-    // Store the current workspace ID in localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('odzai-current-workspace', id)
+    // Show loading toast for better user feedback
+    const loadingToast = toast.loading('Loading workspace...');
+    
+    // First update storage
+    try {
+      storage.set('odzai-current-workspace', id);
+    } catch (error) {
+      console.error('Error updating storage:', error);
+      // Continue even if storage fails
     }
     
     // Load the workspace data
     loadWorkspaceData(id)
       .then(() => {
-        setLoadingWorkspace(false)
-        toast.success('Workspace loaded successfully')
+        // Update state before navigation
+        setLoadingWorkspace(false);
         
-        // Use router.push for navigation without the conditional check
-        router.push('/')
+        // Dismiss loading toast and show success
+        toast.dismiss(loadingToast);
+        toast.success('Workspace loaded successfully');
+        
+        // Use standardized navigation pattern with appropriate timing
+        setTimeout(() => {
+          navigate(router, NavigationType.PUSH, '/', {
+            showLoading: true,
+            delay: TIMING.NAVIGATION_DELAY,
+            fallbackUrl: '/',
+            suppressToast: false,
+            callback: () => {
+              console.log('Navigation to home page complete after workspace load');
+            }
+          }).catch((error: unknown) => {
+            console.error('Error navigating after workspace load:', error);
+          });
+        }, TIMING.MODAL_CLOSE);
       })
-      .catch(() => {
-        setLoadingWorkspace(false)
-      })
+      .catch((error) => {
+        console.error('Error loading workspace:', error);
+        setLoadingWorkspace(false);
+        toast.dismiss(loadingToast);
+        toast.error('Failed to load workspace');
+      });
   }
+
+  // Refresh current workspace data without navigation
+  const refreshCurrentWorkspace = async () => {
+    if (currentWorkspaceId) {
+      try {
+        console.log('Refreshing current workspace data');
+        const response = await fetch(`/api/budgets/${currentWorkspaceId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          console.log('Refreshed workspace data:', data);
+          
+          // Get stored display name or use server-provided or clean name
+          const storedDisplayName = getStoredDisplayName(currentWorkspaceId);
+          const displayName = storedDisplayName || data.displayName || getCleanWorkspaceName(data.name);
+          
+          // Update the current workspace data with refreshed values
+          setCurrentWorkspace({
+            id: data.id,
+            originalName: data.name,
+            name: data.name,
+            color: data.color || DEFAULT_WORKSPACE_COLOR,
+            displayName
+          });
+          
+          return true;
+        }
+      } catch (error) {
+        console.error('Error refreshing workspace data:', error);
+      }
+    }
+    
+    return false;
+  };
 
   return (
     <WorkspaceContext.Provider 
@@ -350,7 +488,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         currentWorkspace,
         setAsDefaultWorkspace,
         clearDefaultWorkspace,
-        isDefaultWorkspace
+        isDefaultWorkspace,
+        refreshCurrentWorkspace
       }}
     >
       {children}
