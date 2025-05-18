@@ -48,7 +48,8 @@ import {
   Loader2,
   CheckCircle,
   LinkIcon,
-  RefreshCw
+  RefreshCw,
+  Check
 } from "lucide-react";
 
 interface SettingsModalProps {
@@ -75,7 +76,7 @@ const SectionHeading = ({ title }: { title: string }) => (
 
 const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsModalProps) => {
   // Get workspace context
-  const { currentWorkspaceId, loadWorkspace } = useWorkspace();
+  const { currentWorkspaceId, loadWorkspace, setAsDefaultWorkspace, clearDefaultWorkspace, isDefaultWorkspace } = useWorkspace();
   
   // Initial state values
   const [workspaceName, setWorkspaceName] = useState("Fabrice Muhirwa's Notion");
@@ -834,6 +835,62 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Select the workspace you want to configure
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Default Workspace Setting */}
+                    <div className="space-y-4">
+                      <h4 className="text-base font-medium border-b pb-2">Default workspace</h4>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-medium">Set as default workspace</p>
+                            <p className="text-xs text-muted-foreground">
+                              This workspace will load automatically when you open the application
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            {isLoadingWorkspaces ? (
+                              <Button variant="outline" size="sm" disabled>
+                                <div className="h-4 w-4 rounded-full border-2 border-t-transparent border-primary animate-spin mr-2"></div>
+                                Loading...
+                              </Button>
+                            ) : (
+                              <>
+                                {isDefaultWorkspace(selectedWorkspaceId) ? (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => clearDefaultWorkspace()}
+                                    className="text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Remove Default
+                                  </Button>
+                                ) : (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    disabled={isLoadingWorkspaces || workspaces.length === 0 || !selectedWorkspaceId}
+                                    onClick={() => selectedWorkspaceId && setAsDefaultWorkspace(selectedWorkspaceId)}
+                                    className="hover:bg-green-50 hover:text-green-700"
+                                  >
+                                    <Check className="h-4 w-4 mr-1" />
+                                    Set as Default
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs">
+                          {workspaces.find(w => isDefaultWorkspace(w.id)) 
+                            ? <span className="text-green-600 font-medium flex items-center">
+                                Current default workspace: {workspaces.find(w => isDefaultWorkspace(w.id))?.name}
+                                <Check className="h-3 w-3 ml-1" />
+                              </span>
+                            : "No default workspace set"}
                         </p>
                       </div>
                     </div>

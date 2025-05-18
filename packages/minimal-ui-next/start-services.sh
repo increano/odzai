@@ -24,6 +24,20 @@ if [ ! -d "$DATA_DIR" ]; then
   mkdir -p "$DATA_DIR"
 fi
 
+# Create local preferences directory if it doesn't exist
+LOCAL_PREFS_DIR="$PROJECT_ROOT/data/user-preferences"
+if [ ! -d "$LOCAL_PREFS_DIR" ]; then
+  echo -e "${YELLOW}Creating local preferences directory...${NC}"
+  mkdir -p "$LOCAL_PREFS_DIR"
+  
+  # Check if there's a preferences file to copy from root data dir
+  ROOT_PREFS_FILE="$DATA_DIR/user-preferences/preferences.json"
+  if [ -f "$ROOT_PREFS_FILE" ]; then
+    echo -e "${YELLOW}Copying preferences from root data directory...${NC}"
+    cp "$ROOT_PREFS_FILE" "$LOCAL_PREFS_DIR/preferences.json"
+  fi
+fi
+
 # Function to check if a port is in use
 check_port() {
   lsof -i:$1 > /dev/null 2>&1
@@ -49,17 +63,19 @@ start_api() {
 
 # Start the Next.js app
 start_nextjs() {
-  echo -e "\n${GREEN}=== Starting Next.js on port 3002 ===${NC}"
-  if check_port 3002; then
-    echo -e "${RED}Port 3002 is already in use. Please stop any other service using this port.${NC}"
+  echo -e "\n${GREEN}=== Starting Next.js on port 3000 ===${NC}"
+  if check_port 3000; then
+    echo -e "${RED}Port 3000 is already in use. Please stop any other service using this port.${NC}"
     exit 1
   fi
   
   echo -e "${YELLOW}Directory:${NC} $(pwd)"
   
   # Start the Next.js app
-  echo -e "${YELLOW}Starting Next.js app...${NC}"
-  ACTUAL_API_URL=http://localhost:3001 PORT=3002 yarn dev &
+  echo -e "${YELLOW}Starting Next.js app with proper API URL configuration...${NC}"
+  export NEXT_PUBLIC_API_URL=http://localhost:3001
+  echo -e "${YELLOW}NEXT_PUBLIC_API_URL set to:${NC} $NEXT_PUBLIC_API_URL"
+  PORT=3000 NODE_OPTIONS="--max-old-space-size=4096" yarn dev &
   NEXTJS_PID=$!
   echo -e "${GREEN}Next.js app started with PID:${NC} $NEXTJS_PID"
 }
@@ -89,8 +105,11 @@ start_nextjs
 # Wait for user to press Ctrl+C
 echo -e "\n${GREEN}=== Services are running ===${NC}"
 echo -e "${YELLOW}Express API server:${NC} http://localhost:3001"
-echo -e "${YELLOW}Next.js app:${NC} http://localhost:3002"
+echo -e "${YELLOW}Next.js app:${NC} http://localhost:3000"
 echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
+echo -e "\n${GREEN}=== Quick debug links ===${NC}"
+echo -e "${YELLOW}Force default workspace:${NC} http://localhost:3000/?forceDefault=true"
+echo -e "${YELLOW}Force logout:${NC} http://localhost:3000/?forceLogout=true"
 
 # Wait indefinitely
 wait 

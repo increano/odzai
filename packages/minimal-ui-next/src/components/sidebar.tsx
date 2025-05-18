@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, MouseEvent } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { 
@@ -20,7 +20,10 @@ import {
   Building2,
   ChevronDown,
   Plus,
-  LogOut
+  LogOut,
+  Check,
+  X,
+  Users
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -36,6 +39,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { toast } from 'sonner'
 
@@ -111,7 +115,7 @@ export function Sidebar({ className }: SidebarProps) {
   // Use our custom hook with a default value of false (expanded)
   const [collapsed, setCollapsed] = useLocalStorage<boolean>(SIDEBAR_STATE_KEY, false)
   const { openSettingsModal } = useSettingsModal()
-  const { isWorkspaceLoaded, currentWorkspace, loadWorkspace, loadingWorkspace } = useWorkspace()
+  const { isWorkspaceLoaded, currentWorkspace, loadWorkspace, loadingWorkspace, isDefaultWorkspace } = useWorkspace()
   
   // Add state to control the dropdown open/close state
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -441,67 +445,69 @@ export function Sidebar({ className }: SidebarProps) {
 
   // Component for workspace selector
   const WorkspaceSelector = ({ collapsed }: { collapsed: boolean }) => (
-    <div className={cn(
-      "border-b pb-3 transition-all duration-300 ease-in-out",
-      collapsed ? "px-2" : "px-3"
-    )}>
-      {collapsed ? (
-        <div className="flex justify-center py-2">
-          {isWorkspaceLoaded && currentWorkspace ? (
-            <div 
-              className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
-              style={{ backgroundColor: currentWorkspace.color }}
-            >
-              {currentWorkspace.name.charAt(0)}
-            </div>
-          ) : (
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-8 w-8"
-              onClick={() => setCollapsed(false)}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      ) : (
+    <div className="flex-none px-2 py-2">
+      <div className="overflow-hidden">
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
-            {isWorkspaceLoaded && currentWorkspace ? (
-              <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors bg-accent text-accent-foreground">
-                <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              className={cn(
+                "w-full text-left flex items-center gap-2 py-2",
+                { "justify-center": collapsed }
+              )} 
+              size="sm"
+            >
+              {isWorkspaceLoaded && currentWorkspace ? (
+                <>
                   <div 
-                    className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
-                    style={{ backgroundColor: currentWorkspace.color }}
+                    className={cn(
+                      "h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative",
+                      { "mx-auto": collapsed }
+                    )}
+                    style={{ backgroundColor: currentWorkspace.color || '#FF7043' }}
                   >
                     {currentWorkspace.name.charAt(0)}
+                    {isDefaultWorkspace(currentWorkspace.id) && (
+                      <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
+                    )}
                   </div>
-                  <div className="flex flex-col items-start max-w-[120px]">
-                    <span className="text-sm font-medium truncate w-full text-left">
-                      {currentWorkspace.name}
+                  <div className={cn(
+                    "flex flex-1 flex-col gap-0 whitespace-nowrap transition-all duration-300 ease-in-out",
+                    collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"
+                  )}>
+                    <span className="text-sm font-medium">{currentWorkspace.name}</span>
+                    <span className="text-xs text-muted-foreground flex items-center">
+                      Workspace
+                      {isDefaultWorkspace(currentWorkspace.id) && (
+                        <span className="ml-1 text-xs text-green-600 font-medium flex items-center">
+                          · Default <Check className="h-3 w-3 ml-0.5" />
+                        </span>
+                      )}
                     </span>
-                    <span className="text-xs text-muted-foreground">Current workspace</span>
                   </div>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            ) : (
-              <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-md flex items-center justify-center bg-muted">
-                    <Plus className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium">Select Workspace</span>
-                    <span className="text-xs text-muted-foreground">No workspace loaded</span>
-                  </div>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
+                </>
+              ) : (
+                <>
+                  <div className={cn(
+                    "h-6 w-6 rounded-md bg-primary/20 animate-pulse",
+                    { "mx-auto": collapsed }
+                  )}></div>
+                  {!collapsed && (
+                    <div className="flex flex-col gap-0">
+                      <div className="h-3 w-24 bg-primary/20 rounded-sm animate-pulse"></div>
+                      <div className="h-3 w-16 bg-primary/20 rounded-sm animate-pulse mt-1"></div>
+                    </div>
+                  )}
+                </>
+              )}
+              <ChevronDown className={cn(
+                "h-4 w-4 ml-auto transition-transform duration-300",
+                dropdownOpen ? "rotate-180" : "rotate-0",
+                collapsed ? "hidden" : "block"
+              )} />
+            </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[220px]">
+          <DropdownMenuContent align="start" className="w-[220px]" forceMount={true}>
             <div className="px-2 py-1.5">
               <h3 className="text-sm font-medium mb-1">
                 {isWorkspaceLoaded ? "Switch workspace" : "Select a workspace"}
@@ -525,13 +531,21 @@ export function Sidebar({ className }: SidebarProps) {
                     onClick={() => switchWorkspace(workspace)}
                   >
                     <div 
-                      className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium"
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative"
                       style={{ backgroundColor: workspace.color }}
                     >
                       {workspace.name.charAt(0)}
+                      {isDefaultWorkspace(workspace.id) && (
+                        <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
+                      )}
                     </div>
                     <span className="text-sm">{workspace.name}</span>
-                    {isWorkspaceLoaded && currentWorkspace && workspace.id === currentWorkspace.id && (
+                    {isDefaultWorkspace(workspace.id) && (
+                      <span className="ml-auto text-xs text-green-600 font-medium flex items-center gap-0.5">
+                        Default <Check className="h-3 w-3" />
+                      </span>
+                    )}
+                    {isWorkspaceLoaded && currentWorkspace && workspace.id === currentWorkspace.id && !isDefaultWorkspace(workspace.id) && (
                       <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
                     )}
                   </DropdownMenuItem>
@@ -545,90 +559,130 @@ export function Sidebar({ className }: SidebarProps) {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-      )}
+      </div>
     </div>
   )
   
   // Mobile workspace selector
   const MobileWorkspaceSelector = () => (
-    <div className="border-b pb-3 px-4">
+    <div className="flex flex-col px-4 py-3 border-b">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-medium">
+          {isWorkspaceLoaded ? currentWorkspace?.name : "Select a workspace"}
+        </h3>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-8"
+          onClick={() => openWorkspaceSettings()}
+        >
+          <Settings className="h-3.5 w-3.5 mr-1" />
+          <span className="text-xs">Settings</span>
+        </Button>
+      </div>
+      {isWorkspaceLoaded && currentWorkspace ? (
+        <div className="flex items-center gap-3">
+          <div 
+            className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium relative"
+            style={{ backgroundColor: currentWorkspace.color }}
+          >
+            {currentWorkspace.name.charAt(0)}
+            {isDefaultWorkspace(currentWorkspace.id) && (
+              <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
+            )}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{currentWorkspace.name}</span>
+            <span className="text-xs text-muted-foreground flex items-center">
+              Current workspace
+              {isDefaultWorkspace(currentWorkspace.id) && (
+                <span className="ml-1 text-xs text-green-600 font-medium flex items-center">
+                  · Default <Check className="h-3 w-3 ml-0.5" />
+                </span>
+              )}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-accent/50 rounded-md px-3 py-2">
+          <p className="text-sm mb-1">No workspace selected</p>
+          <p className="text-xs text-muted-foreground">Please select a workspace to continue</p>
+        </div>
+      )}
       <DropdownMenu open={mobileDropdownOpen} onOpenChange={setMobileDropdownOpen}>
         <DropdownMenuTrigger asChild>
-          {isWorkspaceLoaded && currentWorkspace ? (
-            <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors bg-accent text-accent-foreground">
-              <div className="flex items-center gap-2">
-                <div 
-                  className="h-8 w-8 rounded-md flex items-center justify-center text-white font-medium"
-                  style={{ backgroundColor: currentWorkspace.color }}
-                >
-                  {currentWorkspace.name.charAt(0)}
-                </div>
-                <div className="flex flex-col items-start max-w-[120px]">
-                  <span className="text-sm font-medium truncate w-full text-left">
-                    {currentWorkspace.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">Current workspace</span>
-                </div>
-              </div>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            </button>
-          ) : (
-            <button className="w-full flex items-center justify-between gap-2 p-2 rounded-md hover:bg-accent/50 transition-colors">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-md flex items-center justify-center bg-muted">
-                  <Plus className="h-4 w-4" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-medium">Select Workspace</span>
-                  <span className="text-xs text-muted-foreground">No workspace loaded</span>
-                </div>
-              </div>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            </button>
-          )}
+          <Button variant="outline" className="w-full justify-between mt-2">
+            <span>
+              {isWorkspaceLoaded ? "Switch workspace" : "Select workspace"}
+            </span>
+            <ChevronDown className="h-4 w-4 ml-2" />
+          </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-[220px]" forceMount={true}>
+        <DropdownMenuContent className="w-[300px]">
           <div className="px-2 py-1.5">
-            <h3 className="text-sm font-medium mb-1">
-              {isWorkspaceLoaded ? "Switch workspace" : "Select a workspace"}
-            </h3>
-            <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
+            <h3 className="text-sm font-medium">Available workspaces</h3>
+            <p className="text-xs text-muted-foreground">Select a workspace to load</p>
           </div>
           {isLoadingWorkspaces ? (
             <DropdownMenuItem disabled>
-              <span className="text-sm">Loading workspaces...</span>
+              <div className="flex items-center gap-2 py-2">
+                <div className="h-5 w-5 rounded-full border-2 border-t-transparent border-primary animate-spin"></div>
+                <span>Loading workspaces...</span>
+              </div>
             </DropdownMenuItem>
           ) : availableWorkspaces.length === 0 ? (
             <DropdownMenuItem disabled>
-              <span className="text-sm">No workspaces found</span>
+              <div className="py-2">
+                <p className="text-sm">No workspaces found</p>
+                <p className="text-xs text-muted-foreground">Create a new workspace to get started</p>
+              </div>
             </DropdownMenuItem>
           ) : (
-            <div className="max-h-[135px] overflow-y-auto pr-1 py-1">
+            <div className="max-h-[200px] overflow-y-auto py-1">
               {availableWorkspaces.map(workspace => (
                 <DropdownMenuItem 
                   key={workspace.id}
                   className="flex items-center gap-2 py-2"
-                  onClick={() => switchWorkspace(workspace)}
+                  onClick={() => {
+                    switchWorkspace(workspace);
+                    setMobileDropdownOpen(false);
+                  }}
                 >
                   <div 
-                    className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium"
+                    className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative"
                     style={{ backgroundColor: workspace.color }}
                   >
                     {workspace.name.charAt(0)}
+                    {isDefaultWorkspace(workspace.id) && (
+                      <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
+                    )}
                   </div>
-                  <span className="text-sm">{workspace.name}</span>
-                  {isWorkspaceLoaded && currentWorkspace && workspace.id === currentWorkspace.id && (
-                    <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
+                  <div className="flex-1">
+                    <span className="text-sm block">{workspace.name}</span>
+                    {isDefaultWorkspace(workspace.id) && (
+                      <span className="text-xs text-green-600 font-medium flex items-center gap-0.5">
+                        Default workspace <Check className="h-3 w-3 ml-0.5" />
+                      </span>
+                    )}
+                  </div>
+                  {isWorkspaceLoaded && currentWorkspace && workspace.id === currentWorkspace.id && !isDefaultWorkspace(workspace.id) && (
+                    <div className="h-2 w-2 rounded-full bg-primary"></div>
                   )}
                 </DropdownMenuItem>
               ))}
             </div>
           )}
-          <div className="border-t mt-1 pt-1">
-            <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
-              <span className="text-sm">Manage workspaces</span>
-            </DropdownMenuItem>
-          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            className="flex items-center gap-2 py-2"
+            onClick={() => {
+              setMobileDropdownOpen(false);
+              openWorkspaceSettings();
+            }}
+          >
+            <Settings className="h-4 w-4" />
+            <span>Manage workspaces</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

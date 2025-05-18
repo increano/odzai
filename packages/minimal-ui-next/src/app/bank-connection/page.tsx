@@ -159,7 +159,7 @@ export default function BankConnection() {
       if (typeof window !== 'undefined') {
         if (data.requisitionId) {
           console.log(`Storing requisition ID in session storage: ${data.requisitionId}`);
-          window.sessionStorage.setItem('gocardless_requisition_id', data.requisitionId);
+        window.sessionStorage.setItem('gocardless_requisition_id', data.requisitionId);
           
           // Also store the reference for correlation
           if (data.reference) {
@@ -278,35 +278,35 @@ export default function BankConnection() {
                 ) : (
                   <div className="max-h-[400px] overflow-y-auto border rounded-md">
                     <ul className="divide-y divide-gray-100">
-                      {filteredBanks.map((bank) => (
+                    {filteredBanks.map((bank) => (
                         <li
-                          key={bank.id}
+                        key={bank.id}
                           className={`flex items-center p-3 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors ${
                             selectedBank === bank.id ? 'bg-accent' : ''
                           } ${
                             bank.id === 'SANDBOXFINANCE_SFIN0000' ? 'bg-green-50 border-green-200' : ''
-                          }`}
-                          onClick={() => handleBankSelect(bank.id)}
-                        >
+                        }`}
+                        onClick={() => handleBankSelect(bank.id)}
+                      >
                           <div className="w-8 h-8 mr-3 flex-shrink-0 flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                            {bank.logo ? (
-                              <img
-                                src={bank.logo}
-                                alt={bank.name}
+                          {bank.logo ? (
+                            <img
+                              src={bank.logo}
+                              alt={bank.name}
                                 className="w-full h-full object-contain"
-                              />
-                            ) : (
+                            />
+                          ) : (
                               <span className="text-xs font-medium">{bank.name.substring(0, 2)}</span>
-                            )}
-                          </div>
+                          )}
+                        </div>
                           <div className="flex flex-col">
                             <span className="text-sm font-medium">{bank.name}</span>
                             {bank.id === 'SANDBOXFINANCE_SFIN0000' && (
                               <span className="text-xs text-green-600">Recommended for testing</span>
                             )}
-                          </div>
+                        </div>
                         </li>
-                      ))}
+                    ))}
                     </ul>
                   </div>
                 )}

@@ -249,31 +249,31 @@ function GoCardlessConnectionForm({ onSuccess, onOpenChange }: { onSuccess?: () 
       // return;
       
       try {
-        const response = await fetch('/api/gocardless/connect', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            institutionId: bankId,
-            country: selectedCountry
-          }),
+      const response = await fetch('/api/gocardless/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          institutionId: bankId,
+          country: selectedCountry
+        }),
         });
 
         const data = await response.json();
-        
-        if (!response.ok) {
+
+      if (!response.ok) {
           console.error('Error response from API:', data);
           throw new Error(data.error || 'Failed to initiate bank connection');
-        }
-        
+      }
+
         console.log('Bank connection response:', data);
         
         // Check if we have either link or redirectUrl
         if (data.link || data.redirectUrl) {
           const redirectUrl = data.link || data.redirectUrl;
           toast.success('Bank authorization page opened in a new tab. Please complete the authorization process and return to this page.');
-          
+        
           // Store requisition ID for later use
           if (data.requisitionId) {
             console.log(`Storing requisition ID in session storage: ${data.requisitionId}`);
@@ -379,9 +379,9 @@ function GoCardlessConnectionForm({ onSuccess, onOpenChange }: { onSuccess?: () 
             ) : (
               <div className="max-h-[300px] overflow-y-auto border rounded-md">
                 <ul className="divide-y divide-gray-100">
-                  {bankList.map(bank => (
+                {bankList.map(bank => (
                     <li 
-                      key={bank.id}
+                    key={bank.id}
                       onClick={() => !isConnecting && handleBankSelect(bank.id)}
                       className={`flex items-center p-3 hover:bg-accent hover:text-accent-foreground ${
                         !isConnecting ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
@@ -405,22 +405,22 @@ function GoCardlessConnectionForm({ onSuccess, onOpenChange }: { onSuccess?: () 
                           />
                         ) : (
                           <span className="text-xs font-medium">{bank.name.substring(0, 2)}</span>
-                        )}
-                      </div>
+                      )}
+                    </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium">{bank.name}</span>
+                    <span className="text-sm font-medium">{bank.name}</span>
                         {bank.id === 'SANDBOXFINANCE_SFIN0000' && (
                           <span className="text-xs text-green-600">Recommended for testing</span>
                         )}
-                      </div>
+                  </div>
                     </li>
-                  ))}
-                  
-                  {bankList.length === 0 && (
+                ))}
+                
+                {bankList.length === 0 && (
                     <div className="text-center py-4 text-muted-foreground">
-                      No banks available for the selected country.
-                    </div>
-                  )}
+                    No banks available for the selected country.
+                  </div>
+                )}
                 </ul>
               </div>
             )}

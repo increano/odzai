@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     const results = [];
     const errors = [];
     
-    // Process each account
+      // Process each account
     for (const account of body.accounts) {
       try {
         // Create a new account in Actual using the Express backend
@@ -109,12 +109,12 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error(`Error creating account ${account.name}:`, err);
         errors.push({
-          name: account.name,
+            name: account.name,
           error: err instanceof Error ? err.message : 'Unknown error'
         });
+        }
       }
-    }
-    
+      
     if (errors.length > 0 && results.length === 0) {
       // All accounts failed
       return NextResponse.json({ 

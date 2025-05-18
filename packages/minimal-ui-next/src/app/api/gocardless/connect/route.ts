@@ -32,17 +32,17 @@ async function getAccessToken() {
       // For testing - return mock data if needed
       // return { access: 'mock-token' };
       
-      const response = await fetch(`${GOCARDLESS_API_URL}/token/new/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          secret_id: secretId,
-          secret_key: secretKey
-        })
-      });
+    const response = await fetch(`${GOCARDLESS_API_URL}/token/new/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        secret_id: secretId,
+        secret_key: secretKey
+      })
+    });
       
       const responseText = await response.text();
       let data;
@@ -53,8 +53,8 @@ async function getAccessToken() {
         console.error('Failed to parse token response:', responseText);
         throw new Error(`Invalid JSON response from GoCardless: ${responseText.substring(0, 100)}...`);
       }
-      
-      if (!response.ok) {
+    
+    if (!response.ok) {
         console.error('GoCardless token error:', response.status, data);
         throw new Error(data?.summary || `Failed to get access token. Status: ${response.status} ${response.statusText}`);
       }
@@ -72,8 +72,8 @@ async function getAccessToken() {
       const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
       if (message.includes('CORS') || message.includes('cross-origin')) {
         throw new Error('CORS error accessing GoCardless API. Please check your network configuration.');
-      }
-      
+    }
+    
       // For network errors, provide more helpful messages
       if (message.includes('fetch')) {
         throw new Error('Network error accessing GoCardless API. Please check your internet connection and firewall settings.');
@@ -136,13 +136,13 @@ export async function POST(request: Request) {
       console.log('Requisition request body:', requisitionBody);
       
       try {
-        const requisitionResponse = await fetch(`${GOCARDLESS_API_URL}/requisitions/`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${tokenData.access}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
+      const requisitionResponse = await fetch(`${GOCARDLESS_API_URL}/requisitions/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokenData.access}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
           body: JSON.stringify(requisitionBody)
         });
         
@@ -160,12 +160,12 @@ export async function POST(request: Request) {
           console.error('Failed to parse requisition response:', requisitionResponseText);
           throw new Error(`Invalid response from GoCardless API: ${requisitionResponseText.substring(0, 100)}...`);
         }
-        
-        if (!requisitionResponse.ok) {
+      
+      if (!requisitionResponse.ok) {
           console.error('Error creating requisition:', requisitionData);
           throw new Error(requisitionData?.summary || `Failed to create bank connection: ${requisitionResponse.status} ${requisitionResponse.statusText}`);
-        }
-        
+      }
+      
         if (!requisitionData.link) {
           console.error('No link in requisition response:', requisitionData);
           throw new Error('No redirect link in GoCardless response');
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         }
         
         // Return the response with both redirectUrl and link for backward compatibility
-        return NextResponse.json({
+      return NextResponse.json({
           redirectUrl: modifiedLink,
           requisitionId: requisitionData.id,
           link: modifiedLink,

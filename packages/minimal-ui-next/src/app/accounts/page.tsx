@@ -66,7 +66,7 @@ export default function AccountsPage() {
       
       // Ensure data is an array before setting state
       if (Array.isArray(data)) {
-        setAccounts(data);
+      setAccounts(data);
       } else if (data && typeof data === 'object' && Array.isArray(data.accounts)) {
         // Handle case where accounts are nested in an object
         console.log('Found nested accounts array with length:', data.accounts.length);
