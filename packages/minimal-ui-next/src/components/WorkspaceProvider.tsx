@@ -312,10 +312,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setLoadingWorkspace(false)
         toast.success('Workspace loaded successfully')
         
-        // Only redirect to home page if not already there
-        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
-          router.push('/')
-        }
+        // Use router.push for navigation without the conditional check
+        router.push('/')
       })
       .catch(() => {
         setLoadingWorkspace(false)

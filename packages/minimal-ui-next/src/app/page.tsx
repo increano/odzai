@@ -6,10 +6,12 @@ import { StatCard } from '@/components/ui/stat-card'
 import { WorkspaceRequired } from '@/components/workspace-required'
 import { useState } from 'react'
 import { useWorkspace } from '@/components/WorkspaceProvider'
+import { useRouter } from 'next/navigation'
 
 export default function HomePage() {
   const { isWorkspaceLoaded } = useWorkspace();
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const router = useRouter();
 
   const testDefaultWorkspaceLoading = async () => {
     try {
@@ -23,8 +25,8 @@ export default function HomePage() {
       setDebugInfo(JSON.stringify(data, null, 2));
       
       if (data.success) {
-        // Force reload the page to apply the workspace
-        window.location.reload();
+        // Use router.refresh() instead of window.location.reload()
+        router.refresh();
       }
     } catch (error) {
       console.error('Error testing default workspace:', error);

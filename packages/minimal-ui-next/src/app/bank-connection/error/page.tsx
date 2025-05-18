@@ -60,7 +60,7 @@ export default function BankConnectionError() {
           <Button variant="outline" onClick={goBack}>
             Go Back
           </Button>
-          <Button onClick={() => window.location.href = '/bank-connection'}>
+          <Button onClick={() => router.push('/bank-connection')}>
             Try Again
           </Button>
         </CardFooter>

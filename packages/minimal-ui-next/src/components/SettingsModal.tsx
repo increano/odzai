@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +76,9 @@ const SectionHeading = ({ title }: { title: string }) => (
 );
 
 const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsModalProps) => {
+  // Add router
+  const router = useRouter();
+  
   // Get workspace context
   const { currentWorkspaceId, loadWorkspace, setAsDefaultWorkspace, clearDefaultWorkspace, isDefaultWorkspace } = useWorkspace();
   
@@ -275,8 +279,8 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
       if (workspaceToDeleteObj.id === currentWorkspaceId) {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('odzai-current-workspace');
-          // Reload the page to ensure the workspace is unloaded properly
-          window.location.href = '/';
+          // Use router instead of direct location change
+          router.push('/');
         }
       } else {
         // Just refresh the workspaces list
@@ -347,9 +351,10 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
         // Store the new workspace ID
         if (typeof window !== 'undefined') {
           localStorage.setItem('odzai-current-workspace', data.id);
-          // Redirect to the new workspace
+          // Load the workspace 
           loadWorkspace(data.id);
-          window.location.href = '/?empty=true';
+          // Use router.push with query params instead of direct location change
+          router.push('/?empty=true');
         }
       }
     } catch (error) {
@@ -427,10 +432,8 @@ const SettingsModal = ({ open, onOpenChange, defaultTab = "account" }: SettingsM
     // Close the settings modal
     onOpenChange(false);
     
-    // Navigate to the bank connection page
-    if (typeof window !== 'undefined') {
-      window.location.href = '/bank-connection';
-    }
+    // Use router.push instead of direct navigation
+    router.push('/bank-connection');
   };
 
   // Add this function to handle syncing accounts

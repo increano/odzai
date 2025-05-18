@@ -40,8 +40,8 @@ export function WorkspaceRequired({
       setDebugInfo(JSON.stringify(data, null, 2));
       
       if (data.success) {
-        // Force reload the page to apply the workspace
-        window.location.reload();
+        // Use router.refresh() instead of window.location.reload()
+        router.refresh();
       }
     } catch (error) {
       console.error('Error testing default workspace:', error);
@@ -69,18 +69,18 @@ export function WorkspaceRequired({
           </button>
           
           <div className="mt-3">
-            <a 
-              href="/?forceDefault=true"
+            <button 
+              onClick={() => router.push('/?forceDefault=true')}
               className="text-blue-500 hover:text-blue-700 underline text-sm mx-2"
             >
               Force Default Workspace
-            </a>
-            <a 
-              href="/?forceLogout=true"
+            </button>
+            <button 
+              onClick={() => router.push('/?forceLogout=true')}
               className="text-blue-500 hover:text-blue-700 underline text-sm mx-2"
             >
               Force Logout
-            </a>
+            </button>
           </div>
           
           {debugInfo && (

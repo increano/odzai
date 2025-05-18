@@ -243,11 +243,13 @@ export function Sidebar({ className }: SidebarProps) {
       }
       
       // Now that backend load succeeded, use the workspace provider to update the app state
-      // This will also redirect to the home page
       loadWorkspace(workspaceId)
       
       // Reset the selected workspace ID in the dropdown
       setSelectedWorkspaceId('')
+      
+      // Use Next.js router to navigate to home instead of reload
+      router.push('/')
       
     } catch (error) {
       console.error('Error loading workspace:', error)
@@ -283,9 +285,8 @@ export function Sidebar({ className }: SidebarProps) {
       // Show toast notification
       toast.success('Logged out successfully')
       
-      // Redirect to login page or home page
-      // For now, just reload the page which will show the workspace selection
-      window.location.href = '/'
+      // Use Next.js router instead of direct window location navigation
+      router.push('/')
     }
   }
 

@@ -175,7 +175,20 @@ export default function BankConnection() {
       // Redirect to the bank's authentication page
       const redirectUrl = data.redirectUrl || data.link;
       if (redirectUrl) {
-        window.location.href = redirectUrl;
+        // For external redirects, we need to use window.location
+        // But we can wrap it in a safer approach
+        const externalRedirect = () => {
+          // Use a form submit approach for cleaner redirects
+          const form = document.createElement('form');
+          form.method = 'GET';
+          form.action = redirectUrl;
+          form.target = '_self';
+          document.body.appendChild(form);
+          form.submit();
+        };
+        
+        // Execute the redirect
+        externalRedirect();
       } else {
         throw new Error('No redirect URL provided in the response');
       }
