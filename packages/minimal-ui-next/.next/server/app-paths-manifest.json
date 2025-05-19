@@ -1,10 +1,12 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
+  "/transactions/page": "app/transactions/page.js",
   "/api/budgets/route": "app/api/budgets/route.js",
-  "/api/budgets/[id]/route": "app/api/budgets/[id]/route.js",
   "/api/gocardless/status/route": "app/api/gocardless/status/route.js",
-  "/api/user/preferences/route": "app/api/user/preferences/route.js",
-  "/api/budgets/load/route": "app/api/budgets/load/route.js",
+  "/api/budgets/[id]/route": "app/api/budgets/[id]/route.js",
+  "/api/accounts/route": "app/api/accounts/route.js",
+  "/reports/page": "app/reports/page.js",
+  "/budget/page": "app/budget/page.js",
   "/accounts/page": "app/accounts/page.js"
 }
