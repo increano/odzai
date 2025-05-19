@@ -3,6 +3,9 @@
   "/transactions/page": "app/transactions/page.js",
   "/admin/performance-alerts/page": "app/admin/performance-alerts/page.js",
   "/admin/gocardless/setup/page": "app/admin/gocardless/setup/page.js",
+  "/api/budgets/route": "app/api/budgets/route.js",
+  "/api/accounts/route": "app/api/accounts/route.js",
+  "/api/transactions/all/route": "app/api/transactions/all/route.js",
   "/accounts/page": "app/accounts/page.js",
   "/budget/page": "app/budget/page.js"
 }
