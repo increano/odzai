@@ -112,4 +112,96 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Create a new account
+ */
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    console.log('Creating account with data:', JSON.stringify(body, null, 2));
+    
+    // Forward request to the Express backend
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    
+    // Ensure a budget is loaded by using the same logic from GET
+    try {
+      const budgetStatusResponse = await fetch(`${apiUrl}/api/budget-status`, {
+        credentials: 'include'
+      });
+      const budgetStatus = await budgetStatusResponse.json();
+      
+      if (!budgetStatus.budgetLoaded) {
+        console.log('No budget loaded, attempting to load one...');
+        
+        // Get list of budgets
+        const budgetsResponse = await fetch(`${apiUrl}/api/budgets`, {
+          credentials: 'include'
+        });
+        const budgets = await budgetsResponse.json();
+        
+        if (budgets && budgets.length > 0) {
+          const budgetId = budgets[0].id;
+          console.log(`Loading budget: ${budgetId}`);
+          
+          // Load the budget
+          const loadResponse = await fetch(`${apiUrl}/api/budgets/load`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ budgetId }),
+            credentials: 'include'
+          });
+          
+          if (!loadResponse.ok) {
+            throw new Error(`Failed to load budget: ${loadResponse.status} ${loadResponse.statusText}`);
+          }
+          
+          console.log('Budget loaded successfully');
+        } else {
+          throw new Error('No budgets available to load');
+        }
+      }
+    } catch (loadError) {
+      console.error('Error loading budget:', loadError);
+      // Continue anyway and try to create the account
+    }
+    
+    // Create account on Express backend
+    const response = await fetch(`${apiUrl}/api/accounts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Failed to create account:', errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        throw new Error(`Failed to create account: ${response.status} ${response.statusText}`);
+      }
+      
+      return NextResponse.json(errorData, { status: response.status });
+    }
+    
+    const data = await response.json();
+    console.log('Account created successfully:', data);
+    
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error creating account:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to create account' },
+      { status: 500 }
+    );
+  }
 } 
