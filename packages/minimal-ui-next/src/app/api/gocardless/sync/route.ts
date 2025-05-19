@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { batchReconcileBalances } from '@/lib/services/gocardless/balanceReconciliation';
 
 // In a real implementation, this would be stored securely in environment variables
 const GOCARDLESS_API_URL = 'https://bankaccountdata.gocardless.com/api/v2';
@@ -55,6 +56,10 @@ export async function POST(request: Request) {
     console.log('Starting GoCardless sync process');
     
     try {
+      // Parse request body to get account information
+      const body = await request.json();
+      const { accounts = [] } = body;
+      
       // Get an access token
       const tokenData = await getAccessToken();
       
@@ -64,12 +69,45 @@ export async function POST(request: Request) {
       
       console.log('Successfully obtained access token');
       
-      // For demonstration, return mock sync results
-      // In production, you would actually fetch transactions using the token
+      // For demonstration, create mock account data
+      const mockAccounts = [
+        {
+          id: 'acc1',
+          externalId: 'ext-acc1',
+          balance: 1050000, // 10,500.00 in cents
+          name: 'Current Account',
+        },
+        {
+          id: 'acc2',
+          externalId: 'ext-acc2',
+          balance: 2530050, // 25,300.50 in cents
+          name: 'Savings Account',
+        },
+        {
+          id: 'acc3',
+          externalId: 'ext-acc3',
+          balance: -125099, // -1,250.99 in cents (credit card)
+          name: 'Credit Card',
+        }
+      ];
+      
+      // Perform balance reconciliation
+      console.log('Performing balance reconciliation...');
+      const reconciliationResults = await batchReconcileBalances(mockAccounts);
+      
+      // Process reconciliation results
+      const reconciliationSummary = reconciliationResults.map(result => ({
+        accountId: result.accountId,
+        needsReconciliation: result.needsReconciliation,
+        difference: result.difference / 100, // Convert cents to dollars/euros for display
+        reconciled: result.reconciled,
+        adjustmentTransactionId: result.adjustmentTransactionId
+      }));
       
       // Simulate a delay to make it feel more realistic
       await new Promise(resolve => setTimeout(resolve, 1500));
       
+      // Return mock sync results with reconciliation data
       return NextResponse.json({
         success: true,
         updatedAccounts: 3,
@@ -90,12 +128,17 @@ export async function POST(request: Request) {
             name: 'Credit Card',
             updatedTransactions: 5
           }
-        ]
+        ],
+        reconciliation: {
+          total: reconciliationResults.length,
+          needsReconciliation: reconciliationResults.filter(r => r.needsReconciliation).length,
+          reconciled: reconciliationResults.filter(r => r.reconciled).length,
+          details: reconciliationSummary
+        }
       });
       
       /* In production, uncomment and use this code:
       // Get all linked accounts from your database
-      // This would typically come from your database of linked GoCardless accounts
       const linkedAccounts = await getLinkedAccounts();
       
       if (!linkedAccounts || linkedAccounts.length === 0) {
@@ -128,7 +171,6 @@ export async function POST(request: Request) {
           const transactions = transactionsData.transactions || [];
           
           // Process and import new transactions
-          // This would call your own API to add transactions to Actual
           const newTransactionCount = await processTransactions(account.id, transactions);
           
           totalNewTransactions += newTransactionCount;
@@ -143,11 +185,35 @@ export async function POST(request: Request) {
         }
       }
       
+      // Perform balance reconciliation after sync
+      const accountsForReconciliation = syncedAccounts.map(account => ({
+        id: account.id,
+        externalId: account.externalId,
+        balance: account.balance
+      }));
+      
+      const reconciliationResults = await batchReconcileBalances(accountsForReconciliation);
+      
+      // Process reconciliation results
+      const reconciliationSummary = reconciliationResults.map(result => ({
+        accountId: result.accountId,
+        needsReconciliation: result.needsReconciliation,
+        difference: result.difference / 100,
+        reconciled: result.reconciled,
+        adjustmentTransactionId: result.adjustmentTransactionId
+      }));
+      
       return NextResponse.json({
         success: true,
         updatedAccounts: syncedAccounts.length,
         newTransactions: totalNewTransactions,
-        accounts: syncedAccounts
+        accounts: syncedAccounts,
+        reconciliation: {
+          total: reconciliationResults.length,
+          needsReconciliation: reconciliationResults.filter(r => r.needsReconciliation).length,
+          reconciled: reconciliationResults.filter(r => r.reconciled).length,
+          details: reconciliationSummary
+        }
       });
       */
     } catch (error) {
