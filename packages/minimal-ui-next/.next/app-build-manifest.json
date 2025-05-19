@@ -26,6 +26,16 @@
       "static/chunks/main-app.js",
       "static/chunks/app/transactions/page.js"
     ],
+    "/reports/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/reports/page.js"
+    ],
+    "/reports/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/reports/layout.js"
+    ],
     "/budget/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -36,40 +46,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/budget/layout.js"
     ],
-    "/bank-connection/callback/page": [
+    "/admin/performance-alerts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/bank-connection/callback/page.js"
+      "static/chunks/app/admin/performance-alerts/page.js"
     ],
-    "/transactions/[accountId]/page": [
+    "/admin/gocardless/setup/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/transactions/[accountId]/page.js"
-    ],
-    "/schedules/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/schedules/page.js"
-    ],
-    "/schedules/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/schedules/layout.js"
-    ],
-    "/goals/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/goals/page.js"
-    ],
-    "/goals/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/goals/layout.js"
-    ],
-    "/_not-found/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/admin/gocardless/setup/page.js"
     ]
   }
 }

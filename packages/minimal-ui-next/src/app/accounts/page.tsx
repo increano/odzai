@@ -10,6 +10,8 @@ import { CreateAccountDialog } from '@/components/accounts/create-account-dialog
 import { toast } from 'sonner'
 import { SettingsModal } from '@/components/accounts/SettingsModal'
 import BankSyncPanel from '@/components/accounts/BankSyncPanel'
+import { DashboardLayout, DashboardContent } from '@/components/dashboard-layout'
+import { WorkspaceRequired } from '@/components/workspace-required'
 
 // Define the Account interface to match API response
 interface Account {
@@ -118,118 +120,108 @@ export default function AccountsPage() {
   // Filter for connected bank accounts
   const connectedAccounts = accounts.filter(account => account.isConnected && account.externalId);
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      {isLoading ? (
-        <div className="flex items-center justify-center h-40">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 w-64 bg-gray-200 rounded mb-4"></div>
-            <div className="h-4 w-full bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 w-3/4 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      ) : accounts.length === 0 ? (
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold mb-2">No Accounts Found</h2>
-          <p className="text-gray-600 text-sm max-w-md mx-auto mb-6">
-            {isNewWorkspace 
-            ? "Welcome to your new workspace! To get started, add your first account."
-            : "You don't have any accounts in this workspace yet. Add an account to start tracking your finances."}
-          </p>
-          <Button size="lg" onClick={handleAddAccount}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Your First Account
-          </Button>
-          
-          <div className="mt-12 p-6 bg-gray-50 rounded-lg max-w-lg mx-auto">
-            <h3 className="font-medium mb-2">About Workspaces</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              A workspace is where you manage a set of related accounts, budgets, and transactions.
-              Create your first account to start budgeting.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-8">
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h1 className="text-2xl font-bold">
-                  Accounts
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  Manage your financial accounts
-                </p>
-              </div>
-              <Button onClick={handleAddAccount}>Add Account</Button>
-            </div>
-            
-            {/* Show bank sync panel if there are connected accounts */}
-            {connectedAccounts.length > 0 && (
-              <div className="mb-8">
-                <BankSyncPanel 
-                  connectedAccounts={connectedAccounts}
-                  onSyncComplete={fetchAccounts}
-                />
-              </div>
-            )}
+  // Actions for dashboard header
+  const actions = (
+    <Button onClick={handleAddAccount}>Add Account</Button>
+  );
 
-            {isLoading ? (
-              <p>Loading accounts...</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {accounts.map((account) => {
-                  const Icon = getAccountIcon(account);
-                  return (
-                    <Card key={account.id} className="overflow-hidden">
-                      <CardHeader className="p-4 pb-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <div className="rounded-full bg-muted p-2">
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <CardTitle className="text-base">{account.name}</CardTitle>
-                          </div>
-                          <div className="flex items-center">
-                            {account.calculated_balance >= 0 ? (
-                              <ArrowUpRight className="mr-1 h-4 w-4 text-emerald-500" />
-                            ) : (
-                              <ArrowDownRight className="mr-1 h-4 w-4 text-red-500" />
-                            )}
-                            <span className="text-xs font-medium">
-                              ${Math.abs(account.calculated_balance / 100).toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-2">
-                        <div className="text-muted-foreground text-xs mb-2">{account.budget_category}</div>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-2xl font-bold">
-                              ${(account.calculated_balance / 100).toFixed(2)}
-                            </div>
-                            <div className="text-muted-foreground text-xs">
-                              Current Balance
-                            </div>
-                          </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => viewTransactions(account.id)}
-                          >
-                            View
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+  const content = (
+    <DashboardLayout>
+      <DashboardContent 
+        title="Accounts" 
+        subtitle="Manage your financial accounts"
+        actions={actions}
+      >
+        {/* Show bank sync panel if there are connected accounts */}
+        {connectedAccounts.length > 0 && (
+          <div className="mb-6">
+            <BankSyncPanel 
+              connectedAccounts={connectedAccounts}
+              onSyncComplete={fetchAccounts}
+            />
           </div>
-        </div>
-      )}
+        )}
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-40">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 w-64 bg-gray-200 rounded mb-4"></div>
+              <div className="h-4 w-full bg-gray-200 rounded mb-2"></div>
+              <div className="h-4 w-3/4 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        ) : accounts.length === 0 ? (
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-2">No Accounts Found</h2>
+            <p className="text-gray-600 text-sm max-w-md mx-auto mb-6">
+              {isNewWorkspace 
+                ? "Welcome to your new workspace! To get started, add your first account."
+                : "You don't have any accounts in this workspace yet. Add an account to start tracking your finances."}
+            </p>
+            <Button size="lg" onClick={handleAddAccount}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Your First Account
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {accounts.map((account) => {
+              const Icon = getAccountIcon(account);
+              const formattedBalance = (account.calculated_balance / 100).toFixed(2);
+              const isPositive = account.calculated_balance >= 0;
+
+              return (
+                <Card key={account.id} className="overflow-hidden">
+                  <div className="p-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon className="h-5 w-5 text-primary" />
+                      <h3 className="font-medium">{account.name}</h3>
+                    </div>
+                    
+                    <div className="flex items-center mb-4">
+                      {isPositive ? (
+                        <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <ArrowDownRight className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className="text-sm ml-1">
+                        ${Math.abs(account.calculated_balance / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    
+                    <div className="mb-1 text-xs text-muted-foreground">On Budget</div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-2xl font-bold">
+                          ${formattedBalance}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Current Balance
+                        </div>
+                      </div>
+                      
+                      <Button
+                        onClick={() => viewTransactions(account.id)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </DashboardContent>
+    </DashboardLayout>
+  );
+
+  return (
+    <WorkspaceRequired>
+      {content}
       
       {/* Account Creation Dialog */}
       <CreateAccountDialog
@@ -243,6 +235,6 @@ export default function AccountsPage() {
         open={isSettingsOpen} 
         onOpenChange={setIsSettingsOpen} 
       />
-    </div>
+    </WorkspaceRequired>
   );
 } 
