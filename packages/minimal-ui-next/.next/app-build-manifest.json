@@ -11,15 +11,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/reports/page": [
+    "/admin/performance-alerts/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/reports/page.js"
-    ],
-    "/reports/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/reports/layout.js"
+      "static/chunks/app/admin/performance-alerts/page.js"
     ],
     "/schedules/page": [
       "static/chunks/webpack.js",
@@ -30,21 +25,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/schedules/layout.js"
-    ],
-    "/accounts/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/accounts/page.js"
-    ],
-    "/accounts/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/accounts/layout.js"
-    ],
-    "/transactions/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/transactions/page.js"
     ],
     "/goals/page": [
       "static/chunks/webpack.js",
@@ -66,10 +46,30 @@
       "static/chunks/main-app.js",
       "static/chunks/app/budget/layout.js"
     ],
-    "/_not-found/page": [
+    "/transactions/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/transactions/page.js"
+    ],
+    "/accounts/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/accounts/page.js"
+    ],
+    "/accounts/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/accounts/layout.js"
+    ],
+    "/transactions/[accountId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/transactions/[accountId]/page.js"
+    ],
+    "/bank-connection/callback/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/bank-connection/callback/page.js"
     ]
   }
 }

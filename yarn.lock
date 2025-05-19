@@ -88,6 +88,7 @@ __metadata:
   resolution: "@actual-app/minimal-ui-next@workspace:packages/minimal-ui-next"
   dependencies:
     "@actual-app/api": "workspace:*"
+    "@next/bundle-analyzer": "npm:^15.3.2"
     "@radix-ui/react-accordion": "npm:^1.2.10"
     "@radix-ui/react-avatar": "npm:^1.1.9"
     "@radix-ui/react-checkbox": "npm:^1.3.1"
@@ -109,6 +110,7 @@ __metadata:
     "@types/react-day-picker": "npm:^5.3.0"
     "@types/react-dom": "npm:^18.2.17"
     "@types/uuid": "npm:^9.0.8"
+    "@vercel/analytics": "npm:^1.5.0"
     autoprefixer: "npm:^10.4.16"
     class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
@@ -133,6 +135,7 @@ __metadata:
     ts-node: "npm:^10.9.1"
     typescript: "npm:^5.3.3"
     uuid: "npm:^9.0.1"
+    web-vitals: "npm:^5.0.1"
   languageName: unknown
   linkType: soft
 
@@ -3292,6 +3295,15 @@ __metadata:
     "@emnapi/runtime": "npm:^1.3.1"
     "@tybys/wasm-util": "npm:^0.9.0"
   checksum: 10/91c3f6eaf7e73fc598b69308b780c3b3818e15bbc9c92c9f065280928fd6c3fffe8c6ca0363e87baff751d1acaccf392a78feb85db58d00f0bf9bda56d45747c
+  languageName: node
+  linkType: hard
+
+"@next/bundle-analyzer@npm:^15.3.2":
+  version: 15.3.2
+  resolution: "@next/bundle-analyzer@npm:15.3.2"
+  dependencies:
+    webpack-bundle-analyzer: "npm:4.10.1"
+  checksum: 10/67796684f1cf727e72768cdc1c112269b7b89f916c85fe8f6c9585caaa91a24b4a2a71b68247afa259b24838ef0fb539d2522c7d49e52afeadcecd1f184fa430
   languageName: node
   linkType: hard
 
@@ -8130,6 +8142,36 @@ __metadata:
   peerDependencies:
     react: ">= 16.8.0"
   checksum: 10/2c01c1b73bbdeecb9d51370f9117418953accad6789818e1b50f505dcba9e38685612b3fcb25a5dfcbf3a10ae561506378f5ab7586c773c4485ef86107d53898
+  languageName: node
+  linkType: hard
+
+"@vercel/analytics@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "@vercel/analytics@npm:1.5.0"
+  peerDependencies:
+    "@remix-run/react": ^2
+    "@sveltejs/kit": ^1 || ^2
+    next: ">= 13"
+    react: ^18 || ^19 || ^19.0.0-rc
+    svelte: ">= 4"
+    vue: ^3
+    vue-router: ^4
+  peerDependenciesMeta:
+    "@remix-run/react":
+      optional: true
+    "@sveltejs/kit":
+      optional: true
+    next:
+      optional: true
+    react:
+      optional: true
+    svelte:
+      optional: true
+    vue:
+      optional: true
+    vue-router:
+      optional: true
+  checksum: 10/ae13f10585ffd458e2e00b7e3711f62fc5806447b119e3a6bc19cb1e8a1971527b434343e63207155bef5e4a170b7be6b83822ab94f4716df243cbc2a3fff3b4
   languageName: node
   linkType: hard
 
@@ -24341,6 +24383,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"web-vitals@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "web-vitals@npm:5.0.1"
+  checksum: 10/de63ee029c10cef97d46f6ebc8fb4e777119142068bc8664ab76677f5b2858b600d30fb35619604944802579efede2a52d6e2babcb5a4ff9e588b71c947c8c3e
+  languageName: node
+  linkType: hard
+
 "webidl-conversions@npm:^3.0.0":
   version: 3.0.1
   resolution: "webidl-conversions@npm:3.0.1"
@@ -24366,6 +24415,29 @@ __metadata:
   version: 7.0.0
   resolution: "webidl-conversions@npm:7.0.0"
   checksum: 10/4c4f65472c010eddbe648c11b977d048dd96956a625f7f8b9d64e1b30c3c1f23ea1acfd654648426ce5c743c2108a5a757c0592f02902cf7367adb7d14e67721
+  languageName: node
+  linkType: hard
+
+"webpack-bundle-analyzer@npm:4.10.1":
+  version: 4.10.1
+  resolution: "webpack-bundle-analyzer@npm:4.10.1"
+  dependencies:
+    "@discoveryjs/json-ext": "npm:0.5.7"
+    acorn: "npm:^8.0.4"
+    acorn-walk: "npm:^8.0.0"
+    commander: "npm:^7.2.0"
+    debounce: "npm:^1.2.1"
+    escape-string-regexp: "npm:^4.0.0"
+    gzip-size: "npm:^6.0.0"
+    html-escaper: "npm:^2.0.2"
+    is-plain-object: "npm:^5.0.0"
+    opener: "npm:^1.5.2"
+    picocolors: "npm:^1.0.0"
+    sirv: "npm:^2.0.3"
+    ws: "npm:^7.3.1"
+  bin:
+    webpack-bundle-analyzer: lib/bin/analyzer.js
+  checksum: 10/bc7bc2c014ba36dfb3f28ef75e3bb4be17ebff092ae713a30392a1d578a73b5d83ed0940b9d12eca6b06e514218d8a1e7cb0610f0b4d74b53425be3f0cc3aea8
   languageName: node
   linkType: hard
 

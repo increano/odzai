@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import SettingsModal from './SettingsModal';
+import LazySettingsModal from './LazySettingsModal';
 
 // Define the context type
 interface SettingsModalContextType {
@@ -58,11 +58,14 @@ export function SettingsModalProvider({ children }: { children: React.ReactNode 
       }}
     >
       {children}
-      <SettingsModal 
-        open={isOpen} 
-        onOpenChange={handleOpenChange}
-        defaultTab={defaultTab}
-      />
+      {/* Only render modal when needed */}
+      {isOpen && (
+        <LazySettingsModal 
+          open={isOpen} 
+          onOpenChange={handleOpenChange}
+          defaultTab={defaultTab}
+        />
+      )}
     </SettingsModalContext.Provider>
   );
 }

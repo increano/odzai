@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"components/LazySettingsModal.tsx -> ./SettingsModal\":{\"id\":\"components/LazySettingsModal.tsx -> ./SettingsModal\",\"files\":[\"static/chunks/_app-pages-browser_src_components_SettingsModal_tsx.js\"]}}"

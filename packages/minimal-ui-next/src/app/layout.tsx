@@ -6,11 +6,24 @@ import { Sidebar } from '../components/sidebar';
 import { SettingsModalProvider } from '../components/SettingsModalProvider';
 import { WorkspaceProvider } from '../components/WorkspaceProvider';
 import AppErrorBoundary from '../components/AppErrorBoundary';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the AdminToggle component with no SSR
+const AdminToggle = dynamic(
+  () => import('@/components/admin/AdminToggle'),
+  { ssr: false }
+);
+
+// Dynamically import the AdminLogin component with no SSR
+const AdminLogin = dynamic(
+  () => import('@/components/admin/AdminLogin'),
+  { ssr: false }
+);
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Home | Odzai',
+  title: 'Odzai',
   description: 'Financial dashboard for your budget',
 };
 
@@ -20,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <AppErrorBoundary>
           <WorkspaceProvider>
@@ -34,6 +47,14 @@ export default function RootLayout({
                   <Toaster position="top-right" richColors />
                 </div>
               </div>
+              
+              {/* Only render admin components in development mode */}
+              {process.env.NODE_ENV === 'development' && (
+                <>
+                  <AdminToggle />
+                  <AdminLogin />
+                </>
+              )}
             </SettingsModalProvider>
           </WorkspaceProvider>
         </AppErrorBoundary>

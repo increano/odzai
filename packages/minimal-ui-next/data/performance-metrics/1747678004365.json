@@ -1,0 +1,320 @@
+[
+  {
+    "name": "LCP",
+    "value": 2500,
+    "id": "baseline-1",
+    "page": "/test-page",
+    "timestamp": 1747677884000,
+    "deviceType": "desktop",
+    "serverTimestamp": 1747677884136
+  },
+  {
+    "name": "LCP",
+    "value": 2500,
+    "id": "baseline-2",
+    "page": "/test-page",
+    "timestamp": 1747677884000,
+    "deviceType": "desktop",
+    "serverTimestamp": 1747677884155
+  },
+  {
+    "name": "LCP",
+    "value": 2500,
+    "id": "baseline-3",
+    "page": "/test-page",
+    "timestamp": 1747677884000,
+    "deviceType": "desktop",
+    "serverTimestamp": 1747677884166
+  },
+  {
+    "name": "LCP",
+    "value": 2500,
+    "id": "baseline-4",
+    "page": "/test-page",
+    "timestamp": 1747677884000,
+    "deviceType": "desktop",
+    "serverTimestamp": 1747677884180
+  },
+  {
+    "name": "LCP",
+    "value": 2500,
+    "id": "baseline-5",
+    "page": "/test-page",
+    "timestamp": 1747677884000,
+    "deviceType": "desktop",
+    "serverTimestamp": 1747677884192
+  },
+  {
+    "name": "LCP",
+    "value": 2500,
+    "id": "baseline-6",
+    "page": "/test-page",
+    "timestamp": 1747677884000,
+    "deviceType": "desktop",
+    "serverTimestamp": 1747677884205
+  },
+  {
+    "name": "test-metric",
+    "value": 1,
+    "page": "/test",
+    "serverTimestamp": 1747678003902
+  },
+  {
+    "name": "test-metric",
+    "value": 2,
+    "page": "/test",
+    "serverTimestamp": 1747678003914
+  },
+  {
+    "name": "test-metric",
+    "value": 3,
+    "page": "/test",
+    "serverTimestamp": 1747678003925
+  },
+  {
+    "name": "test-metric",
+    "value": 4,
+    "page": "/test",
+    "serverTimestamp": 1747678003936
+  },
+  {
+    "name": "test-metric",
+    "value": 5,
+    "page": "/test",
+    "serverTimestamp": 1747678003947
+  },
+  {
+    "name": "test-metric",
+    "value": 6,
+    "page": "/test",
+    "serverTimestamp": 1747678003958
+  },
+  {
+    "name": "test-metric",
+    "value": 7,
+    "page": "/test",
+    "serverTimestamp": 1747678003969
+  },
+  {
+    "name": "test-metric",
+    "value": 8,
+    "page": "/test",
+    "serverTimestamp": 1747678003980
+  },
+  {
+    "name": "test-metric",
+    "value": 9,
+    "page": "/test",
+    "serverTimestamp": 1747678003990
+  },
+  {
+    "name": "test-metric",
+    "value": 10,
+    "page": "/test",
+    "serverTimestamp": 1747678004001
+  },
+  {
+    "name": "test-metric",
+    "value": 11,
+    "page": "/test",
+    "serverTimestamp": 1747678004012
+  },
+  {
+    "name": "test-metric",
+    "value": 12,
+    "page": "/test",
+    "serverTimestamp": 1747678004023
+  },
+  {
+    "name": "test-metric",
+    "value": 13,
+    "page": "/test",
+    "serverTimestamp": 1747678004034
+  },
+  {
+    "name": "test-metric",
+    "value": 14,
+    "page": "/test",
+    "serverTimestamp": 1747678004045
+  },
+  {
+    "name": "test-metric",
+    "value": 15,
+    "page": "/test",
+    "serverTimestamp": 1747678004055
+  },
+  {
+    "name": "test-metric",
+    "value": 16,
+    "page": "/test",
+    "serverTimestamp": 1747678004078
+  },
+  {
+    "name": "test-metric",
+    "value": 17,
+    "page": "/test",
+    "serverTimestamp": 1747678004109
+  },
+  {
+    "name": "test-metric",
+    "value": 18,
+    "page": "/test",
+    "serverTimestamp": 1747678004124
+  },
+  {
+    "name": "test-metric",
+    "value": 19,
+    "page": "/test",
+    "serverTimestamp": 1747678004135
+  },
+  {
+    "name": "test-metric",
+    "value": 20,
+    "page": "/test",
+    "serverTimestamp": 1747678004145
+  },
+  {
+    "name": "test-metric",
+    "value": 21,
+    "page": "/test",
+    "serverTimestamp": 1747678004155
+  },
+  {
+    "name": "test-metric",
+    "value": 22,
+    "page": "/test",
+    "serverTimestamp": 1747678004164
+  },
+  {
+    "name": "test-metric",
+    "value": 23,
+    "page": "/test",
+    "serverTimestamp": 1747678004173
+  },
+  {
+    "name": "test-metric",
+    "value": 24,
+    "page": "/test",
+    "serverTimestamp": 1747678004183
+  },
+  {
+    "name": "test-metric",
+    "value": 25,
+    "page": "/test",
+    "serverTimestamp": 1747678004192
+  },
+  {
+    "name": "test-metric",
+    "value": 26,
+    "page": "/test",
+    "serverTimestamp": 1747678004201
+  },
+  {
+    "name": "test-metric",
+    "value": 27,
+    "page": "/test",
+    "serverTimestamp": 1747678004210
+  },
+  {
+    "name": "test-metric",
+    "value": 28,
+    "page": "/test",
+    "serverTimestamp": 1747678004219
+  },
+  {
+    "name": "test-metric",
+    "value": 29,
+    "page": "/test",
+    "serverTimestamp": 1747678004228
+  },
+  {
+    "name": "test-metric",
+    "value": 30,
+    "page": "/test",
+    "serverTimestamp": 1747678004237
+  },
+  {
+    "name": "test-metric",
+    "value": 31,
+    "page": "/test",
+    "serverTimestamp": 1747678004246
+  },
+  {
+    "name": "test-metric",
+    "value": 32,
+    "page": "/test",
+    "serverTimestamp": 1747678004255
+  },
+  {
+    "name": "test-metric",
+    "value": 33,
+    "page": "/test",
+    "serverTimestamp": 1747678004264
+  },
+  {
+    "name": "test-metric",
+    "value": 34,
+    "page": "/test",
+    "serverTimestamp": 1747678004273
+  },
+  {
+    "name": "test-metric",
+    "value": 35,
+    "page": "/test",
+    "serverTimestamp": 1747678004282
+  },
+  {
+    "name": "test-metric",
+    "value": 36,
+    "page": "/test",
+    "serverTimestamp": 1747678004291
+  },
+  {
+    "name": "test-metric",
+    "value": 37,
+    "page": "/test",
+    "serverTimestamp": 1747678004301
+  },
+  {
+    "name": "test-metric",
+    "value": 38,
+    "page": "/test",
+    "serverTimestamp": 1747678004310
+  },
+  {
+    "name": "test-metric",
+    "value": 39,
+    "page": "/test",
+    "serverTimestamp": 1747678004319
+  },
+  {
+    "name": "test-metric",
+    "value": 40,
+    "page": "/test",
+    "serverTimestamp": 1747678004328
+  },
+  {
+    "name": "test-metric",
+    "value": 41,
+    "page": "/test",
+    "serverTimestamp": 1747678004338
+  },
+  {
+    "name": "test-metric",
+    "value": 42,
+    "page": "/test",
+    "serverTimestamp": 1747678004347
+  },
+  {
+    "name": "test-metric",
+    "value": 43,
+    "page": "/test",
+    "serverTimestamp": 1747678004356
+  },
+  {
+    "name": "test-metric",
+    "value": 44,
+    "page": "/test",
+    "serverTimestamp": 1747678004365
+  }
+]

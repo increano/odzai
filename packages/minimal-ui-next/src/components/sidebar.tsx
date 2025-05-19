@@ -23,7 +23,10 @@ import {
   LogOut,
   Check,
   X,
-  Users
+  Users,
+  Bell,
+  ShieldAlert,
+  ActivitySquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -42,6 +45,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { toast } from 'sonner'
+import { useUser } from '@/hooks/useUser'
 
 // Key used for localStorage
 const SIDEBAR_STATE_KEY = 'odzai-sidebar-collapsed'
@@ -157,6 +161,7 @@ export function Sidebar({ className }: SidebarProps) {
   const [collapsed, setCollapsed] = useLocalStorage<boolean>(SIDEBAR_STATE_KEY, false)
   const { openSettingsModal } = useSettingsModal()
   const { isWorkspaceLoaded, currentWorkspace, loadWorkspace, loadingWorkspace, isDefaultWorkspace } = useWorkspace()
+  const { user, isAdmin } = useUser()
   
   // Add state to control the dropdown open/close state
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -385,6 +390,22 @@ export function Sidebar({ className }: SidebarProps) {
       ]
     },
   ]
+
+  // Add Admin section if user is admin
+  if (user?.isAdmin) {
+    navigationGroups.push({
+      title: 'ADMIN',
+      items: [
+        { 
+          name: 'Performance Alerts', 
+          href: '/admin/performance-alerts', 
+          icon: ActivitySquare,
+          className: "text-blue-600 hover:bg-blue-50/30"
+        },
+        // Add more admin tools here in the future
+      ]
+    })
+  }
 
   // Settings navigation items (kept separate for the footer)
   const settingsNavigation = [

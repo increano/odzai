@@ -10,7 +10,10 @@
     "start": "NEXT_PUBLIC_API_URL=http://localhost:3001 next start",
     "lint": "next lint",
     "start:all": "concurrently \"yarn start:api\" \"yarn dev\"",
-    "setup:gocardless": "node setup-gocardless.js"
+    "setup:gocardless": "node setup-gocardless.js",
+    "analyze": "ANALYZE=true next build",
+    "analyze:server": "BUNDLE_ANALYZE=server next build",
+    "analyze:browser": "BUNDLE_ANALYZE=browser next build"
   },
   "dependencies": {
     "@actual-app/api": "workspace:*",
@@ -27,6 +30,7 @@
     "@radix-ui/react-switch": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.11",
     "@types/cors": "^2.8.17",
+    "@vercel/analytics": "^1.5.0",
     "autoprefixer": "^10.4.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -46,9 +50,11 @@
     "swr": "^2.3.3",
     "tailwind-merge": "^3.2.0",
     "tailwindcss": "^3.3.6",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "web-vitals": "^5.0.1"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^15.3.2",
     "@tailwindcss/forms": "^0.5.7",
     "@types/express": "^4.17.21",
     "@types/express-ws": "^3.0.4",
