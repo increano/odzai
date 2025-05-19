@@ -1,20 +1,8 @@
 {
-  "/admin/performance-alerts/page": "app/admin/performance-alerts/page.js",
-  "/transactions/page": "app/transactions/page.js",
-  "/transactions/[accountId]/page": "app/transactions/[accountId]/page.js",
-  "/api/gocardless/status/route": "app/api/gocardless/status/route.js",
-  "/api/gocardless/countries/route": "app/api/gocardless/countries/route.js",
-  "/api/gocardless/banks/route": "app/api/gocardless/banks/route.js",
-  "/api/gocardless/connect/route": "app/api/gocardless/connect/route.js",
-  "/bank-connection/callback/page": "app/bank-connection/callback/page.js",
+  "/page": "app/page.js",
   "/api/budgets/route": "app/api/budgets/route.js",
   "/api/budgets/[id]/route": "app/api/budgets/[id]/route.js",
-  "/api/gocardless/callback/route": "app/api/gocardless/callback/route.js",
-  "/api/accounts/link/route": "app/api/accounts/link/route.js",
-  "/api/accounts/route": "app/api/accounts/route.js",
-  "/api/transactions/all/route": "app/api/transactions/all/route.js",
-  "/api/budgets/load/route": "app/api/budgets/load/route.js",
-  "/page": "app/page.js",
   "/api/performance-alerts/route": "app/api/performance-alerts/route.js",
-  "/accounts/page": "app/accounts/page.js"
+  "/admin/performance-alerts/page": "app/admin/performance-alerts/page.js",
+  "/api/admin/toggle/route": "app/api/admin/toggle/route.js"
 }
