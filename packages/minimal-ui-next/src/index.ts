@@ -564,6 +564,9 @@ app.get('/api/accounts', ensureBudgetLoaded, async (req: Request, res: Response)
         // Get transactions for this account to calculate balance
         const transactions = await actualAPI.getTransactions(account.id, undefined, undefined);
         
+        // Calculate balance from transactions
+        const balance = transactions.reduce((sum, trans) => sum + trans.amount, 0);
+        
         // Check if account has GoCardless integration
         const isConnected = account.metadata && (
           account.metadata.gocardless_account_id || 
@@ -573,11 +576,20 @@ app.get('/api/accounts', ensureBudgetLoaded, async (req: Request, res: Response)
         
         return {
           ...account,
-          isConnected: !!isConnected
+          calculated_balance: balance,
+          numTransactions: transactions.length,
+          isConnected: !!isConnected,
+          budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
         };
       } catch (err) {
         console.error(`Error enhancing account ${account.id}:`, err);
-        return account;
+        return {
+          ...account,
+          calculated_balance: 0,
+          numTransactions: 0,
+          isConnected: false,
+          budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
+        };
       }
     }));
     

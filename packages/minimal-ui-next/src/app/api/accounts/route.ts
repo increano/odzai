@@ -99,6 +99,19 @@ export async function GET(request: NextRequest) {
       data = JSON.parse(responseText);
       console.log('Received accounts data from Express backend:', 
         Array.isArray(data) ? `Array with ${data.length} items` : typeof data);
+        
+      // Ensure calculated_balance is included for all accounts
+      if (Array.isArray(data)) {
+        // Add calculated_balance, budget_category, etc. for each account
+        const enhancedAccounts = data.map(account => ({
+          ...account,
+          calculated_balance: account.calculated_balance || 0,
+          budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
+        }));
+        
+        // Return the enhanced accounts data
+        return NextResponse.json(enhancedAccounts);
+      }
     } catch (parseError) {
       console.error('Failed to parse accounts JSON response:', responseText);
       throw new Error(`Invalid JSON response from accounts API: ${responseText.substring(0, 100)}...`);

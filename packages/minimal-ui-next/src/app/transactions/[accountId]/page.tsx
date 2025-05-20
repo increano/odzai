@@ -6,6 +6,8 @@ import { StatusOverviewSection } from '@/components/transactions/status-overview
 import { TransactionListSection } from '@/components/transactions/transaction-list-section'
 import { TransactionDetailsPanel } from '@/components/transactions/transaction-details-panel'
 import { useWorkspace } from '@/components/WorkspaceProvider'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Define the transaction interface
@@ -68,12 +70,17 @@ export default function AccountTransactionsPage({ params }: AccountTransactionsP
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [statusMetrics, setStatusMetrics] = useState<TransactionStatusMetrics | undefined>(undefined)
   const [account, setAccount] = useState<Account | null>(null)
+  const [isAddingTransaction, setIsAddingTransaction] = useState(false)
   const { currentWorkspace } = useWorkspace()
 
   // Fetch account details
   const fetchAccountDetails = async () => {
     try {
-      const response = await fetch(`/api/accounts/${accountId}`)
+      // Add the workspace ID to the query if available
+      const workspaceId = currentWorkspace?.id || ''
+      const queryParams = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ''
+      
+      const response = await fetch(`/api/accounts/${accountId}${queryParams}`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch account details')
@@ -94,9 +101,9 @@ export default function AccountTransactionsPage({ params }: AccountTransactionsP
       
       // Add the workspace ID to the query if available
       const workspaceId = currentWorkspace?.id || ''
-      const queryParams = workspaceId ? `&workspaceId=${encodeURIComponent(workspaceId)}` : ''
+      const queryParams = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ''
       
-      const response = await fetch(`/api/transactions/${accountId}?${queryParams}`)
+      const response = await fetch(`/api/transactions/${accountId}${queryParams}`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch transactions')
@@ -146,6 +153,45 @@ export default function AccountTransactionsPage({ params }: AccountTransactionsP
     toast(`Delete transaction: ${transaction.id}`)
     // Would implement delete confirmation and API call here
   }
+  
+  // Handle add transaction
+  const handleAddTransaction = () => {
+    setIsAddingTransaction(true)
+    // This would open a modal in the real implementation
+    
+    // For now, just show a toast and simulate adding a transaction
+    toast.promise(
+      new Promise((resolve) => {
+        // Simulate API call delay
+        setTimeout(() => {
+          // Create a new transaction with a random ID
+          const newTransaction: Transaction = {
+            id: `tx-${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            account: accountId,
+            accountId: accountId,
+            amount: -Math.floor(Math.random() * 10000), // Random amount
+            payee: 'New Transaction',
+            payee_name: 'New Transaction',
+            notes: 'Added manually',
+            category: 'cat1',
+            category_name: 'Uncategorized',
+            origin: 'manual'
+          }
+          
+          // Add to transactions array
+          setTransactions(prev => [newTransaction, ...prev])
+          resolve(newTransaction)
+          setIsAddingTransaction(false)
+        }, 1000)
+      }),
+      {
+        loading: 'Adding transaction...',
+        success: 'Transaction added successfully',
+        error: 'Failed to add transaction'
+      }
+    )
+  }
 
   // Fetch account details and transactions when the component mounts
   useEffect(() => {
@@ -154,7 +200,16 @@ export default function AccountTransactionsPage({ params }: AccountTransactionsP
   }, [accountId, currentWorkspace])
 
   return (
-    <TransactionsLayout accountId={accountId} accountName={account?.name}>
+    <TransactionsLayout 
+      accountId={accountId} 
+      accountName={account?.name}
+      actions={
+        <Button onClick={handleAddTransaction} disabled={isAddingTransaction}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Transaction
+        </Button>
+      }
+    >
       {/* Status Overview Section */}
       <StatusOverviewSection 
         metrics={statusMetrics} 

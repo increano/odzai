@@ -19,9 +19,11 @@ interface Account {
   name: string;
   type?: string;
   budget_category?: string;
-  calculated_balance: number;
+  calculated_balance?: number;
   externalId?: string; // GoCardless account ID
   isConnected?: boolean; // Whether this is a connected bank account
+  offbudget?: boolean; // Whether the account is off-budget
+  numTransactions?: number;
 }
 
 // Client-side component that fetches account data
@@ -167,8 +169,27 @@ export default function AccountsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accounts.map((account) => {
               const Icon = getAccountIcon(account);
-              const formattedBalance = (account.calculated_balance / 100).toFixed(2);
-              const isPositive = account.calculated_balance >= 0;
+              
+              // Handle the balance formatting with proper error checking
+              // Make sure to handle undefined or NaN values
+              const balanceValue = typeof account.calculated_balance === 'number' ? account.calculated_balance : 0;
+              const formattedBalance = (balanceValue / 100).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              });
+              
+              // Properly determine if balance is positive
+              const isPositive = balanceValue >= 0;
+              
+              // Format the change amount
+              const changeAmount = Math.abs(balanceValue / 100).toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              });
 
               return (
                 <Card key={account.id} className="overflow-hidden">
@@ -185,16 +206,18 @@ export default function AccountsPage() {
                         <ArrowDownRight className="h-4 w-4 text-red-500" />
                       )}
                       <span className="text-sm ml-1">
-                        ${Math.abs(account.calculated_balance / 100).toFixed(2)}
+                        {changeAmount}
                       </span>
                     </div>
                     
-                    <div className="mb-1 text-xs text-muted-foreground">On Budget</div>
+                    <div className="mb-1 text-xs text-muted-foreground">
+                      {account.budget_category || (account.offbudget ? 'Off Budget' : 'On Budget')}
+                    </div>
                     
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-2xl font-bold">
-                          ${formattedBalance}
+                          {formattedBalance}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           Current Balance

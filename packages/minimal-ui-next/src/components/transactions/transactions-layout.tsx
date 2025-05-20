@@ -10,9 +10,15 @@ interface TransactionsLayoutProps {
   children: React.ReactNode
   accountId?: string
   accountName?: string
+  actions?: React.ReactNode
 }
 
-export function TransactionsLayout({ children, accountId, accountName }: TransactionsLayoutProps) {
+export function TransactionsLayout({ 
+  children, 
+  accountId, 
+  accountName,
+  actions
+}: TransactionsLayoutProps) {
   // Function to handle creating a new transaction
   const handleAddTransaction = () => {
     // This will be implemented to open the add transaction modal
@@ -25,8 +31,8 @@ export function TransactionsLayout({ children, accountId, accountName }: Transac
     ? 'View and manage transactions for this account' 
     : 'View and manage all your transactions'
 
-  // Actions for dashboard header
-  const actions = (
+  // Use provided actions or fall back to default
+  const headerActions = actions || (
     <Button onClick={handleAddTransaction}>
       <Plus className="h-4 w-4 mr-2" />
       Add Transaction
@@ -39,7 +45,7 @@ export function TransactionsLayout({ children, accountId, accountName }: Transac
         <DashboardContent 
           title={title}
           subtitle={subtitle}
-          actions={actions}
+          actions={headerActions}
         >
           {children}
         </DashboardContent>
