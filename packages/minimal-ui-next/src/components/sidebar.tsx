@@ -26,7 +26,8 @@ import {
   Users,
   Bell,
   ShieldAlert,
-  ActivitySquare
+  ActivitySquare,
+  AlertTriangle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -365,37 +366,83 @@ export function Sidebar({ className }: SidebarProps) {
     }
   }
 
-  // Grouped navigation structure
-  const navigationGroups: NavigationGroup[] = [
+  // Primary navigation items
+  const navigation: NavigationGroup[] = [
     {
-      title: 'OVERVIEW',
+      title: 'Overview',
       items: [
-        { name: 'Home', href: '/', icon: Home },
-        { name: 'Reports', href: '/reports', icon: BarChart2 },
-      ]
+        { 
+          name: 'Dashboard', 
+          href: '/dashboard', 
+          icon: LayoutDashboard 
+        },
+        { 
+          name: 'Home', 
+          href: '/', 
+          icon: Home 
+        },
+      ],
     },
     {
-      title: 'MANAGEMENT',
+      title: 'Finances',
       items: [
-        { name: 'Accounts', href: '/accounts', icon: CreditCard },
-        { name: 'Transactions', href: '/transactions', icon: Receipt },
-        { name: 'Budget', href: '/budget', icon: LayoutDashboard },
-      ]
+        { 
+          name: 'Accounts', 
+          href: '/accounts', 
+          icon: Wallet 
+        },
+        { 
+          name: 'Transactions', 
+          href: '/transactions', 
+          icon: Receipt 
+        },
+        { 
+          name: 'Cards', 
+          href: '/cards', 
+          icon: CreditCard 
+        },
+      ],
     },
     {
-      title: 'PLANNING',
+      title: 'Reports',
       items: [
-        { name: 'Goals', href: '/goals', icon: Target },
-        { name: 'Schedules', href: '/schedules', icon: Calendar },
-      ]
+        { 
+          name: 'Analytics', 
+          href: '/analytics', 
+          icon: BarChart2 
+        },
+        { 
+          name: 'Goals', 
+          href: '/goals', 
+          icon: Target 
+        },
+      ],
     },
   ]
-
-  // Add Admin section if user is admin
-  if (user?.isAdmin) {
-    navigationGroups.push({
-      title: 'ADMIN',
+  
+  // Add admin tools if user is admin
+  if (isAdmin) {
+    navigation.push({
+      title: 'Admin Tools',
       items: [
+        { 
+          name: 'Performance Center', 
+          href: '/admin/performance', 
+          icon: Building2,
+          className: "text-blue-600 hover:bg-blue-50/30"
+        },
+        { 
+          name: 'Users Management', 
+          href: '/admin/users', 
+          icon: Users,
+          className: "text-blue-600 hover:bg-blue-50/30"
+        },
+        { 
+          name: 'Transaction Conflicts', 
+          href: '/admin/transactions/conflicts', 
+          icon: AlertTriangle,
+          className: "text-amber-600 hover:bg-amber-50/30"
+        },
         { 
           name: 'Performance Alerts', 
           href: '/admin/performance-alerts', 
@@ -810,7 +857,7 @@ export function Sidebar({ className }: SidebarProps) {
             </div>
             <MobileWorkspaceSelector />
             <div className="flex-1 overflow-auto py-4 px-2">
-              {navigationGroups.map((group) => (
+              {navigation.map((group) => (
                 <MobileNavGroup key={group.title} group={group} />
               ))}
             </div>
@@ -901,7 +948,7 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
         <WorkspaceSelector collapsed={collapsed} />
         <div className="flex-1 overflow-y-auto py-4 px-2">
-          {navigationGroups.map((group) => (
+          {navigation.map((group) => (
             <NavGroup key={group.title} group={group} collapsed={collapsed} />
           ))}
         </div>

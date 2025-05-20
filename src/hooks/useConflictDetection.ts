@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { debounce } from '../lib/utils'
 
 interface Transaction {
   id: string
@@ -23,13 +24,32 @@ interface ConflictPair {
   conflictType: 'date_amount_payee' | 'amount_payee' | 'date_amount' | 'potential'
 }
 
+interface ConflictDetectionOptions {
+  threshold?: number // Amount threshold (in cents) for considering transactions similar
+  dateDifferenceThreshold?: number // Date difference threshold (in days) for considering dates close
+  onConflictFound?: (conflicts: ConflictPair[]) => void
+  autoResolve?: boolean
+}
+
 /**
  * Hook for detecting and managing conflicts between manually entered and bank-imported transactions
  */
-export function useConflictDetection() {
+export function useConflictDetection(
+  transactions: Transaction[],
+  options: ConflictDetectionOptions = {}
+) {
   const [conflicts, setConflicts] = useState<ConflictPair[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
+  // Default options
+  const {
+    threshold = 100, // Default 1 dollar (100 cents) threshold
+    dateDifferenceThreshold = 3, // Default 3 days threshold
+    onConflictFound,
+    autoResolve = false
+  } = options
+
   /**
    * Calculates similarity between two strings using Levenshtein distance
    * @param str1 First string
@@ -99,111 +119,139 @@ export function useConflictDetection() {
   }
   
   /**
+   * Calculates similarity between two transactions (0-100)
+   * @param tx1 First transaction
+   * @param tx2 Second transaction
+   * @returns Similarity score between 0 and 100
+   */
+  const calculateSimilarity = (tx1: Transaction, tx2: Transaction): number => {
+    let score = 0
+    
+    // Amount similarity (up to 40 points)
+    const amountDiff = Math.abs(tx1.amount - tx2.amount)
+    if (amountDiff === 0) {
+      score += 40
+    } else if (amountDiff <= threshold) {
+      score += Math.max(0, 40 - (amountDiff / threshold) * 40)
+    }
+    
+    // Date proximity (up to 30 points)
+    const dateDiff = calculateDateSimilarity(tx1.date, tx2.date)
+    if (dateDiff === 1) {
+      score += 30
+    } else if (dateDiff <= dateDifferenceThreshold) {
+      score += Math.max(0, 30 - (dateDiff / dateDifferenceThreshold) * 30)
+    }
+    
+    // Payee similarity (up to 30 points)
+    // This is a simple check; in a real app, you might use string similarity algorithms
+    if (tx1.payee.toLowerCase() === tx2.payee.toLowerCase()) {
+      score += 30
+    } else if (tx1.payee.toLowerCase().includes(tx2.payee.toLowerCase()) || 
+               tx2.payee.toLowerCase().includes(tx1.payee.toLowerCase())) {
+      score += 15
+    }
+    
+    return score
+  }
+  
+  /**
    * Detect conflicts between manually entered and bank-imported transactions
    * @param transactions Array of all transactions
    * @param similarityThreshold Minimum similarity score to consider as conflict (0-1)
    * @returns Array of transactions with hasConflict flag set
    */
-  const detectConflicts = useCallback((
-    transactions: Transaction[],
-    similarityThreshold = 0.8
-  ): Transaction[] => {
-    setIsAnalyzing(true)
-    
-    try {
-      // Separate transactions by origin
-      const manualTransactions = transactions.filter(t => t.origin === 'manual' || !t.origin)
-      const importedTransactions = transactions.filter(t => t.origin === 'bank')
+  const detectConflicts = useCallback(
+    debounce(async (txs: Transaction[]) => {
+      setIsAnalyzing(true)
+      setError(null)
       
-      // Reset conflict status
-      const resetTransactions = transactions.map(t => ({
-        ...t,
-        hasConflict: false
-      }))
-      
-      // No conflicts if no imported transactions
-      if (importedTransactions.length === 0) {
-        setConflicts([])
-        return resetTransactions
-      }
-      
-      const detectedConflicts: ConflictPair[] = []
-      
-      // Check each manual transaction against imported ones
-      for (const manual of manualTransactions) {
-        // Skip transactions that already have an imported_id (they were linked)
-        if (manual.imported_id) continue
-        
-        for (const imported of importedTransactions) {
-          // Skip transactions with different account IDs
-          if (manual.accountId !== imported.accountId) continue
+      try {
+        // Wrap in setTimeout to avoid blocking UI thread during processing
+        setTimeout(() => {
+          const manualTransactions = txs.filter(tx => tx.origin === 'manual')
+          const bankTransactions = txs.filter(tx => tx.origin === 'bank')
+          const newConflicts: ConflictPair[] = []
           
-          // Calculate similarity scores
-          const amountSimilarity = manual.amount === imported.amount ? 1 : 0
-          const dateSimilarity = calculateDateSimilarity(manual.date, imported.date)
-          const payeeSimilarity = calculateStringSimilarity(
-            manual.payee_name || '', 
-            imported.payee_name || ''
-          )
-          
-          // Calculate overall similarity
-          let similarity = 0
-          let conflictType: ConflictPair['conflictType'] = 'potential'
-          
-          // Exact match on date, amount and similar payee
-          if (dateSimilarity === 1 && amountSimilarity === 1 && payeeSimilarity > 0.7) {
-            similarity = 0.9 + (payeeSimilarity * 0.1)
-            conflictType = 'date_amount_payee'
-          }
-          // Same amount and similar payee
-          else if (amountSimilarity === 1 && payeeSimilarity > 0.7) {
-            similarity = 0.7 + (dateSimilarity * 0.2) + (payeeSimilarity * 0.1)
-            conflictType = 'amount_payee'
-          }
-          // Same date and amount
-          else if (dateSimilarity === 1 && amountSimilarity === 1) {
-            similarity = 0.8 + (payeeSimilarity * 0.2)
-            conflictType = 'date_amount'
-          }
-          // Other potential conflicts with high amount similarity
-          else if (amountSimilarity === 1 && (dateSimilarity > 0.5 || payeeSimilarity > 0.5)) {
-            similarity = 0.6 + (dateSimilarity * 0.2) + (payeeSimilarity * 0.2)
-            conflictType = 'potential'
-          }
-          
-          // If similarity exceeds threshold, mark as conflict
-          if (similarity >= similarityThreshold) {
-            detectedConflicts.push({
-              manual,
-              imported,
-              similarity,
-              conflictType
+          // Break up processing into chunks to prevent UI freezes
+          // using requestAnimationFrame for better performance
+          const processChunk = (
+            startIdx: number, 
+            chunkSize: number
+          ) => {
+            requestAnimationFrame(() => {
+              const endIdx = Math.min(startIdx + chunkSize, manualTransactions.length)
+              
+              for (let i = startIdx; i < endIdx; i++) {
+                const manualTx = manualTransactions[i]
+                
+                for (const bankTx of bankTransactions) {
+                  // Skip if not same account
+                  if (manualTx.accountId !== bankTx.accountId) continue
+                  
+                  const similarityScore = calculateSimilarity(manualTx, bankTx)
+                  
+                  // If similarity is high enough, add to conflicts
+                  if (similarityScore >= 70) { // Threshold for considering a conflict
+                    newConflicts.push({
+                      manual,
+                      imported: bankTx,
+                      similarity: similarityScore / 100,
+                      conflictType: 'potential'
+                    })
+                  }
+                }
+              }
+              
+              // Continue with next chunk or finalize
+              if (endIdx < manualTransactions.length) {
+                processChunk(endIdx, chunkSize)
+              } else {
+                // Deduplicate conflicts (same transactions might be flagged multiple times)
+                const uniqueConflicts = Array.from(
+                  new Map(newConflicts.map(c => [c.manual.id, c])).values()
+                )
+                
+                setConflicts(uniqueConflicts)
+                setIsAnalyzing(false)
+                
+                // Notify if conflicts found
+                if (uniqueConflicts.length > 0 && onConflictFound) {
+                  onConflictFound(uniqueConflicts)
+                }
+                
+                // Auto-resolve if configured
+                if (autoResolve && uniqueConflicts.length > 0) {
+                  // Implement auto-resolution logic here
+                  // This would typically be based on confidence scores
+                }
+              }
             })
           }
-        }
+          
+          // Start processing in chunks of 20 transactions
+          processChunk(0, 20)
+        }, 0)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error in conflict detection')
+        setIsAnalyzing(false)
       }
-      
-      // Sort conflicts by similarity (highest first)
-      detectedConflicts.sort((a, b) => b.similarity - a.similarity)
-      
-      // Store conflicts
-      setConflicts(detectedConflicts)
-      
-      // Mark transactions that have conflicts
-      const conflictTransactionIds = new Set([
-        ...detectedConflicts.map(c => c.manual.id),
-        ...detectedConflicts.map(c => c.imported.id)
-      ])
-      
-      return resetTransactions.map(transaction => ({
-        ...transaction,
-        hasConflict: conflictTransactionIds.has(transaction.id)
-      }))
-    } finally {
-      setIsAnalyzing(false)
+    }, 300), // Debounce delay of 300ms to match UI animations
+    []
+  )
+
+  // Automatically detect conflicts when transactions change
+  useEffect(() => {
+    if (transactions.length > 0) {
+      detectConflicts(transactions)
     }
-  }, [])
-  
+    
+    return () => {
+      // Clean up any pending operations
+      detectConflicts.cancel()
+    }
+  }, [transactions, detectConflicts])
+
   /**
    * Get all conflicts involving a specific transaction
    * @param transactionId Transaction ID to find conflicts for
@@ -216,11 +264,121 @@ export function useConflictDetection() {
       conflict => conflict.manual.id === transactionId || conflict.imported.id === transactionId
     )
   }, [conflicts])
-  
+
+  // Resolve a specific conflict
+  const resolveConflict = useCallback(async (
+    conflictId: string,
+    resolution: 'keep-both' | 'keep-manual' | 'keep-bank'
+  ) => {
+    try {
+      setConflicts(prev => 
+        prev.map(conflict => 
+          conflict.manual.id === conflictId 
+            ? { 
+                ...conflict, 
+                conflictType: 'potential',
+                similarity: 0,
+                resolutionStatus: 'resolved',
+                resolution
+              } 
+            : conflict
+        )
+      )
+      
+      // In a real app, you'd also call an API to persist the resolution
+      const apiEndpoint = '/api/transactions-conflict/resolve'
+      
+      // Use optimistic UI update pattern from UI freeze guidelines
+      // We've already updated the UI state, now perform the API call
+      return await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conflictId,
+          resolution
+        })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to resolve conflict')
+        }
+        return response.json()
+      })
+    } catch (err) {
+      // Revert the optimistic update
+      setConflicts(prev => 
+        prev.map(conflict => 
+          conflict.manual.id === conflictId 
+            ? { ...conflict, resolutionStatus: 'unresolved', resolution: undefined } 
+            : conflict
+        )
+      )
+      setError(err instanceof Error ? err.message : 'Failed to resolve conflict')
+      throw err
+    }
+  }, [])
+
+  // Resolve all conflicts with the same resolution
+  const resolveAllConflicts = useCallback(async (
+    resolution: 'keep-both' | 'keep-manual' | 'keep-bank'
+  ) => {
+    const unresolvedConflicts = conflicts.filter(
+      c => c.resolutionStatus === 'unresolved'
+    )
+    
+    if (unresolvedConflicts.length === 0) return
+    
+    // Optimistic update
+    setConflicts(prev => 
+      prev.map(conflict => 
+        conflict.resolutionStatus === 'unresolved'
+          ? { ...conflict, resolutionStatus: 'resolved', resolution }
+          : conflict
+      )
+    )
+    
+    try {
+      // In a real app, you'd batch these operations for better performance
+      // Following the UI freeze prevention batch operations pattern
+      const apiEndpoint = '/api/transactions-conflict/resolve-batch'
+      
+      return await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conflictIds: unresolvedConflicts.map(c => c.manual.id),
+          resolution
+        })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to resolve conflicts')
+        }
+        return response.json()
+      })
+    } catch (err) {
+      // Revert the optimistic update
+      setConflicts(prev => 
+        prev.map(conflict => 
+          conflict.resolutionStatus === 'resolved' && !conflict.resolution
+            ? { ...conflict, resolutionStatus: 'unresolved', resolution: undefined } 
+            : conflict
+        )
+      )
+      setError(err instanceof Error ? err.message : 'Failed to resolve conflicts')
+      throw err
+    }
+  }, [conflicts])
+
   return {
     conflicts,
     isAnalyzing,
-    detectConflicts,
+    error,
+    resolveConflict,
+    resolveAllConflicts,
+    // Reset conflicts and state
+    resetConflicts: () => {
+      setConflicts([])
+      setError(null)
+    },
     getConflictsForTransaction
   }
 } 
