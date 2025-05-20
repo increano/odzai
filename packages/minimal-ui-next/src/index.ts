@@ -551,7 +551,7 @@ app.get('/api/data-directory', (req: Request, res: Response) => {
   res.json({ dataDir });
 });
 
-// Apply budget loaded check to all budget-related endpoints
+// Accounts endpoints
 app.get('/api/accounts', ensureBudgetLoaded, async (req: Request, res: Response) => {
   try {
     const accounts = await actualAPI.getAccounts();
@@ -563,52 +563,68 @@ app.get('/api/accounts', ensureBudgetLoaded, async (req: Request, res: Response)
       try {
         // Get transactions for this account to calculate balance
         const transactions = await actualAPI.getTransactions(account.id, undefined, undefined);
-        const balance = transactions.reduce((sum, trans) => sum + trans.amount, 0);
         
-        const enhancedAccount = {
+        // Check if account has GoCardless integration
+        const isConnected = account.metadata && (
+          account.metadata.gocardless_account_id || 
+          account.metadata.simplefin_uuid || 
+          account.metadata.pluggyai_account_id
+        );
+        
+        return {
           ...account,
-          calculated_balance: balance,
-          // Add a budget_category field to show if it's on or off budget
-          budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
+          isConnected: !!isConnected
         };
-        
-        // Handle missing required fields
-        if (!enhancedAccount.type) {
-          enhancedAccount.type = 'checking'; // Default type
-        }
-        
-        // Log if id is missing (which should not happen)
-        if (!enhancedAccount.id) {
-          console.error('Account missing ID:', enhancedAccount);
-        }
-        
-        return enhancedAccount;
-      } catch (error) {
-        console.error(`Error fetching transactions for account ${account.id}:`, error);
-        const fallbackAccount = {
-          ...account,
-          calculated_balance: 0,
-          budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
-        };
-        
-        // Handle missing required fields
-        if (!fallbackAccount.type) {
-          fallbackAccount.type = 'checking'; // Default type
-        }
-        
-        return fallbackAccount;
+      } catch (err) {
+        console.error(`Error enhancing account ${account.id}:`, err);
+        return account;
       }
     }));
     
-    console.log('Enhanced accounts count:', enhancedAccounts.length);
-    
     res.json(enhancedAccounts);
   } catch (error) {
-    console.error('Failed to get accounts:', error);
-    res.status(500).json({ 
-      error: 'Failed to get accounts',
-      message: error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error fetching accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch accounts' });
+  }
+});
+
+// Add endpoint to get single account by ID
+app.get('/api/accounts/:id', ensureBudgetLoaded, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    console.log(`Fetching single account with ID: ${id}`);
+    
+    // Get all accounts and find the one with matching ID
+    const accounts = await actualAPI.getAccounts();
+    const account = accounts.find(acc => acc.id === id);
+    
+    if (!account) {
+      console.error(`Account not found: ${id}`);
+      return res.status(404).json({ error: 'Account not found' });
+    }
+    
+    // Get transactions to calculate additional properties
+    const transactions = await actualAPI.getTransactions(id, undefined, undefined);
+    const balance = transactions.reduce((sum, trans) => sum + trans.amount, 0);
+    
+    // Check if account has GoCardless integration
+    const isConnected = account.metadata && (
+      account.metadata.gocardless_account_id || 
+      account.metadata.simplefin_uuid || 
+      account.metadata.pluggyai_account_id
+    );
+    
+    // Return enhanced account
+    res.json({
+      ...account,
+      calculated_balance: balance,
+      numTransactions: transactions.length,
+      isConnected: !!isConnected,
+      budget_category: account.offbudget ? 'Off Budget' : 'On Budget'
     });
+  } catch (error) {
+    console.error(`Error fetching account ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch account details' });
   }
 });
 
