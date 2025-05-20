@@ -6,6 +6,8 @@ import { StatusOverviewSection } from '@/components/transactions/status-overview
 import { TransactionListSection } from '@/components/transactions/transaction-list-section'
 import { TransactionDetailsPanel } from '@/components/transactions/transaction-details-panel'
 import { useWorkspace } from '@/components/WorkspaceProvider'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 // Define the transaction interface
@@ -14,6 +16,7 @@ interface Transaction {
   date: string
   account: string
   accountId: string
+  account_name?: string
   amount: number
   payee: string
   payee_name?: string
@@ -23,7 +26,15 @@ interface Transaction {
   origin?: 'bank' | 'manual'
 }
 
-// Define the status metrics interface matching the component's expected type
+// Account interface
+interface Account {
+  id: string
+  name: string
+  calculated_balance?: number
+  isConnected?: boolean
+}
+
+// Define the status metrics interface
 interface TransactionStatusMetrics {
   waiting: {
     count: number
@@ -47,14 +58,37 @@ interface TransactionStatusMetrics {
   }
 }
 
-export default function TransactionsPage() {
+export default function AllTransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [statusMetrics, setStatusMetrics] = useState<TransactionStatusMetrics | undefined>(undefined)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [isAddingTransaction, setIsAddingTransaction] = useState(false)
   const { currentWorkspace } = useWorkspace()
 
-  // Fetch transactions
+  // Fetch all accounts
+  const fetchAccounts = async () => {
+    try {
+      // Add the workspace ID to the query if available
+      const workspaceId = currentWorkspace?.id || ''
+      const queryParams = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ''
+      
+      const response = await fetch(`/api/accounts${queryParams}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch accounts')
+      }
+      
+      const data = await response.json()
+      setAccounts(data)
+    } catch (error) {
+      console.error('Error fetching accounts:', error)
+      toast.error('Failed to load accounts')
+    }
+  }
+
+  // Fetch transactions for all accounts
   const fetchTransactions = async () => {
     try {
       setIsLoading(true)
@@ -63,7 +97,7 @@ export default function TransactionsPage() {
       const workspaceId = currentWorkspace?.id || ''
       const queryParams = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ''
       
-      const response = await fetch(`/api/transactions/all${queryParams}`)
+      const response = await fetch(`/api/transactions${queryParams}`)
       
       if (!response.ok) {
         throw new Error('Failed to fetch transactions')
@@ -72,7 +106,7 @@ export default function TransactionsPage() {
       const data = await response.json()
       setTransactions(data)
       
-      // Calculate status metrics from transactions (this would be replaced by an API call)
+      // Calculate status metrics from transactions
       calculateStatusMetrics(data)
     } catch (error) {
       console.error('Error fetching transactions:', error)
@@ -87,11 +121,11 @@ export default function TransactionsPage() {
     // This is a placeholder - in a real implementation, this would likely be
     // an API call to get pre-calculated metrics
     const metrics: TransactionStatusMetrics = {
-      waiting: { count: 145, changePercent: 8 },
-      processing: { count: 321, changePercent: 15 },
-      shipping: { count: 531, changePercent: 30 },
-      completed: { count: 812, changePercent: 19 },
-      canceled: { count: 80, changePercent: -32 }
+      waiting: { count: 45, changePercent: 5 },
+      processing: { count: 21, changePercent: 10 },
+      shipping: { count: 31, changePercent: 25 },
+      completed: { count: 52, changePercent: 12 },
+      canceled: { count: 8, changePercent: -15 }
     }
     
     setStatusMetrics(metrics)
@@ -113,14 +147,63 @@ export default function TransactionsPage() {
     toast(`Delete transaction: ${transaction.id}`)
     // Would implement delete confirmation and API call here
   }
+  
+  // Handle add transaction
+  const handleAddTransaction = () => {
+    setIsAddingTransaction(true)
+    // This would open a modal in the real implementation
+    
+    // For now, just show a toast and simulate adding a transaction
+    toast.promise(
+      new Promise((resolve) => {
+        // Simulate API call delay
+        setTimeout(() => {
+          // Create a new transaction with a random ID
+          const newTransaction: Transaction = {
+            id: `tx-${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            account: accounts.length > 0 ? accounts[0].id : 'unknown',
+            accountId: accounts.length > 0 ? accounts[0].id : 'unknown',
+            account_name: accounts.length > 0 ? accounts[0].name : 'Unknown Account',
+            amount: -Math.floor(Math.random() * 10000), // Random amount
+            payee: 'New Transaction',
+            payee_name: 'New Transaction',
+            notes: 'Added manually',
+            category: 'cat1',
+            category_name: 'Uncategorized',
+            origin: 'manual'
+          }
+          
+          // Add to transactions array
+          setTransactions(prev => [newTransaction, ...prev])
+          resolve(newTransaction)
+          setIsAddingTransaction(false)
+        }, 1000)
+      }),
+      {
+        loading: 'Adding transaction...',
+        success: 'Transaction added successfully',
+        error: 'Failed to add transaction'
+      }
+    )
+  }
 
-  // Fetch transactions when the component mounts or workspace changes
+  // Fetch accounts and transactions when the component mounts
   useEffect(() => {
+    fetchAccounts()
     fetchTransactions()
   }, [currentWorkspace])
 
   return (
-    <TransactionsLayout>
+    <TransactionsLayout 
+      accounts={accounts}
+      actions={
+        <Button onClick={handleAddTransaction} disabled={isAddingTransaction}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Transaction
+        </Button>
+      }
+    >
       {/* Status Overview Section */}
       <StatusOverviewSection 
         metrics={statusMetrics} 

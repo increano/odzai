@@ -24,6 +24,7 @@ interface Transaction {
   date: string
   account: string
   accountId: string
+  account_name?: string
   amount: number
   payee: string
   payee_name?: string
@@ -97,6 +98,9 @@ export function TransactionListSection({
       setCurrentPage(prev => prev - 1);
     }
   };
+
+  // Determine if we're viewing all accounts (no accountId provided)
+  const isAllAccounts = !accountId;
   
   return (
     <div className="flex-1 min-w-0">
@@ -156,6 +160,7 @@ export function TransactionListSection({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[100px]">Date</TableHead>
+                    {isAllAccounts && <TableHead>Account</TableHead>}
                     <TableHead>Payee</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -172,6 +177,11 @@ export function TransactionListSection({
                       <TableCell className="font-medium">
                         {format(new Date(transaction.date), 'MMM d, yyyy')}
                       </TableCell>
+                      {isAllAccounts && (
+                        <TableCell className="font-medium">
+                          {transaction.account_name || 'Unknown Account'}
+                        </TableCell>
+                      )}
                       <TableCell>
                         {transaction.payee_name || transaction.payee || 'Uncategorized'}
                       </TableCell>

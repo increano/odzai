@@ -70,8 +70,30 @@ export default function AccountTransactionsPage({ params }: AccountTransactionsP
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [statusMetrics, setStatusMetrics] = useState<TransactionStatusMetrics | undefined>(undefined)
   const [account, setAccount] = useState<Account | null>(null)
+  const [accounts, setAccounts] = useState<Account[]>([])
   const [isAddingTransaction, setIsAddingTransaction] = useState(false)
   const { currentWorkspace } = useWorkspace()
+
+  // Fetch all accounts
+  const fetchAccounts = async () => {
+    try {
+      // Add the workspace ID to the query if available
+      const workspaceId = currentWorkspace?.id || ''
+      const queryParams = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : ''
+      
+      const response = await fetch(`/api/accounts${queryParams}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch accounts')
+      }
+      
+      const data = await response.json()
+      setAccounts(data)
+    } catch (error) {
+      console.error('Error fetching accounts:', error)
+      toast.error('Failed to load accounts')
+    }
+  }
 
   // Fetch account details
   const fetchAccountDetails = async () => {
@@ -193,9 +215,10 @@ export default function AccountTransactionsPage({ params }: AccountTransactionsP
     )
   }
 
-  // Fetch account details and transactions when the component mounts
+  // Fetch account details, all accounts, and transactions when the component mounts
   useEffect(() => {
     fetchAccountDetails()
+    fetchAccounts()
     fetchTransactions()
   }, [accountId, currentWorkspace])
 
@@ -203,6 +226,7 @@ export default function AccountTransactionsPage({ params }: AccountTransactionsP
     <TransactionsLayout 
       accountId={accountId} 
       accountName={account?.name}
+      accounts={accounts}
       actions={
         <Button onClick={handleAddTransaction} disabled={isAddingTransaction}>
           <Plus className="mr-2 h-4 w-4" />

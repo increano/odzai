@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TransactionOriginBadge } from './transaction-origin-badge'
-import { CalendarIcon, DollarSignIcon, FileTextIcon, TagIcon, EditIcon, TrashIcon } from 'lucide-react'
+import { CalendarIcon, DollarSignIcon, FileTextIcon, TagIcon, EditIcon, TrashIcon, CreditCardIcon } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Transaction {
@@ -13,6 +13,7 @@ interface Transaction {
   date: string
   account: string
   accountId: string
+  account_name?: string
   amount: number
   payee: string
   payee_name?: string
@@ -84,12 +85,23 @@ export function TransactionDetailsPanel({
           </div>
         </div>
         
+        {/* Account (only show when account_name is available) */}
+        {transaction.account_name && (
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Account</div>
+            <div className="flex items-center">
+              <CreditCardIcon className="h-4 w-4 mr-1.5 text-muted-foreground" />
+              <div>{transaction.account_name}</div>
+            </div>
+          </div>
+        )}
+        
         {/* Payee */}
         <div className="space-y-1">
           <div className="text-sm text-muted-foreground">Payee</div>
           <div className="flex items-center">
             <TagIcon className="h-4 w-4 mr-1.5 text-muted-foreground" />
-            <div>{transaction.payee_name || 'Unknown Payee'}</div>
+            <div>{transaction.payee_name || transaction.payee || 'Unknown Payee'}</div>
           </div>
         </div>
         
