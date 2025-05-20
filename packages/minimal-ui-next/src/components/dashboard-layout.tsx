@@ -8,7 +8,7 @@ interface DashboardLayoutProps {
 }
 
 interface DashboardContentProps {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   actions?: ReactNode;
   children: ReactNode;

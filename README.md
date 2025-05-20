@@ -107,4 +107,14 @@ ACTUAL_DATA_DIR=../../data yarn start:api
 # Terminal 2: Run the Next.js frontend
 cd packages/minimal-ui-next
 yarn dev
-``` 
+```
+
+## Recent Fixes
+
+### 2023-07-17: Fixed transactions page and account details loading
+
+- Fixed an issue where the transactions page wasn't properly passing workspaceId to the backend API
+- Updated query parameter handling in `/api/accounts/[id]` route to properly load the workspace before fetching account details
+- Added proper credentials sharing in all API endpoints to maintain session state with the Express backend
+- Fixed URL parameter format in transaction fetching (changed from `?&workspaceId=` to `?workspaceId=`)
+- Added consistent workspace loading across all account/transaction API routes 

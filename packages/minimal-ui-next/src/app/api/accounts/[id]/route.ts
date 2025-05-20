@@ -1,18 +1,51 @@
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
 /**
  * Get a specific account by ID
  */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
   
   try {
+    // Get workspaceId from query parameters
+    const workspaceId = request.nextUrl.searchParams.get('workspaceId');
+    console.log(`Account details request with workspaceId: ${workspaceId || 'none'}`);
+    
     // Forward request to the Express backend
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const response = await fetch(`${apiUrl}/api/accounts/${id}`);
+    
+    // First, ensure the correct budget is loaded if workspaceId is provided
+    if (workspaceId) {
+      console.log(`Loading workspace ${workspaceId} before fetching account details`);
+      
+      try {
+        const loadResponse = await fetch(`${apiUrl}/api/budgets/load`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ budgetId: workspaceId }),
+          credentials: 'include'
+        });
+        
+        if (!loadResponse.ok) {
+          console.warn(`Failed to load workspace: ${loadResponse.status} ${loadResponse.statusText}`);
+        } else {
+          console.log(`Successfully loaded workspace ${workspaceId}`);
+        }
+      } catch (loadError) {
+        console.error('Error loading workspace:', loadError);
+        // Continue anyway and try to fetch account
+      }
+    }
+    
+    const response = await fetch(`${apiUrl}/api/accounts/${id}`, {
+      credentials: 'include'
+    });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch account: ${response.status} ${response.statusText}`);
@@ -33,7 +66,7 @@ export async function GET(
  * Update an account
  */
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
@@ -41,14 +74,45 @@ export async function PATCH(
   try {
     const body = await request.json();
     
+    // Get workspaceId from query parameters
+    const workspaceId = request.nextUrl.searchParams.get('workspaceId');
+    console.log(`Update account request with workspaceId: ${workspaceId || 'none'}`);
+    
     // Forward request to the Express backend
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    
+    // First, ensure the correct budget is loaded if workspaceId is provided
+    if (workspaceId) {
+      console.log(`Loading workspace ${workspaceId} before updating account`);
+      
+      try {
+        const loadResponse = await fetch(`${apiUrl}/api/budgets/load`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ budgetId: workspaceId }),
+          credentials: 'include'
+        });
+        
+        if (!loadResponse.ok) {
+          console.warn(`Failed to load workspace: ${loadResponse.status} ${loadResponse.statusText}`);
+        } else {
+          console.log(`Successfully loaded workspace ${workspaceId}`);
+        }
+      } catch (loadError) {
+        console.error('Error loading workspace:', loadError);
+        // Continue anyway and try to update account
+      }
+    }
+    
     const response = await fetch(`${apiUrl}/api/accounts/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      credentials: 'include'
     });
     
     if (!response.ok) {
@@ -70,16 +134,47 @@ export async function PATCH(
  * Delete an account
  */
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
   
   try {
+    // Get workspaceId from query parameters
+    const workspaceId = request.nextUrl.searchParams.get('workspaceId');
+    console.log(`Delete account request with workspaceId: ${workspaceId || 'none'}`);
+    
     // Forward request to the Express backend
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    
+    // First, ensure the correct budget is loaded if workspaceId is provided
+    if (workspaceId) {
+      console.log(`Loading workspace ${workspaceId} before deleting account`);
+      
+      try {
+        const loadResponse = await fetch(`${apiUrl}/api/budgets/load`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ budgetId: workspaceId }),
+          credentials: 'include'
+        });
+        
+        if (!loadResponse.ok) {
+          console.warn(`Failed to load workspace: ${loadResponse.status} ${loadResponse.statusText}`);
+        } else {
+          console.log(`Successfully loaded workspace ${workspaceId}`);
+        }
+      } catch (loadError) {
+        console.error('Error loading workspace:', loadError);
+        // Continue anyway and try to delete account
+      }
+    }
+    
     const response = await fetch(`${apiUrl}/api/accounts/${id}`, {
       method: 'DELETE',
+      credentials: 'include'
     });
     
     if (!response.ok) {

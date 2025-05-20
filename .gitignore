@@ -64,3 +64,6 @@ package.tgz
 
 # Fly.io configuration
 fly.toml
+
+# Next.js build output
+packages/minimal-ui-next/.next/
