@@ -56,7 +56,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isAuthPage = pathname === '/login';
+  const isAuthPage = pathname === '/login' || 
+                    pathname === '/signup' || 
+                    pathname.startsWith('/onboarding');
   
   // Debug auth on layout mount
   useEffect(() => {

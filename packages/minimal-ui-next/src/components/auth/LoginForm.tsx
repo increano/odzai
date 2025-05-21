@@ -178,6 +178,15 @@ export function LoginForm() {
         >
           {buttonText}
         </button>
+
+        <div className="mt-4 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link href="/signup" className="text-blue-600 hover:text-blue-800 font-medium">
+              Sign up
+            </Link>
+          </p>
+        </div>
         
         {/* Debug info - expanded for better troubleshooting */}
         {process.env.NODE_ENV === 'development' && (

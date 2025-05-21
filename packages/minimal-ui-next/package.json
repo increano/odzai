@@ -11,6 +11,7 @@
     "lint": "next lint",
     "start:all": "concurrently \"yarn start:api\" \"yarn dev\"",
     "setup:gocardless": "node setup-gocardless.js",
+    "setup:database": "ts-node --transpile-only src/scripts/setup-database.ts",
     "analyze": "ANALYZE=true next build",
     "analyze:server": "BUNDLE_ANALYZE=server next build",
     "analyze:browser": "BUNDLE_ANALYZE=browser next build"

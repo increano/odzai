@@ -4,8 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 // Define paths that should be publicly accessible without authentication
 const PUBLIC_ROUTES = [
   '/login',
+  '/signup',
   '/forgot-password',
   '/reset-password',
+  '/onboarding',
+  '/onboarding/welcome',
+  '/onboarding/workspace',
+  '/onboarding/profile',
+  '/onboarding/complete',
   '/api/user/preferences',
   '/api/auth',
 ];
@@ -35,11 +41,11 @@ function isPublicPath(path: string): boolean {
 }
 
 /**
- * Detect if the request is coming from the login page
+ * Detect if the request is coming from the login, signup, or onboarding pages
  */
-function isFromLoginPage(request: NextRequest): boolean {
+function isFromAuthPage(request: NextRequest): boolean {
   const referer = request.headers.get('referer') || '';
-  return referer.includes('/login');
+  return referer.includes('/login') || referer.includes('/signup') || referer.includes('/onboarding');
 }
 
 /**
@@ -57,9 +63,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Skip auth check for requests coming from login page to prevent redirect loops
-  if (isFromLoginPage(request)) {
-    console.log(`Request from login page to ${path}, skipping auth check to prevent loops`);
+  // Skip auth check for requests coming from auth pages to prevent redirect loops
+  if (isFromAuthPage(request)) {
+    console.log(`Request from auth page to ${path}, skipping auth check to prevent loops`);
     return NextResponse.next();
   }
   
