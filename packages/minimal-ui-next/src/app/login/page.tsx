@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { useAuth } from '../../components/providers/SupabaseAuthProvider';
 
 export default function LoginPage() {
   const { session } = useAuth();
   const [redirecting, setRedirecting] = useState(false);
+  const router = useRouter();
   
   // For debugging - log authentication state
   useEffect(() => {
@@ -25,12 +27,12 @@ export default function LoginPage() {
         console.log('Redirecting from login page to /budget');
         
         // Step 3: Perform actual navigation after visual transition
-        window.location.href = '/budget';
-      }, 300); // Use 300ms per performance best practices in docs
+        router.push('/budget');
+      }, 1000); // Increased delay to ensure cookies are properly set
       
       return () => clearTimeout(redirectTimer);
     }
-  }, [session, redirecting]);
+  }, [session, redirecting, router]);
   
   // Block all default workspace preferences on login page
   // to prevent redirect loops

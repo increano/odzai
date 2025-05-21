@@ -26,28 +26,30 @@ export function LoginForm() {
     });
   }, [email, isSubmitting, loading, loginSuccess, session, authError]);
 
-  // Show visual feedback on successful login
+  // Show visual feedback on successful login and handle redirect with improved timing
   useEffect(() => {
     if (loginSuccess) {
       // After success feedback, redirect with proper timing
       const redirectTimer = setTimeout(() => {
         console.log('Login successful, redirecting to budget page');
-        window.location.href = '/budget';
-      }, 300); // Allow time for animations to complete per performance docs
+        // Use Next.js router instead of window.location
+        router.push('/budget');
+      }, 1000); // Increased delay to ensure cookies are properly set
 
       return () => clearTimeout(redirectTimer);
     }
-  }, [loginSuccess]);
+  }, [loginSuccess, router]);
 
   // Redirect if already logged in
   useEffect(() => {
     if (session && !isSubmitting) {
       console.log('Session already exists, redirecting to /budget');
       setTimeout(() => {
-        window.location.href = '/budget';
-      }, 300);
+        // Use Next.js router instead of window.location
+        router.push('/budget');
+      }, 1000); // Increased delay to ensure cookies are properly set
     }
-  }, [session, isSubmitting]);
+  }, [session, isSubmitting, router]);
   
   // Update local error state when auth error changes
   useEffect(() => {
@@ -88,6 +90,9 @@ export function LoginForm() {
         // Set success state for visual feedback
         setLoginSuccess(true);
         console.log('Login successful, showing success state before redirect');
+        
+        // Give extra time for session to be fully established
+        await new Promise(resolve => setTimeout(resolve, 500));
       } else {
         setFormError('Invalid login credentials');
         setIsSubmitting(false);

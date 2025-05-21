@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 import { supabase, UserWithRole, getCurrentUserWithRole } from '../../lib/supabase/client';
 
 // Auth context type definition
@@ -23,6 +24,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const [user, setUser] = useState<UserWithRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   // Initialize auth state
   useEffect(() => {
@@ -134,6 +136,8 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       // HTTP-only cookies are automatically handled by Supabase with the updated config
       if (data.session) {
         console.log('Successfully signed in, session established');
+        // Add a small delay to ensure session is properly set in cookies
+        await new Promise(resolve => setTimeout(resolve, 500));
         return true;
       }
       
@@ -159,8 +163,11 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      // Ensure cookies and session are fully cleared before redirecting
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Redirect to login page after successful sign out
-      window.location.href = '/login';
+      router.push('/login');
     } catch (err: any) {
       console.error('Sign out error:', err);
       setError(err.message || 'Failed to sign out');
