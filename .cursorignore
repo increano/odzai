@@ -2,7 +2,17 @@
 **/.env
 **/.env.*
 **/.env.local
-**/packages/minimal-ui-next/.env*
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+**/packages/minimal-ui-next/.env.local
+**/packages/minimal-ui-next/.env.development.local
+**/packages/minimal-ui-next/.env.test.local
+**/packages/minimal-ui-next/.env.production.local
+
+# Do not ignore example env files
+!**/.env.example
+!**/.env.*.example
 
 # Node modules
 **/node_modules/

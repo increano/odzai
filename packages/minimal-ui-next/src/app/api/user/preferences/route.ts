@@ -62,10 +62,23 @@ const saveUserPreferences = (preferences: any) => {
  * 
  * Get user preferences
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     console.log('GET /api/user/preferences called');
-    const preferences = getUserPreferences();
+    let preferences = getUserPreferences();
+    
+    // Check if the request is from login page via headers
+    const referer = request.headers.get('referer') || '';
+    const isLoginPage = referer.includes('/login');
+    
+    // If on login page, don't return defaultWorkspaceId to prevent redirect loops
+    if (isLoginPage) {
+      console.log('Request from login page detected, removing defaultWorkspaceId');
+      // Create a new object without the defaultWorkspaceId
+      const { defaultWorkspaceId, ...safePreferences } = preferences;
+      preferences = safePreferences;
+    }
+    
     console.log('Returning preferences:', preferences);
     
     // Add cache control headers to prevent stale data

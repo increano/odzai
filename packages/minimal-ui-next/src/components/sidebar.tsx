@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/sheet'
 import { useSettingsModal } from './SettingsModalProvider'
 import { useWorkspace } from './WorkspaceProvider'
+import { useAuth } from './providers/SupabaseAuthProvider'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,6 +164,7 @@ export function Sidebar({ className }: SidebarProps) {
   const { openSettingsModal } = useSettingsModal()
   const { isWorkspaceLoaded, currentWorkspace, loadWorkspace, loadingWorkspace, isDefaultWorkspace } = useWorkspace()
   const { user, isAdmin } = useUser()
+  const { signOut } = useAuth()
   
   // Add state to control the dropdown open/close state
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -350,19 +352,24 @@ export function Sidebar({ className }: SidebarProps) {
   }
 
   // Handle user logout
-  const handleLogout = () => {
-    // Clear the current workspace from localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('odzai-current-workspace')
+  const handleLogout = async () => {
+    try {
+      // Clear any workspace data from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('odzai-current-workspace')
+      }
       
-      // You would typically clear auth tokens here too
-      // localStorage.removeItem('auth-token')
+      // Show loading toast
+      toast.loading('Signing out...')
       
-      // Show toast notification
-      toast.success('Logged out successfully')
+      // Call the signOut method from SupabaseAuthProvider
+      await signOut()
       
-      // Use Next.js router instead of direct window location navigation
-      router.push('/')
+      // Success toast will be shown after redirect completes
+      // (The signOut method already handles redirection to login page)
+    } catch (error) {
+      console.error('Logout error:', error)
+      toast.error('Failed to sign out. Please try again.')
     }
   }
 
