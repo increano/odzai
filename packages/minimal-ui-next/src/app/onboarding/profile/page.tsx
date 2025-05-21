@@ -18,7 +18,15 @@ function ProfileContent() {
   useEffect(() => {
     // Ensure we're on the correct step when this component mounts
     goToStep('profile');
-  }, [goToStep]);
+    
+    // If user already has a full_name in metadata, pre-populate it
+    if (user?.user_metadata && typeof user?.user_metadata === 'object') {
+      const metadata = user.user_metadata as Record<string, any>;
+      if (metadata.full_name && !fullName) {
+        setFullName(metadata.full_name);
+      }
+    }
+  }, [goToStep, user, fullName, setFullName]);
 
   const isFormValid = fullName.trim().length > 0;
 
@@ -29,39 +37,38 @@ function ProfileContent() {
       setIsUpdating(true);
       setError('');
       
-      // During onboarding, we'll store the name in the context and continue without requiring auth
-      // Users can update their profile information later when they have an active session
-      
-      // If we have a session, try to update the user metadata
-      if (session) {
-        try {
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: {
-              full_name: fullName.trim(),
-            }
-          });
-          
-          if (updateError) {
-            console.warn('Could not update profile in Supabase:', updateError.message);
-            // Continue anyway for onboarding
-          }
-        } catch (err) {
-          console.warn('Error during profile update:', err);
-          // Continue anyway for onboarding
-        }
-      } else {
-        console.log('No active session, storing profile data in context only');
-        // We'll just use the data from the onboarding context
+      if (!session?.user) {
+        throw new Error('You must be logged in to update your profile');
       }
       
-      // Store the profile data in local storage for later use
-      try {
-        localStorage.setItem('odzai-user-profile', JSON.stringify({
-          fullName: fullName.trim(),
-          updatedAt: new Date().toISOString()
-        }));
-      } catch (err) {
-        console.warn('Could not store profile in local storage:', err);
+      // Update user metadata in Supabase
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          full_name: fullName.trim(),
+        }
+      });
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      // Also store in user_preferences for more structured access
+      const { error: preferencesError } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: session.user.id,
+          data: {
+            profile: {
+              fullName: fullName.trim(),
+              updatedAt: new Date().toISOString()
+            }
+          },
+          updated_at: new Date().toISOString()
+        });
+      
+      if (preferencesError) {
+        console.warn('Could not update preferences in Supabase:', preferencesError.message);
+        // Continue anyway since the primary update succeeded
       }
       
       toast.success('Profile updated successfully');

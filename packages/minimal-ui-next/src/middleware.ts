@@ -49,6 +49,15 @@ function isFromAuthPage(request: NextRequest): boolean {
 }
 
 /**
+ * Check if request is to a workspace-specific API route
+ */
+function isWorkspaceApiRequest(path: string): boolean {
+  return path.startsWith('/api/budgets/') || 
+         path.startsWith('/api/accounts/') || 
+         path.startsWith('/api/transactions/');
+}
+
+/**
  * Middleware function that runs on applicable requests
  */
 export async function middleware(request: NextRequest) {
@@ -89,9 +98,38 @@ export async function middleware(request: NextRequest) {
     // Check for an active session
     const { data } = await supabase.auth.getSession();
     
-    // If we have a valid session, allow the request
+    // If we have a valid session, continue with additional checks if needed
     if (data.session) {
       console.log(`Authenticated access to ${path}`);
+      
+      // For workspace-specific API requests, we need to check workspace access
+      if (isWorkspaceApiRequest(path)) {
+        // Extract the workspace ID from the path
+        const match = path.match(/\/api\/(budgets|accounts|transactions)\/([^\/]+)/);
+        if (match && match[2]) {
+          const workspaceId = match[2];
+          
+          // Check if the user has access to this workspace
+          try {
+            const { data: workspaceAccess, error } = await supabase
+              .from('workspace_users')
+              .select('access_level')
+              .eq('workspace_id', workspaceId)
+              .eq('user_id', data.session.user.id)
+              .single();
+            
+            if (error || !workspaceAccess) {
+              console.log(`User does not have access to workspace ${workspaceId}`);
+              return NextResponse.redirect(new URL('/unauthorized', request.url));
+            }
+            
+            console.log(`User has ${workspaceAccess.access_level} access to workspace ${workspaceId}`);
+          } catch (err) {
+            console.error('Error checking workspace access:', err);
+          }
+        }
+      }
+      
       return NextResponse.next();
     }
     

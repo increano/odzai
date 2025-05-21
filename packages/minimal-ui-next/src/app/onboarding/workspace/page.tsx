@@ -8,13 +8,14 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { toast } from 'sonner';
 import { useAuth } from '../../../components/providers/SupabaseAuthProvider';
+import { supabase } from '../../../lib/supabase/client';
 
 function WorkspaceContent() {
   const { workspaceName, setWorkspaceName, goToNextStep, goToStep } = useOnboarding();
   const [isCreating, setIsCreating] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#3B82F6'); // Default blue color
   const [error, setError] = useState('');
-  const { session } = useAuth();
+  const { session, user } = useAuth();
 
   useEffect(() => {
     // Ensure we're on the correct step when this component mounts
@@ -30,35 +31,42 @@ function WorkspaceContent() {
       setIsCreating(true);
       setError('');
       
-      // We'll continue even without a session during onboarding
-      // This way new users can create their first workspace
-      
-      // For onboarding, let's try the fallback approach of creating a workspace directly
-      // First, try to generate a unique ID for the workspace
-      const workspaceId = `${workspaceName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Math.random().toString(36).substring(2, 9)}`;
-      
-      // Use POST request to create workspace via API endpoint
-      const response = await fetch('/api/budgets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: workspaceId,
-          name: workspaceName.trim(),
-          color: selectedColor
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to create workspace (${response.status})`);
+      if (!session?.user?.id) {
+        throw new Error('You must be logged in to create a workspace');
       }
       
-      const data = await response.json();
+      // Generate a workspace ID (slug from name + random part)
+      const workspaceId = `${workspaceName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Math.random().toString(36).substring(2, 9)}`;
       
-      if (!data) {
+      // Use the Supabase function to create a workspace
+      const { data, error: workspaceError } = await supabase.rpc('create_workspace_with_owner', {
+        workspace_name: workspaceName.trim(),
+        workspace_color: selectedColor
+      });
+      
+      if (workspaceError) {
+        throw workspaceError;
+      }
+      
+      // The function returns the workspace ID
+      const newWorkspaceId = data;
+      
+      if (!newWorkspaceId) {
         throw new Error('Failed to create workspace');
+      }
+      
+      // Update user preferences to set this as default workspace
+      const { error: preferencesError } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: session.user.id,
+          default_workspace_id: newWorkspaceId,
+          updated_at: new Date().toISOString()
+        });
+      
+      if (preferencesError) {
+        console.error('Error updating preferences:', preferencesError);
+        // Continue even if preference update fails
       }
       
       toast.success(`Workspace "${workspaceName}" created successfully`);
