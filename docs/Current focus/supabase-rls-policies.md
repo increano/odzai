@@ -11,12 +11,12 @@ This document contains all the Row Level Security (RLS) policies needed for the 
 ALTER TABLE users_roles ENABLE ROW LEVEL SECURITY;
 
 -- Admin users can manage all roles
-CREATE POLICY "Admins can manage all roles" ON users_roles
+CREATE POLICY "Admins can manage all roles" ON user_roles
   USING (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin')
   WITH CHECK (auth.jwt() -> 'app_metadata' ->> 'role' = 'admin');
 
 -- Users can view their own role
-CREATE POLICY "Users can view their own role" ON users_roles
+CREATE POLICY "Users can view their own role" ON user_roles
   FOR SELECT USING (auth.uid() = user_id);
 ```
 
@@ -34,7 +34,7 @@ CREATE POLICY "Admins can manage all workspaces" ON workspaces
 -- Users can see workspaces they own
 CREATE POLICY "Users can view their own workspaces" ON workspaces
   FOR SELECT USING (
-    workspace_id IN (
+    public.workspaces.id IN (
       SELECT workspace_id FROM workspace_users WHERE user_id = auth.uid()
     )
   );
@@ -42,12 +42,12 @@ CREATE POLICY "Users can view their own workspaces" ON workspaces
 -- Users can update workspaces they own
 CREATE POLICY "Users can update their own workspaces" ON workspaces
   FOR UPDATE USING (
-    workspace_id IN (
+    public.workspaces.id IN (
       SELECT workspace_id FROM workspace_users WHERE user_id = auth.uid()
     )
   )
   WITH CHECK (
-    workspace_id IN (
+    public.workspaces.id IN (
       SELECT workspace_id FROM workspace_users WHERE user_id = auth.uid()
     )
   );
@@ -55,7 +55,7 @@ CREATE POLICY "Users can update their own workspaces" ON workspaces
 -- Users can delete workspaces they own
 CREATE POLICY "Users can delete their own workspaces" ON workspaces
   FOR DELETE USING (
-    workspace_id IN (
+    public.workspaces.id IN (
       SELECT workspace_id FROM workspace_users WHERE user_id = auth.uid()
     )
   );
@@ -64,7 +64,7 @@ CREATE POLICY "Users can delete their own workspaces" ON workspaces
 CREATE POLICY "Users can create workspaces" ON workspaces
   FOR INSERT WITH CHECK (true);
 ```
-
+🧶
 ### Workspace Users (Many-to-Many)
 
 ```sql
