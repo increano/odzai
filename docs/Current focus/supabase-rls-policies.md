@@ -274,7 +274,7 @@ CREATE POLICY "Users can manage rules in their workspaces" ON rules
 ```
 
 ### Scheduled Transactions
-
+🧶
 ```sql
 -- Enable RLS on the scheduled_transactions table
 ALTER TABLE scheduled_transactions ENABLE ROW LEVEL SECURITY;
