@@ -25,7 +25,49 @@ We've transitioned from using local filesystem storage to Supabase for user data
 
 The user preferences API has been updated to store preferences in Supabase instead of the local filesystem.
 
+### Default Preferences Creation
+
+When a new user signs up, default preferences are automatically created in the `user_preferences` table:
+
+```typescript
+// During signup process
+const { data, error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    emailRedirectTo: `${window.location.origin}/onboarding/welcome`,
+  }
+});
+
+if (data) {
+  // Initialize default user preferences
+  await supabase
+    .from('user_preferences')
+    .insert({
+      user_id: data.user?.id,
+      theme: 'light',
+      data: {
+        onboarding: {
+          completed: false,
+          currentStep: 'welcome'
+        }
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+}
+```
+
 ### User Preferences API
+
+The preferences API has been enhanced to handle the onboarding flow properly:
+
+1. For new users in onboarding:
+   - Returns default onboarding preferences even without a session
+   - Prevents infinite loops during the onboarding process
+2. For existing users:
+   - Creates default preferences if none exist
+   - Properly handles session state and authentication
 
 ```typescript
 // packages/minimal-ui-next/src/app/api/user/preferences/route.ts
@@ -60,8 +102,11 @@ const createServerSupabaseClient = (cookieStore: string) => {
  */
 export async function GET(request: Request) {
   try {
-    // Get the cookie string from headers
     const cookieStore = request.headers.get('cookie') || '';
+    const referer = request.headers.get('referer') || '';
+    
+    // Check if request is from onboarding
+    const isOnboarding = referer.includes('/onboarding');
     
     // Create a Supabase client with the cookie
     const supabase = createServerSupabaseClient(cookieStore);
@@ -69,9 +114,17 @@ export async function GET(request: Request) {
     // Get the current user's session
     const { data: { session } } = await supabase.auth.getSession();
     
-    // If no session and not on login page, return empty preferences
-    if (!session && !isLoginPage) {
-      return NextResponse.json({});
+    // If no session and in onboarding, return default onboarding preferences
+    if (!session && isOnboarding) {
+      return NextResponse.json({
+        theme: 'light',
+        data: {
+          onboarding: {
+            completed: false,
+            currentStep: 'welcome'
+          }
+        }
+      });
     }
     
     // If there's a session, fetch user preferences from Supabase
@@ -165,10 +218,12 @@ export async function POST(request: Request) {
 
 ### Key Improvements
 
-1. **Authentication Integration**: Preferences are tied to authenticated users
-2. **Structured Data**: Both structured fields (`default_workspace_id`, `theme`) and flexible JSON data
-3. **Error Handling**: Proper error handling for database operations
-4. **Security**: Only authenticated users can update their own preferences
+1. **Default Preferences**: Automatically created during signup
+2. **Onboarding Support**: Special handling for onboarding flow to prevent loops
+2. **Authentication Integration**: Preferences are tied to authenticated users
+3. **Structured Data**: Both structured fields (`default_workspace_id`, `theme`) and flexible JSON data
+4. **Error Handling**: Proper error handling for database operations
+5. **Security**: Only authenticated users can update their own preferences
 
 ## Workspace Creation Flow
 

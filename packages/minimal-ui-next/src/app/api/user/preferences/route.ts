@@ -32,20 +32,40 @@ export async function GET(request: Request) {
     
     // Get the cookie string from headers
     const cookieStore = request.headers.get('cookie') || '';
+    const referer = request.headers.get('referer') || '';
+    
+    // Check if request is from onboarding or login pages
+    const isOnboarding = referer.includes('/onboarding');
+    const isLoginPage = referer.includes('/login');
     
     // Create a Supabase client with the cookie
     const supabase = createServerSupabaseClient(cookieStore);
     
-    // Get the current user's session
-    const { data: { session } } = await supabase.auth.getSession();
+    // Get the current user's session - replace with getUser for security
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    // Check if the request is from login page via headers
-    const referer = request.headers.get('referer') || '';
-    const isLoginPage = referer.includes('/login');
+    // If no user and in onboarding, return default onboarding preferences with cache headers
+    if (!user && isOnboarding) {
+      console.log('No user in onboarding, returning default onboarding preferences');
+      return NextResponse.json({
+        theme: 'light',
+        data: {
+          onboarding: {
+            completed: false,
+            currentStep: 'welcome'
+          }
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'private, max-age=60', // Cache for 1 minute
+          'Vary': 'Cookie, Authorization' // Vary on auth headers
+        }
+      });
+    }
     
-    // If no session and not on login page, return empty preferences
-    if (!session && !isLoginPage) {
-      console.log('No session found, returning empty preferences');
+    // If no user and not on login/onboarding page, return empty preferences
+    if (!user && !isLoginPage && !isOnboarding) {
+      console.log('No user found, returning empty preferences');
       return NextResponse.json({}, {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -55,19 +75,46 @@ export async function GET(request: Request) {
       });
     }
     
-    // If there's a session, fetch user preferences from Supabase
+    // If there's a user, fetch user preferences from Supabase
     let preferences = {};
     
-    if (session?.user) {
+    if (user) {
       // Query the user_preferences table
       const { data: preferenceData, error } = await supabase
         .from('user_preferences')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
         .single();
       
-      if (error && error.code !== 'PGRST116') { // Not found error
-        console.error('Error fetching user preferences:', error);
+      if (error) {
+        if (error.code === 'PGRST116') { // Not found error
+          // Initialize default preferences for existing user
+          const { data: newPrefs, error: insertError } = await supabase
+            .from('user_preferences')
+            .insert({
+              user_id: user.id,
+              theme: 'light',
+              data: {
+                onboarding: {
+                  completed: false,
+                  currentStep: 'welcome'
+                }
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+            
+          if (!insertError && newPrefs) {
+            preferences = {
+              theme: newPrefs.theme,
+              ...newPrefs.data
+            };
+          }
+        } else {
+          console.error('Error fetching user preferences:', error);
+        }
       } else if (preferenceData) {
         // Combine structured fields with JSON data field
         preferences = {
@@ -82,7 +129,6 @@ export async function GET(request: Request) {
     // If on login page, don't return defaultWorkspaceId to prevent redirect loops
     if (isLoginPage) {
       console.log('Request from login page detected, removing defaultWorkspaceId');
-      // Create a new object without the defaultWorkspaceId
       const { defaultWorkspaceId, ...safePreferences } = preferences as any;
       preferences = safePreferences;
     }
@@ -123,10 +169,10 @@ export async function POST(request: Request) {
     // Create a Supabase client with the cookie
     const supabase = createServerSupabaseClient(cookieStore);
     
-    // Get the current user's session
-    const { data: { session } } = await supabase.auth.getSession();
+    // Get the current user - replace with getUser for security
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -140,7 +186,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from('user_preferences')
       .upsert({
-        user_id: session.user.id,
+        user_id: user.id,
         default_workspace_id: defaultWorkspaceId,
         theme: theme || 'light',
         data: otherPreferences,

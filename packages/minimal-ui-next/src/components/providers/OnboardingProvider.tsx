@@ -4,16 +4,15 @@ import React, { createContext, useContext, useState, ReactNode, useCallback, use
 import { useRouter } from 'next/navigation';
 import { useAuth } from './SupabaseAuthProvider';
 import { supabase } from '../../lib/supabase/client';
+import { toast } from 'react-hot-toast';
 
 // Define the steps in the onboarding process
-export type OnboardingStep = 'welcome' | 'workspace' | 'profile' | 'complete';
+export type OnboardingStep = 'welcome' | 'complete';
 
 // Define the onboarding context type
 type OnboardingContextType = {
   currentStep: OnboardingStep;
-  workspaceName: string;
   fullName: string;
-  setWorkspaceName: (name: string) => void;
   setFullName: (name: string) => void;
   goToNextStep: () => void;
   goToPreviousStep: () => void;
@@ -26,24 +25,26 @@ type OnboardingContextType = {
 // Create the context with a default value
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-// Define the order of steps for navigation
-const STEP_ORDER: OnboardingStep[] = ['welcome', 'workspace', 'profile', 'complete'];
+// Define the order of steps for navigation - removed profile step
+const STEP_ORDER: OnboardingStep[] = ['welcome', 'complete'];
 
 // Provider component
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { session, user } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
-  const [workspaceName, setWorkspaceName] = useState('');
   const [fullName, setFullName] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Load onboarding state from Supabase or initialize defaults
   useEffect(() => {
     async function loadOnboardingState() {
+      // Always set initialized to prevent infinite loops
+      setIsInitialized(true);
+
       if (!session?.user) {
-        // Not logged in, can't load state
-        setIsInitialized(true);
+        // For non-authenticated users in onboarding, use default state
+        setCurrentStep('welcome');
         return;
       }
 
@@ -51,7 +52,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         // Try to get existing preferences from Supabase
         const { data: preferences, error } = await supabase
           .from('user_preferences')
-          .select('data')
+          .select('data, default_workspace_id')
           .eq('user_id', session.user.id)
           .single();
 
@@ -60,7 +61,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         } else if (preferences?.data?.onboarding) {
           // We have onboarding data in preferences
           const { onboarding } = preferences.data;
-          if (onboarding.workspaceName) setWorkspaceName(onboarding.workspaceName);
           if (onboarding.fullName) setFullName(onboarding.fullName);
           if (onboarding.currentStep) setCurrentStep(onboarding.currentStep as OnboardingStep);
         } else if (user?.user_metadata && typeof user.user_metadata === 'object') {
@@ -73,14 +73,12 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error('Failed to load onboarding state:', err);
       }
-
-      setIsInitialized(true);
     }
 
     if (!isInitialized) {
       loadOnboardingState();
     }
-  }, [session, user, isInitialized]);
+  }, [session, user, isInitialized, currentStep]);
 
   // Save onboarding state to Supabase
   const saveOnboardingState = useCallback(async () => {
@@ -97,7 +95,6 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           data: {
             onboarding: {
               currentStep,
-              workspaceName,
               fullName,
               lastUpdated: new Date().toISOString()
             }
@@ -107,11 +104,59 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('Error saving onboarding state:', error);
+        toast.error('Failed to save progress');
       }
     } catch (err) {
       console.error('Failed to save onboarding state:', err);
+      toast.error('Failed to save progress');
     }
-  }, [session, currentStep, workspaceName, fullName]);
+  }, [session, currentStep, fullName]);
+
+  // Complete the onboarding process
+  const completeOnboarding = useCallback(async () => {
+    if (!session?.user) {
+      console.error('Cannot complete onboarding without session');
+      return;
+    }
+
+    try {
+      // Update user preferences to mark onboarding as complete
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: session.user.id,
+          data: {
+            onboarding: {
+              completed: true,
+              completedAt: new Date().toISOString()
+            }
+          },
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      // Navigate to the main app using Next.js router
+      router.push('/budget');
+    } catch (err) {
+      console.error('Failed to complete onboarding:', err);
+      toast.error('Failed to complete onboarding');
+    }
+  }, [session, router]);
+
+  // Check if a step is complete based on required data
+  const isStepComplete = useCallback((step: OnboardingStep): boolean => {
+    switch (step) {
+      case 'welcome':
+        return true; // Always complete
+      case 'complete':
+        return true; // Always complete
+      default:
+        return false;
+    }
+  }, [fullName]);
 
   // Navigate to the next step in the process
   const goToNextStep = useCallback(async () => {
@@ -121,6 +166,13 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     if (currentIndex < STEP_ORDER.length - 1) {
       const nextStep = STEP_ORDER[currentIndex + 1];
       console.log('Moving to next step:', nextStep);
+
+      // For protected steps, ensure we have a session
+      if (nextStep === 'complete' && !session?.user) {
+        console.error('Attempting to access protected step without session');
+        throw new Error('You must be logged in to continue');
+      }
+
       setCurrentStep(nextStep);
       
       // Save state before navigation
@@ -128,13 +180,12 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         await saveOnboardingState();
       }
       
-      // Use replace instead of push for more reliable navigation
+      // Use Next.js router for navigation
       try {
         console.log('Attempting navigation to:', `/onboarding/${nextStep}`);
-        window.location.href = `/onboarding/${nextStep}`;
+        router.push(`/onboarding/${nextStep}`);
       } catch (error) {
         console.error('Error during navigation:', error);
-        router.replace(`/onboarding/${nextStep}`);
       }
     } else {
       console.log('Already at the last step');
@@ -165,82 +216,40 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   // Navigate to a specific step
   const goToStep = useCallback(async (step: OnboardingStep) => {
     console.log('goToStep called with step:', step, 'Current step:', currentStep);
-    setCurrentStep(step);
     
-    // Save state if we're changing steps
-    if (step !== currentStep && session?.user) {
-      await saveOnboardingState();
+    // For protected steps, ensure we have a session
+    if (step === 'complete' && !session?.user) {
+      console.error('Attempting to access protected step without session');
+      throw new Error('You must be logged in to access this step');
     }
-    
-    // Only navigate if we're changing steps
+
+    // Only update state and navigate if we're actually changing steps
     if (step !== currentStep) {
-      try {
-        window.location.href = `/onboarding/${step}`;
-      } catch (error) {
-        router.replace(`/onboarding/${step}`);
+      setCurrentStep(step);
+      
+      // Save state if we have a session
+      if (session?.user) {
+        await saveOnboardingState();
+      }
+      
+      // Only navigate if we're not already on the correct page
+      const currentPath = window.location.pathname;
+      const targetPath = `/onboarding/${step}`;
+      
+      if (currentPath !== targetPath) {
+        try {
+          window.location.href = targetPath;
+        } catch (error) {
+          router.replace(targetPath);
+        }
       }
     }
   }, [currentStep, router, session, saveOnboardingState]);
 
-  // Complete the onboarding process
-  const completeOnboarding = useCallback(async () => {
-    // Mark onboarding as complete in user preferences
-    if (session?.user) {
-      try {
-        await supabase
-          .from('user_preferences')
-          .upsert({
-            user_id: session.user.id,
-            data: {
-              onboarding: {
-                completed: true,
-                completedAt: new Date().toISOString()
-              }
-            },
-            updated_at: new Date().toISOString()
-          });
-      } catch (err) {
-        console.error('Failed to mark onboarding as complete:', err);
-      }
-    }
-    
-    // Navigate to the main app
-    try {
-      window.location.href = '/budget';
-    } catch (error) {
-      router.replace('/budget');
-    }
-  }, [router, session]);
-
-  // Check if a step is complete based on required data
-  const isStepComplete = useCallback((step: OnboardingStep): boolean => {
-    switch (step) {
-      case 'welcome':
-        return true; // Always complete
-      case 'workspace':
-        return !!workspaceName;
-      case 'profile':
-        return !!fullName;
-      case 'complete':
-        return true; // Always complete
-      default:
-        return false;
-    }
-  }, [workspaceName, fullName]);
-
-  // Only render children once initialized
-  if (!isInitialized) {
-    return <div className="flex h-screen w-full items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-    </div>;
-  }
-
-  // Provide the context value
-  const value = {
+  // Create the context value
+  const contextValue = {
     currentStep,
-    workspaceName,
     fullName,
-    setWorkspaceName,
     setFullName,
     goToNextStep,
     goToPreviousStep,
@@ -250,7 +259,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     saveOnboardingState,
   };
 
-  return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
+  return (
+    <OnboardingContext.Provider value={contextValue}>
+      {children}
+    </OnboardingContext.Provider>
+  );
 }
 
 // Custom hook to use the onboarding context

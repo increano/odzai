@@ -101,6 +101,7 @@ __metadata:
     "@radix-ui/react-slot": "npm:^1.0.2"
     "@radix-ui/react-switch": "npm:^1.2.4"
     "@radix-ui/react-tabs": "npm:^1.1.11"
+    "@supabase/auth-helpers-nextjs": "npm:^0.10.0"
     "@supabase/supabase-js": "npm:^2.49.7"
     "@tailwindcss/forms": "npm:^0.5.7"
     "@types/cors": "npm:^2.8.17"
@@ -128,6 +129,7 @@ __metadata:
     react: "npm:^18.2.0"
     react-day-picker: "npm:^9.6.7"
     react-dom: "npm:^18.2.0"
+    react-hot-toast: "npm:^2.5.2"
     shadcn-ui: "npm:^0.4.1"
     sonner: "npm:^2.0.3"
     swr: "npm:^2.3.3"
@@ -6574,6 +6576,29 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@supabase/auth-helpers-nextjs@npm:^0.10.0":
+  version: 0.10.0
+  resolution: "@supabase/auth-helpers-nextjs@npm:0.10.0"
+  dependencies:
+    "@supabase/auth-helpers-shared": "npm:0.7.0"
+    set-cookie-parser: "npm:^2.6.0"
+  peerDependencies:
+    "@supabase/supabase-js": ^2.39.8
+  checksum: 10/b65c348eaec2e74f10cd03f42d85206177bbdfeb39ac347e635bbf851462df001b6379fd20d24bb5a8e2a73519cf9a600ece8769b1b363276be6772cb2f4e7a7
+  languageName: node
+  linkType: hard
+
+"@supabase/auth-helpers-shared@npm:0.7.0":
+  version: 0.7.0
+  resolution: "@supabase/auth-helpers-shared@npm:0.7.0"
+  dependencies:
+    jose: "npm:^4.14.4"
+  peerDependencies:
+    "@supabase/supabase-js": ^2.39.8
+  checksum: 10/691ff4547c19584c576f6e20f5c98e25fe38b88a768ac16491a46caad97cac6f881b7f66815ca31347e3de0cf8b668486f604b477d78f2c74742e0f8607b2b0a
+  languageName: node
+  linkType: hard
+
 "@supabase/auth-js@npm:2.69.1":
   version: 2.69.1
   resolution: "@supabase/auth-js@npm:2.69.1"
@@ -10923,6 +10948,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"csstype@npm:^3.1.3":
+  version: 3.1.3
+  resolution: "csstype@npm:3.1.3"
+  checksum: 10/f593cce41ff5ade23f44e77521e3a1bcc2c64107041e1bf6c3c32adc5187d0d60983292fda326154d20b01079e24931aa5b08e4467cc488b60bb1e7f6d478ade
+  languageName: node
+  linkType: hard
+
 "csv-parse@npm:^4.16.3":
   version: 4.16.3
   resolution: "csv-parse@npm:4.16.3"
@@ -14265,6 +14297,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"goober@npm:^2.1.16":
+  version: 2.1.16
+  resolution: "goober@npm:2.1.16"
+  peerDependencies:
+    csstype: ^3.0.10
+  checksum: 10/27b57b1aef751a5b287c75cac2a3ad5f540c577fc0c89882d11d88ed6f541dbf2c1792b181a8555220da8fcf618813381fba1506d80da7831ba6e95a4f3d9ed2
+  languageName: node
+  linkType: hard
+
 "google-protobuf@npm:^3.12.0-rc.1, google-protobuf@npm:^3.15.5":
   version: 3.21.2
   resolution: "google-protobuf@npm:3.21.2"
@@ -16266,7 +16307,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jose@npm:^4.15.9":
+"jose@npm:^4.14.4, jose@npm:^4.15.9":
   version: 4.15.9
   resolution: "jose@npm:4.15.9"
   checksum: 10/256234b6f85cdc080b1331f2d475bd58c8ccf459cb20f70ac5e4200b271bce10002b1c2f8e5b96dd975d83065ae5a586d52cdf89d28471d56de5d297992f9905
@@ -20157,6 +20198,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-hot-toast@npm:^2.5.2":
+  version: 2.5.2
+  resolution: "react-hot-toast@npm:2.5.2"
+  dependencies:
+    csstype: "npm:^3.1.3"
+    goober: "npm:^2.1.16"
+  peerDependencies:
+    react: ">=16"
+    react-dom: ">=16"
+  checksum: 10/fde6aaa26d85a8de6fbc2b62c66fd71da555b389e8276b0b1e3636f0bf2956e57f40d7692959f2fb0ee91000ae44cad2ab5add779ef0e9b7fc9eb148203dca54
+  languageName: node
+  linkType: hard
+
 "react-hotkeys-hook@npm:^4.5.1":
   version: 4.6.1
   resolution: "react-hotkeys-hook@npm:4.6.1"
@@ -21528,6 +21582,13 @@ __metadata:
   version: 2.0.0
   resolution: "set-blocking@npm:2.0.0"
   checksum: 10/8980ebf7ae9eb945bb036b6e283c547ee783a1ad557a82babf758a065e2fb6ea337fd82cac30dd565c1e606e423f30024a19fff7afbf4977d784720c4026a8ef
+  languageName: node
+  linkType: hard
+
+"set-cookie-parser@npm:^2.6.0":
+  version: 2.7.1
+  resolution: "set-cookie-parser@npm:2.7.1"
+  checksum: 10/c92b1130032693342bca13ea1b1bc93967ab37deec4387fcd8c2a843c0ef2fd9a9f3df25aea5bb3976cd05a91c2cf4632dd6164d6e1814208fb7d7e14edd42b4
   languageName: node
   linkType: hard
 

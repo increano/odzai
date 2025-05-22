@@ -33,14 +33,52 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     async function initializeAuth() {
       try {
         console.log('Initializing auth state...');
-        // Get current session
+        
+        // Check for email confirmation success
+        const hasEmailConfirmed = window.location.hash.includes('access_token');
+        if (hasEmailConfirmed) {
+          console.log('Email confirmation detected, setting up session...');
+          // Using getUser instead of getSession for security
+          const { data: { user: confirmedUser }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError) {
+            console.error('Error getting user after email confirmation:', userError);
+            throw userError;
+          }
+          
+          if (confirmedUser) {
+            console.log('User authenticated after email confirmation');
+            
+            // Also get the session for the UI
+            const { data: { session: confirmedSession } } = await supabase.auth.getSession();
+            
+            if (mounted) {
+              setSession(confirmedSession);
+              const userWithRole = await getCurrentUserWithRole();
+              setUser(userWithRole);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+
+        // Normal session initialization
+        // Using getUser for primary auth check
+        const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          console.error('Error getting user during initialization:', userError);
+          throw userError;
+        }
+        
+        // Get session for UI purposes after verifying the user
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         if (mounted) {
           setSession(currentSession);
-          console.log('Session state initialized:', !!currentSession);
+          console.log('Auth state initialized:', !!currentUser);
           
-          if (currentSession) {
+          if (currentUser) {
             // Get user with role - but don't block UI rendering
             getCurrentUserWithRole().then(userWithRole => {
               if (mounted) {
@@ -50,24 +88,20 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
             });
           }
           
-          // Important: Always set loading to false after initialization
-          // to enable login form button
           setLoading(false);
         }
         
-        // Set up auth listener for changes - clear separation between UI and data
+        // Set up auth listener for changes
         const { data: authListener } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log('Auth state changed:', event);
             
             if (mounted) {
-              // Step 1: Immediate UI update
               setSession(newSession);
               
               if (!newSession) {
                 setUser(null);
               } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                // Step 2: Load user details after UI update
                 try {
                   const userWithRole = await getCurrentUserWithRole();
                   if (mounted) {
@@ -75,21 +109,6 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
                   }
                 } catch (err) {
                   console.error('Error loading user details:', err);
-                }
-              } else if (event === 'PASSWORD_RECOVERY') {
-                // Handle password recovery event
-                console.log('Password recovery detected');
-                // You can add specific logic for password recovery here
-              } else if (event === 'USER_UPDATED') {
-                // Handle user update event (such as after password reset)
-                console.log('User updated (e.g., password reset)');
-                try {
-                  const userWithRole = await getCurrentUserWithRole();
-                  if (mounted) {
-                    setUser(userWithRole);
-                  }
-                } catch (err) {
-                  console.error('Error updating user details after update:', err);
                 }
               }
             }
@@ -103,7 +122,6 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         console.error('Error initializing auth:', err);
         if (mounted) {
           setError('Failed to initialize authentication');
-          // Even on error, we need to end the loading state
           setLoading(false);
         }
       }

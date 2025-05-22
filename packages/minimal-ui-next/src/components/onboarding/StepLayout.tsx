@@ -5,8 +5,8 @@ import { Button } from '../ui/button';
 import { OnboardingStep, useOnboarding } from '../providers/OnboardingProvider';
 import { useRouter } from 'next/navigation';
 
-// Define the order of steps for progress indicator
-const STEP_ORDER: OnboardingStep[] = ['welcome', 'workspace', 'profile', 'complete'];
+// Define the order of steps for progress indicator - removed profile step
+const STEP_ORDER: OnboardingStep[] = ['welcome', 'complete'];
 
 interface StepLayoutProps {
   children: React.ReactNode;
@@ -62,11 +62,9 @@ export function StepLayout({
     }
   };
 
-  // Define step indicators
+  // Define step indicators - removed profile step
   const steps: { name: string; step: OnboardingStep }[] = [
     { name: 'Welcome', step: 'welcome' },
-    { name: 'Workspace', step: 'workspace' },
-    { name: 'Profile', step: 'profile' },
     { name: 'Complete', step: 'complete' },
   ];
 

@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase/client';
 
@@ -12,43 +11,14 @@ export function SignupForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
-  const router = useRouter();
-
-  // Show visual feedback on successful signup and handle redirect
-  useEffect(() => {
-    if (signupSuccess) {
-      // After success feedback, redirect with proper timing
-      const redirectTimer = setTimeout(() => {
-        console.log('Signup successful, redirecting to onboarding');
-        router.push('/onboarding/welcome');
-      }, 3000); // Longer delay to show the success message
-
-      return () => clearTimeout(redirectTimer);
-    }
-  }, [signupSuccess, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setFormError(null);
     
-    // Step 1: Immediate visual feedback
-    setIsSubmitting(true);
-    
-    // Validate form
-    if (!email) {
-      setFormError('Email is required');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (!password) {
-      setFormError('Password is required');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (password.length < 6) {
-      setFormError('Password must be at least 6 characters');
+    if (!email || !password) {
+      setFormError('Please fill in all fields');
       setIsSubmitting(false);
       return;
     }
@@ -62,12 +32,14 @@ export function SignupForm() {
     try {
       // Attempt to sign up
       console.log('Attempting to sign up with:', email);
+      const callbackUrl = `${window.location.origin}/auth/callback`;
+      console.log('Using callback URL:', callbackUrl);
       
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/onboarding/welcome`,
+          emailRedirectTo: callbackUrl,
         }
       });
       
@@ -76,6 +48,9 @@ export function SignupForm() {
       }
       
       if (data) {
+        // No need to manually initialize user preferences
+        // The database trigger will handle this
+        
         // Set success state for visual feedback
         setSignupSuccess(true);
         console.log('Signup successful, verification email sent');
@@ -107,15 +82,40 @@ export function SignupForm() {
         </div>
       )}
       
-      {signupSuccess && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded">
-          <p>Account created successfully!</p>
-          <p className="text-sm mt-1">Please check your email to verify your account.</p>
-          <p className="text-sm mt-1">Redirecting to onboarding...</p>
+      {signupSuccess ? (
+        <div className="space-y-4">
+          <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded">
+            <h3 className="font-semibold text-lg mb-2">Account Created Successfully!</h3>
+            <p className="mb-2">We've sent a confirmation email to <span className="font-medium">{email}</span></p>
+            <p className="text-sm">Please check your email and click the confirmation link to complete your registration and start the onboarding process.</p>
+          </div>
+          
+          <div className="p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded">
+            <h4 className="font-semibold mb-1">What's Next?</h4>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Check your email inbox (and spam folder)</li>
+              <li>Click the confirmation link in the email</li>
+              <li>You'll be automatically redirected to the onboarding process</li>
+            </ol>
+          </div>
+          
+          <div className="text-center text-sm text-gray-600">
+            <p>Didn't receive the email? Check your spam folder or</p>
+            <button 
+              onClick={() => {
+                setSignupSuccess(false);
+                setEmail('');
+                setPassword('');
+                setConfirmPassword('');
+                setIsSubmitting(false);
+              }}
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
+              try signing up again
+            </button>
+          </div>
         </div>
-      )}
-      
-      {!signupSuccess && (
+      ) : (
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="signup-email" className="block text-sm font-medium mb-1">
@@ -176,14 +176,12 @@ export function SignupForm() {
             {buttonText}
           </button>
           
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
-                Sign in
-              </Link>
-            </p>
-          </div>
+          <p className="mt-4 text-center text-sm text-gray-600">
+            Already have an account?{' '}
+            <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+              Sign in
+            </Link>
+          </p>
         </form>
       )}
     </div>

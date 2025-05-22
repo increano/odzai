@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../providers/SupabaseAuthProvider';
+import { supabase } from '../../lib/supabase/client';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
 export function LoginForm() {
   const [email, setEmail] = useState('test@test.com');
   const [password, setPassword] = useState('password');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginSuccess, setLoginSuccess] = useState(false);
   const router = useRouter();
   const { signIn, loading, error: authError, session } = useAuth();
 
@@ -20,35 +22,39 @@ export function LoginForm() {
       email,
       isSubmitting, 
       loading, 
-      loginSuccess, 
       hasSession: !!session,
       hasAuthError: !!authError
     });
-  }, [email, isSubmitting, loading, loginSuccess, session, authError]);
-
-  // Show visual feedback on successful login and handle redirect with improved timing
-  useEffect(() => {
-    if (loginSuccess) {
-      // After success feedback, redirect with proper timing
-      const redirectTimer = setTimeout(() => {
-        console.log('Login successful, redirecting to budget page');
-        // Use Next.js router instead of window.location
-        router.push('/budget');
-      }, 1000); // Increased delay to ensure cookies are properly set
-
-      return () => clearTimeout(redirectTimer);
-    }
-  }, [loginSuccess, router]);
+  }, [email, isSubmitting, loading, session, authError]);
 
   // Redirect if already logged in
   useEffect(() => {
-    if (session && !isSubmitting) {
-      console.log('Session already exists, redirecting to /budget');
-      setTimeout(() => {
-        // Use Next.js router instead of window.location
-        router.push('/budget');
-      }, 1000); // Increased delay to ensure cookies are properly set
-    }
+    const checkSession = async () => {
+      if (session && !isSubmitting) {
+        console.log('Session exists, checking onboarding status...');
+        try {
+          const { data: preferences, error: prefsError } = await supabase
+            .from('user_preferences')
+            .select('data')
+            .single();
+
+          if (prefsError) {
+            console.error('Error checking preferences:', prefsError);
+            return;
+          }
+
+          const onboardingCompleted = preferences?.data?.onboarding?.completed;
+          const redirectUrl = onboardingCompleted ? '/budget' : '/onboarding/welcome';
+          
+          console.log('Redirecting to:', redirectUrl);
+          router.push(redirectUrl);
+        } catch (err) {
+          console.error('Error checking session:', err);
+        }
+      }
+    };
+
+    checkSession();
   }, [session, isSubmitting, router]);
   
   // Update local error state when auth error changes
@@ -61,55 +67,51 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setFormError(null);
     
-    // Step 1: Immediate visual feedback
-    setIsSubmitting(true);
-    
-    // Validate form
-    if (!email) {
-      setFormError('Email is required');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (!password) {
-      setFormError('Password is required');
+    if (!email || !password) {
+      setFormError('Please fill in all fields');
       setIsSubmitting(false);
       return;
     }
     
     try {
-      // Attempt to sign in
       console.log('Attempting to sign in with:', email);
-      
-      const success = await signIn(email, password);
-      console.log('Sign in result:', success);
-      
-      if (success) {
-        // Set success state for visual feedback
-        setLoginSuccess(true);
-        console.log('Login successful, showing success state before redirect');
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.session) {
+        console.log('Login successful, checking onboarding status...');
         
-        // Give extra time for session to be fully established
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } else {
-        setFormError('Invalid login credentials');
-        setIsSubmitting(false);
+        // Check onboarding status
+        const { data: preferences, error: prefsError } = await supabase
+          .from('user_preferences')
+          .select('data')
+          .single();
+
+        if (prefsError) {
+          console.error('Error checking preferences:', prefsError);
+        }
+
+        const onboardingCompleted = preferences?.data?.onboarding?.completed;
+        const redirectUrl = onboardingCompleted ? '/budget' : '/onboarding/welcome';
+        
+        console.log('Redirecting to:', redirectUrl);
+        router.push(redirectUrl);
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setFormError('An unexpected error occurred');
+      setFormError(err.message || 'An unexpected error occurred');
       setIsSubmitting(false);
     }
   };
-
-  // Determine button state
-  const buttonText = isSubmitting 
-    ? 'Signing in...' 
-    : loginSuccess 
-      ? 'Success! Redirecting...' 
-      : 'Sign In';
 
   return (
     <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
@@ -118,12 +120,6 @@ export function LoginForm() {
       {formError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
           {formError}
-        </div>
-      )}
-      
-      {loginSuccess && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded">
-          Login successful! Redirecting...
         </div>
       )}
       
@@ -139,7 +135,7 @@ export function LoginForm() {
             onChange={(e) => setEmail(e.target.value)}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="test@test.com"
-            disabled={isSubmitting || loginSuccess}
+            disabled={isSubmitting}
             required
           />
         </div>
@@ -154,7 +150,7 @@ export function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-            disabled={isSubmitting || loginSuccess}
+            disabled={isSubmitting}
             required
           />
           <div className="mt-1 text-right">
@@ -169,14 +165,12 @@ export function LoginForm() {
         
         <button
           type="submit"
-          disabled={isSubmitting || loginSuccess}
-          className={`w-full py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-            loginSuccess 
-              ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500' 
-              : 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
-          } disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200`}
+          disabled={isSubmitting}
+          className="w-full py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 
+            bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500
+            disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
         >
-          {buttonText}
+          {isSubmitting ? 'Signing in...' : 'Sign In'}
         </button>
 
         <div className="mt-4 text-center">
@@ -188,14 +182,13 @@ export function LoginForm() {
           </p>
         </div>
         
-        {/* Debug info - expanded for better troubleshooting */}
+        {/* Debug info */}
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-4 p-2 border border-gray-200 rounded text-xs text-gray-500">
             <p><strong>Debug:</strong> Using test account: test@test.com / password</p>
-            <p className="mt-1"><strong>Form State:</strong> {isSubmitting ? 'Submitting' : loginSuccess ? 'Success' : 'Ready'}</p>
+            <p className="mt-1"><strong>Form State:</strong> {isSubmitting ? 'Submitting' : 'Ready'}</p>
             <p className="mt-1"><strong>Auth State:</strong> {loading ? 'Loading' : 'Ready'}</p>
             <p className="mt-1"><strong>Session:</strong> {session ? 'Exists' : 'None'}</p>
-            <p className="mt-1"><strong>Button:</strong> {isSubmitting || loginSuccess ? 'Disabled' : 'Enabled'}</p>
           </div>
         )}
       </form>
