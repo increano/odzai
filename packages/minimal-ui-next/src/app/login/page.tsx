@@ -19,7 +19,11 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const message = searchParams.get('message');
-  const [activeTab, setActiveTab] = useState('login');
+  const error = searchParams.get('error');
+  const verified = searchParams.get('verified');
+  const redirectTo = searchParams.get('redirectTo');
+  const initialTab = searchParams.get('tab') || 'login';
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   // Password visibility states
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -98,7 +102,13 @@ export default function LoginPage() {
     if (message) {
       toast.error(message);
     }
-  }, [message]);
+    if (error) {
+      toast.error(error);
+    }
+    if (verified) {
+      toast.success('Email verified successfully! You can now log in.');
+    }
+  }, [message, error, verified]);
 
   // Login state handling
   useEffect(() => {
@@ -179,6 +189,7 @@ export default function LoginPage() {
               
               <TabsContent value="login">
                 <form action={handleLoginSubmit} className="space-y-4">
+                  <input type="hidden" name="redirectTo" value={redirectTo || ''} />
                   <div className="space-y-2">
                     <Label htmlFor="email">
                       Email

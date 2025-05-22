@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { OnboardingStep, useOnboarding } from '../providers/OnboardingProvider';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../providers/SupabaseAuthProvider';
 
 // Define the order of steps for progress indicator - removed profile step
 const STEP_ORDER: OnboardingStep[] = ['welcome', 'complete'];
@@ -19,6 +20,7 @@ interface StepLayoutProps {
   nextButtonDisabled?: boolean;
   onNextButtonClick?: () => void;
   isLastStep?: boolean;
+  customButtons?: React.ReactNode;
 }
 
 export function StepLayout({
@@ -32,23 +34,64 @@ export function StepLayout({
   nextButtonDisabled = false,
   onNextButtonClick,
   isLastStep = false,
+  customButtons,
 }: StepLayoutProps) {
   const { goToNextStep, goToPreviousStep, completeOnboarding } = useOnboarding();
   const router = useRouter();
+  const { session, loading: authLoading } = useAuth();
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Check session availability
+  useEffect(() => {
+    // Add a small delay to allow session to be properly initialized
+    const timer = setTimeout(() => {
+      if (!authLoading && !session?.user) {
+        console.log('StepLayout: No session detected after delay, redirecting to login');
+        router.push('/login?message=Please log in to continue with onboarding');
+      }
+    }, 1000); // 1 second delay
+    
+    return () => clearTimeout(timer);
+  }, [session, authLoading, router]);
 
-  const handleNextClick = () => {
+  const handleNextClick = async () => {
     console.log('StepLayout: Next button clicked');
+    console.log('StepLayout: Current session state:', { 
+      hasSession: !!session, 
+      sessionUser: session?.user?.email,
+      authLoading,
+      isNavigating
+    });
+    
+    // Prevent multiple clicks
+    if (isNavigating) return;
+    setIsNavigating(true);
     
     try {
+      // Make sure we have a session
+      if (!session?.user) {
+        console.log('StepLayout: No session for navigation, redirecting to login');
+        router.push('/login?message=Please log in to continue with onboarding');
+        return;
+      }
+      
       if (onNextButtonClick) {
         console.log('StepLayout: Using custom onNextButtonClick handler');
         onNextButtonClick();
       } else if (isLastStep) {
         console.log('StepLayout: Using completeOnboarding');
-        completeOnboarding();
+        await completeOnboarding();
       } else {
         console.log('StepLayout: Using default goToNextStep');
-        goToNextStep();
+        const nextStep = STEP_ORDER[STEP_ORDER.indexOf(currentStep) + 1];
+        
+        // For more reliable navigation, use direct router.push for complete step
+        if (nextStep === 'complete') {
+          console.log('StepLayout: Direct navigation to complete step');
+          router.push('/onboarding/complete');
+        } else {
+          await goToNextStep();
+        }
       }
     } catch (error) {
       console.error('StepLayout: Error during next button handling:', error);
@@ -59,6 +102,8 @@ export function StepLayout({
         console.log(`StepLayout: Fallback navigation to ${nextStep}`);
         router.push(`/onboarding/${nextStep}`);
       }
+    } finally {
+      setIsNavigating(false);
     }
   };
 
@@ -67,6 +112,17 @@ export function StepLayout({
     { name: 'Welcome', step: 'welcome' },
     { name: 'Complete', step: 'complete' },
   ];
+
+  // If still loading auth, show minimal UI
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
+        <div className="w-full max-w-2xl rounded-lg bg-white shadow-md p-8 text-center">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
@@ -122,31 +178,38 @@ export function StepLayout({
           {children}
         </div>
         
-        {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8">
-          {showBackButton ? (
-            <Button
-              variant="outline"
-              onClick={goToPreviousStep}
-            >
-              Back
-            </Button>
-          ) : (
-            <div></div> // Empty div to maintain flex layout
-          )}
+        {/* Navigation and Custom Buttons */}
+        <div className="flex flex-col gap-4">
+          {/* Custom Buttons */}
+          {customButtons}
           
-          {showNextButton && (
-            <Button
-              onClick={(e) => {
-                console.log('Button direct click handler');
-                e.preventDefault();
-                handleNextClick();
-              }}
-              disabled={nextButtonDisabled}
-            >
-              {nextButtonText}
-            </Button>
-          )}
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-4">
+            {showBackButton ? (
+              <Button
+                variant="outline"
+                onClick={goToPreviousStep}
+                disabled={isNavigating}
+              >
+                Back
+              </Button>
+            ) : (
+              <div></div> // Empty div to maintain flex layout
+            )}
+            
+            {showNextButton && (
+              <Button
+                onClick={(e) => {
+                  console.log('Button direct click handler');
+                  e.preventDefault();
+                  handleNextClick();
+                }}
+                disabled={nextButtonDisabled || isNavigating}
+              >
+                {isNavigating ? 'Loading...' : nextButtonText}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

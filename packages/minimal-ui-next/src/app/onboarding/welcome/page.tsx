@@ -2,13 +2,49 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { StepLayout } from '@/components/onboarding/StepLayout';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default async function WelcomePage() {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user }, error } = await supabase.auth.getUser();
 
+  // If user is not logged in, redirect to login with message
   if (error || !user) {
-    redirect('/login');
+    redirect('/login?message=Please log in to continue with onboarding');
+  }
+
+  // If user is logged in but hasn't confirmed email
+  if (!user.email_confirmed_at) {
+    return (
+      <StepLayout
+        title="Please Confirm Your Email"
+        description="Check your email for a confirmation link to continue."
+        currentStep="welcome"
+        showBackButton={false}
+        nextButtonText="Next"
+        isLastStep={false}
+      >
+        <div className="space-y-8">
+          <div className="flex justify-center">
+            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          
+          <div>
+            <p className="text-gray-700 mb-4">
+              We've sent a confirmation email to {user.email}.
+            </p>
+            <p className="text-gray-700 mb-4">
+              Please click the link in the email to verify your account and continue with the onboarding process.
+            </p>
+          </div>
+        </div>
+      </StepLayout>
+    );
   }
 
   // Get user's default workspace

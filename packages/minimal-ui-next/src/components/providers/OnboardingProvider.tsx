@@ -20,6 +20,7 @@ type OnboardingContextType = {
   completeOnboarding: () => void;
   isStepComplete: (step: OnboardingStep) => boolean;
   saveOnboardingState: () => Promise<void>;
+  isAuthReady: boolean;
 };
 
 // Create the context with a default value
@@ -31,24 +32,36 @@ const STEP_ORDER: OnboardingStep[] = ['welcome', 'complete'];
 // Provider component
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { session, user } = useAuth();
+  const { session, user, loading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [fullName, setFullName] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   // Load onboarding state from Supabase or initialize defaults
   useEffect(() => {
     async function loadOnboardingState() {
-      // Always set initialized to prevent infinite loops
-      setIsInitialized(true);
-
-      if (!session?.user) {
-        // For non-authenticated users in onboarding, use default state
-        setCurrentStep('welcome');
+      // Only proceed if auth is no longer loading
+      if (authLoading) {
         return;
       }
 
       try {
+        // Set auth ready state
+        setIsAuthReady(true);
+        
+        // Always set initialized to prevent infinite loops
+        setIsInitialized(true);
+
+        if (!session?.user) {
+          // For non-authenticated users in onboarding, use default state
+          setCurrentStep('welcome');
+          console.log('No session available, using default onboarding state');
+          return;
+        }
+
+        console.log('Session available, loading onboarding state');
+        
         // Try to get existing preferences from Supabase
         const { data: preferences, error } = await supabase
           .from('user_preferences')
@@ -63,6 +76,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           const { onboarding } = preferences.data;
           if (onboarding.fullName) setFullName(onboarding.fullName);
           if (onboarding.currentStep) setCurrentStep(onboarding.currentStep as OnboardingStep);
+          console.log('Loaded onboarding state:', onboarding);
         } else if (user?.user_metadata && typeof user.user_metadata === 'object') {
           // Use data from user metadata if available
           const metadata = user.user_metadata as Record<string, any>;
@@ -78,7 +92,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     if (!isInitialized) {
       loadOnboardingState();
     }
-  }, [session, user, isInitialized, currentStep]);
+  }, [session, user, isInitialized, authLoading]);
 
   // Save onboarding state to Supabase
   const saveOnboardingState = useCallback(async () => {
@@ -167,15 +181,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       const nextStep = STEP_ORDER[currentIndex + 1];
       console.log('Moving to next step:', nextStep);
 
-      // For protected steps, ensure we have a session
-      if (nextStep === 'complete' && !session?.user) {
-        console.error('Attempting to access protected step without session');
-        throw new Error('You must be logged in to continue');
-      }
-
+      // The user should already be authenticated at this point since they're in the onboarding flow
+      // Instead of redirecting to login, we'll continue with the flow
       setCurrentStep(nextStep);
       
-      // Save state before navigation
+      // Save state before navigation if we have a session
       if (session?.user) {
         await saveOnboardingState();
       }
@@ -205,11 +215,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       }
       
       // Use replace instead of push for more reliable navigation
-      try {
-        window.location.href = `/onboarding/${prevStep}`;
-      } catch (error) {
-        router.replace(`/onboarding/${prevStep}`);
-      }
+      router.replace(`/onboarding/${prevStep}`);
     }
   }, [currentStep, router, session, saveOnboardingState]);
 
@@ -217,12 +223,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const goToStep = useCallback(async (step: OnboardingStep) => {
     console.log('goToStep called with step:', step, 'Current step:', currentStep);
     
-    // For protected steps, ensure we have a session
-    if (step === 'complete' && !session?.user) {
-      console.error('Attempting to access protected step without session');
-      throw new Error('You must be logged in to access this step');
-    }
-
+    // The user should already be authenticated at this point since they're in the onboarding flow
     // Only update state and navigate if we're actually changing steps
     if (step !== currentStep) {
       setCurrentStep(step);
@@ -237,11 +238,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       const targetPath = `/onboarding/${step}`;
       
       if (currentPath !== targetPath) {
-        try {
-          window.location.href = targetPath;
-        } catch (error) {
-          router.replace(targetPath);
-        }
+        router.replace(targetPath);
       }
     }
   }, [currentStep, router, session, saveOnboardingState]);
@@ -257,7 +254,14 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     completeOnboarding,
     isStepComplete,
     saveOnboardingState,
+    isAuthReady
   };
+
+  // If we're still loading auth, render a loading state or just the children
+  // This prevents errors from being thrown while auth is loading
+  if (authLoading) {
+    return <>{children}</>;
+  }
 
   return (
     <OnboardingContext.Provider value={contextValue}>
@@ -269,8 +273,10 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 // Custom hook to use the onboarding context
 export function useOnboarding() {
   const context = useContext(OnboardingContext);
+  
   if (context === undefined) {
     throw new Error('useOnboarding must be used within an OnboardingProvider');
   }
+  
   return context;
 } 

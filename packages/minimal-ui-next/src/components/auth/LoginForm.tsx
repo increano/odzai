@@ -90,6 +90,9 @@ export function LoginForm() {
       if (data.session) {
         console.log('Login successful, checking onboarding status...');
         
+        // Add a small delay to ensure session is properly established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         // Check onboarding status
         const { data: preferences, error: prefsError } = await supabase
           .from('user_preferences')

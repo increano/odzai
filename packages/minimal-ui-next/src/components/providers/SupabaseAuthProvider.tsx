@@ -62,6 +62,13 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
           }
         }
 
+        // Force refresh the session to ensure we have the latest session state
+        console.log('Attempting to refresh session...');
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError && refreshError.message !== 'No current session') {
+          console.error('Error refreshing session:', refreshError);
+        }
+
         // Normal session initialization
         // Using getUser for primary auth check
         const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
@@ -76,7 +83,11 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
         
         if (mounted) {
           setSession(currentSession);
-          console.log('Auth state initialized:', !!currentUser);
+          console.log('Auth state initialized:', { 
+            hasUser: !!currentUser, 
+            hasSession: !!currentSession,
+            userEmail: currentUser?.email
+          });
           
           if (currentUser) {
             // Get user with role - but don't block UI rendering

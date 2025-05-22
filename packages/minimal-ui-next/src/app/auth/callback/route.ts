@@ -1,6 +1,6 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Auth callback handler
@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
  * 
  * It ensures users are properly authenticated and redirected based on their status.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   
   // Get all potential auth parameters
@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get('next') || '/budget';
   const error = requestUrl.searchParams.get('error');
   const error_description = requestUrl.searchParams.get('error_description');
+  const redirectTo = requestUrl.searchParams.get('redirect') || '/login?verified=true';
   
   // Handle error parameters that might be returned from Supabase
   if (error) {
@@ -79,6 +80,12 @@ export async function GET(request: Request) {
       // Get the user after verification
       const { data: { user: verifiedUser } } = await supabase.auth.getUser();
       user = verifiedUser;
+      
+      // For email verification, redirect to login with verified status
+      if (type === 'signup' || type === 'email') {
+        console.log('Email verified, redirecting to login page');
+        return NextResponse.redirect(new URL('/login?verified=true', requestUrl));
+      }
     }
     // 3. No code or token present
     else {
@@ -97,6 +104,18 @@ export async function GET(request: Request) {
     }
 
     console.log('Authentication successful for user:', user.id);
+
+    // If we have an explicit redirect URL parameter, prioritize it
+    if (requestUrl.searchParams.get('redirect')) {
+      const redirectUrl = requestUrl.searchParams.get('redirect') || '/login?verified=true';
+      return NextResponse.redirect(new URL(redirectUrl, requestUrl));
+    }
+
+    // If this is an email verification or signup flow, redirect to login
+    // This ensures users go through the login flow first, which will then direct them to onboarding
+    if (type === 'signup' || type === 'email' || token) {
+      return NextResponse.redirect(new URL('/login?verified=true', requestUrl));
+    }
 
     // Check if user has completed onboarding
     const { data: preferences, error: preferencesError } = await supabase
