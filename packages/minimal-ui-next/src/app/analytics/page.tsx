@@ -1,9 +1,9 @@
 // Server Component
 import { requireWorkspace } from '@/lib/supabase/workspace';
 import { WorkspaceProvider } from '@/components/providers/WorkspaceProvider';
-import { TransactionsContent } from './transactions-content';
+import { AnalyticsContent } from './analytics-content';
 
-export default async function TransactionsPage() {
+export default async function AnalyticsPage() {
   // Server-side workspace check and data loading
   const { user, workspaces, defaultWorkspace, preferences } = await requireWorkspace();
 
@@ -13,7 +13,7 @@ export default async function TransactionsPage() {
       initialCurrentWorkspace={defaultWorkspace}
       initialPreferences={preferences}
     >
-      <TransactionsContent 
+      <AnalyticsContent 
         user={user}
         workspaces={workspaces}
         defaultWorkspace={defaultWorkspace}

@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { loadUserWorkspaceData } from '@/lib/supabase/workspace';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -26,28 +27,18 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user?.email_confirmed_at) {
-    // Check if this is the user's first login by looking up preferences
-    const { data: preferences, error: prefsError } = await supabase
-      .from('user_preferences')
-      .select('data, created_at')
-      .eq('user_id', user.id)
-      .single();
-
-    // If there's an error that's not "no rows returned", handle it
-    if (prefsError && prefsError.code !== 'PGRST116') {
-      console.error('Error checking user preferences:', prefsError);
-      return { error: 'Error checking user profile. Please try again.' };
-    }
-
-    // Calculate if user is new based on preferences existence or onboarding status
-    const isNewUser = !preferences || !preferences.data?.onboarding?.completed;
+    // Load user workspace data
+    const workspaceData = await loadUserWorkspaceData(user.id);
     
-    // Log for debugging
-    console.log('Login successful, user status:', { 
-      isNewUser, 
-      hasPreferences: !!preferences,
-      onboardingStatus: preferences?.data?.onboarding
+    console.log('Login successful, workspace data:', {
+      hasWorkspaces: workspaceData.hasWorkspaces,
+      defaultWorkspace: workspaceData.defaultWorkspace?.name,
+      totalWorkspaces: workspaceData.workspaces.length,
+      onboardingStatus: workspaceData.preferences?.data?.onboarding
     });
+
+    // Check if this is the user's first login by looking at onboarding status
+    const isNewUser = !workspaceData.preferences?.data?.onboarding?.completed;
     
     // IMPORTANT: Revalidate the layout to ensure proper session handling
     revalidatePath('/', 'layout');
@@ -57,13 +48,18 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
       redirect(redirectTo);
     }
     
-    // Otherwise route based on user status
+    // Route based on user status and workspace availability
     if (isNewUser) {
       // New user should go to onboarding
       redirect('/onboarding/welcome');
+    } else if (!workspaceData.hasWorkspaces) {
+      // User completed onboarding but has no workspaces (edge case)
+      console.warn('User has completed onboarding but has no workspaces');
+      redirect('/onboarding/workspace');
     } else {
-      // Returning user goes to budget dashboard
-      redirect('/budget');
+      // Returning user with workspaces goes to dashboard
+      // The default workspace will be available in the app context
+      redirect('/');
     }
   } else {
     return { error: 'Please confirm your email before logging in.' };

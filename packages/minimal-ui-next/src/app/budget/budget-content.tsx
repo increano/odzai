@@ -1,8 +1,11 @@
 'use client'
 
-import { DollarSign, Wallet } from 'lucide-react'
+import { DollarSign, Wallet, Building2 } from 'lucide-react'
 import { DashboardLayout, DashboardContent } from '@/components/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Workspace, UserPreferences } from '@/lib/supabase/workspace'
+import { User } from '@supabase/supabase-js'
 
 const budgetCategories = [
   { name: 'Housing', allocated: 1500, spent: 1450, remaining: 50, percent: 97 },
@@ -15,15 +18,74 @@ const budgetCategories = [
   { name: 'Miscellaneous', allocated: 250, spent: 180, remaining: 70, percent: 72 },
 ]
 
-export function BudgetContent() {
+interface BudgetContentProps {
+  user: User;
+  workspaces: Workspace[];
+  defaultWorkspace: Workspace;
+  preferences: UserPreferences | null;
+}
+
+export function BudgetContent({ user, workspaces, defaultWorkspace, preferences }: BudgetContentProps) {
   return (
     <DashboardLayout>
       <DashboardContent title="Budget">
         <div className="grid gap-6">
+          {/* Workspace Info Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Current Workspace
+              </CardTitle>
+              <CardDescription>
+                You have access to {workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-lg">{defaultWorkspace.display_name || defaultWorkspace.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Personal Finance Workspace
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {defaultWorkspace.color && (
+                    <div 
+                      className="w-4 h-4 rounded-full border"
+                      style={{ backgroundColor: defaultWorkspace.color }}
+                    />
+                  )}
+                  <Badge variant="secondary">
+                    Active
+                  </Badge>
+                </div>
+              </div>
+              {workspaces.length > 1 && (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm text-muted-foreground mb-2">Other workspaces:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {workspaces
+                      .filter(w => w.id !== defaultWorkspace.id)
+                      .map(workspace => (
+                        <Badge key={workspace.id} variant="outline" className="text-xs">
+                          {workspace.display_name || workspace.name}
+                        </Badge>
+                      ))
+                    }
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Budget Summary Card */}
           <Card>
             <CardHeader>
               <CardTitle>Budget Summary</CardTitle>
-              <CardDescription>Current month budget breakdown</CardDescription>
+              <CardDescription>
+                Current month budget breakdown for {defaultWorkspace.display_name || defaultWorkspace.name}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="mb-4 rounded-lg bg-muted p-4">

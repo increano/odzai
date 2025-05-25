@@ -1,14 +1,11 @@
-import { Metadata } from 'next';
+'use client'
+
 import { DashboardLayout, DashboardContent } from '@/components/dashboard-layout';
+import { WorkspaceRequired } from '@/components/workspace-required';
 import { HelpCircle, Book, Video, MessageCircle, FileText } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Help & Support | Odzai',
-  description: 'Get help with using Odzai',
-};
-
 export default function HelpPage() {
-  return (
+  const content = (
     <DashboardLayout>
       <DashboardContent title="Help & Support">
         <div className="rounded-lg border p-6">
@@ -84,5 +81,11 @@ export default function HelpPage() {
         </div>
       </DashboardContent>
     </DashboardLayout>
+  );
+
+  return (
+    <WorkspaceRequired>
+      {content}
+    </WorkspaceRequired>
   );
 } 

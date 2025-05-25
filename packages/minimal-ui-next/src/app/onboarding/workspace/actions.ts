@@ -5,10 +5,10 @@ import { redirect } from 'next/navigation';
 
 export async function createWorkspace(formData: FormData) {
   const supabase = createClient();
-  
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
     throw new Error('User not authenticated');
   }
 
@@ -28,28 +28,28 @@ export async function createWorkspace(formData: FormData) {
     .select()
     .single();
 
-  if (workspaceError) {
+    if (workspaceError) {
     throw new Error('Failed to create workspace');
-  }
+    }
 
   // Update user preferences with default workspace
   const { error: preferencesError } = await supabase
-    .from('user_preferences')
-    .upsert({
-      user_id: user.id,
+      .from('user_preferences')
+      .upsert({
+        user_id: user.id,
       default_workspace_id: workspace.id,
-      data: {
-        onboarding: {
-          completed: true,
-          completedAt: new Date().toISOString()
-        }
-      },
-      updated_at: new Date().toISOString()
-    });
+        data: {
+          onboarding: {
+            completed: true,
+            completedAt: new Date().toISOString()
+          }
+        },
+        updated_at: new Date().toISOString()
+      });
 
   if (preferencesError) {
     console.error('Error updating preferences:', preferencesError);
-  }
+    }
 
-  redirect('/budget');
+    redirect('/budget');
 } 

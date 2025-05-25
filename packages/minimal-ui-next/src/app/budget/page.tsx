@@ -1,17 +1,24 @@
 // Server Component
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { requireWorkspace } from '@/lib/supabase/workspace';
+import { WorkspaceProvider } from '@/components/providers/WorkspaceProvider';
 import { BudgetContent } from './budget-content';
 
 export default async function BudgetPage() {
-  const supabase = createClient();
-  
-  // Check authentication
-  const { data: { user }, error } = await supabase.auth.getUser();
-  
-  if (error || !user) {
-    redirect('/login');
-  }
+  // Server-side workspace check and data loading
+  const { user, workspaces, defaultWorkspace, preferences } = await requireWorkspace();
 
-  return <BudgetContent />;
+  return (
+    <WorkspaceProvider
+      initialWorkspaces={workspaces}
+      initialCurrentWorkspace={defaultWorkspace}
+      initialPreferences={preferences}
+    >
+      <BudgetContent 
+        user={user}
+        workspaces={workspaces}
+        defaultWorkspace={defaultWorkspace}
+        preferences={preferences}
+      />
+    </WorkspaceProvider>
+  );
 } 

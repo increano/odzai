@@ -379,19 +379,19 @@ export function Sidebar({ className }: SidebarProps) {
       title: 'Overview',
       items: [
         { 
-          name: 'Dashboard', 
-          href: '/dashboard', 
-          icon: LayoutDashboard 
-        },
-        { 
           name: 'Home', 
           href: '/', 
           icon: Home 
         },
+        { 
+          name: 'Dashboard', 
+          href: '/dashboard', 
+          icon: LayoutDashboard 
+        },
       ],
     },
     {
-      title: 'Finances',
+      title: 'Finance',
       items: [
         { 
           name: 'Accounts', 
@@ -404,9 +404,9 @@ export function Sidebar({ className }: SidebarProps) {
           icon: Receipt 
         },
         { 
-          name: 'Cards', 
-          href: '/cards', 
-          icon: CreditCard 
+          name: 'Budgets', 
+          href: '/budget', 
+          icon: LayoutDashboard 
         },
       ],
     },
