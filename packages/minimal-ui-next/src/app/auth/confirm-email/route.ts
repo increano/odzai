@@ -1,6 +1,5 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { type EmailOtpType } from '@supabase/supabase-js';
 
 /**
@@ -9,11 +8,11 @@ import { type EmailOtpType } from '@supabase/supabase-js';
  * This handler processes email verification links that use the token_hash format.
  * It follows the recommended pattern from Supabase for handling email confirmations.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
-  const next = searchParams.get('next') ?? '/budget';
+  const next = searchParams.get('next') ?? '/';
   
   console.log('Auth confirmation handler called with:', { token_hash, type, next });
 
@@ -23,18 +22,18 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createClient();
     
     // Verify the OTP token
     const { error } = await supabase.auth.verifyOtp({
-      type,
+      type: type as any,
       token_hash,
     });
 
     if (error) {
       console.error('Error verifying confirmation token:', error);
       return NextResponse.redirect(
-        new URL(`/login?error=verification_failed&message=${error.message}`, request.url)
+        new URL('/login?error=verification_failed&message=' + encodeURIComponent(error.message), request.url)
       );
     }
 

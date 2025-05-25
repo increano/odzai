@@ -12,10 +12,19 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ClientWrapper } from '@/components/ClientWrapper';
 
 type AuthState = { error?: string; message?: string; loading?: boolean } | null;
 
 export default function LoginPage() {
+  return (
+    <ClientWrapper>
+      <LoginPageContent />
+    </ClientWrapper>
+  );
+}
+
+function LoginPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const message = searchParams.get('message');

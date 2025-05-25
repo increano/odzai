@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { ClientWrapper } from "@/components/ClientWrapper";
 
 interface BankAccount {
   id: string;
@@ -28,6 +29,14 @@ interface BankAccount {
 }
 
 export default function BankConnectionCallback() {
+  return (
+    <ClientWrapper>
+      <BankConnectionCallbackContent />
+    </ClientWrapper>
+  );
+}
+
+function BankConnectionCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);

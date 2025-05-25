@@ -10,8 +10,17 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { XCircle, ArrowLeft } from "lucide-react";
+import { ClientWrapper } from "@/components/ClientWrapper";
 
 export default function BankConnectionError() {
+  return (
+    <ClientWrapper>
+      <BankConnectionErrorContent />
+    </ClientWrapper>
+  );
+}
+
+function BankConnectionErrorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get("error") || "An unknown error occurred during the bank connection process.";

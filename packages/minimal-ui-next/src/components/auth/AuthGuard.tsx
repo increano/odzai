@@ -1,22 +1,17 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requireEmailConfirmed?: boolean;
 }
 
-export async function AuthGuard({ children, requireEmailConfirmed = false }: AuthGuardProps) {
-  const supabase = createServerComponentClient({ cookies });
+export async function AuthGuard({ children }: AuthGuardProps) {
+  const supabase = createClient();
+
   const { data: { user }, error } = await supabase.auth.getUser();
 
   if (error || !user) {
     redirect('/login');
-  }
-
-  if (requireEmailConfirmed && !user.email_confirmed_at) {
-    redirect('/login?message=Please confirm your email first');
   }
 
   return <>{children}</>;

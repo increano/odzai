@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase/client';
 import { toast } from 'sonner';
+import { ClientWrapper } from '../ClientWrapper';
 
 type PasswordResetFormProps = {
   mode: 'request' | 'reset';
@@ -14,6 +15,14 @@ type PasswordResetFormProps = {
  * when the reset link is clicked
  */
 export function PasswordResetForm({ mode }: PasswordResetFormProps) {
+  return (
+    <ClientWrapper>
+      <PasswordResetFormContent mode={mode} />
+    </ClientWrapper>
+  );
+}
+
+function PasswordResetFormContent({ mode }: PasswordResetFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

@@ -1,7 +1,7 @@
 'use server';
 
-import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 type AuthState = { error?: string; message?: string } | null;
@@ -11,7 +11,7 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
   const password = formData.get('password') as string;
   const redirectTo = formData.get('redirectTo') as string;
 
-  const supabase = createServerActionClient({ cookies });
+  const supabase = createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -49,6 +49,9 @@ export async function login(_prevState: AuthState, formData: FormData): Promise<
       onboardingStatus: preferences?.data?.onboarding
     });
     
+    // IMPORTANT: Revalidate the layout to ensure proper session handling
+    revalidatePath('/', 'layout');
+    
     // If explicit redirect is provided, honor it
     if (redirectTo) {
       redirect(redirectTo);
@@ -71,7 +74,7 @@ export async function signup(_prevState: AuthState, formData: FormData): Promise
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
-  const supabase = createServerActionClient({ cookies });
+  const supabase = createClient();
   
   // Get the site URL from environment or default to localhost with protocol
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';

@@ -1,5 +1,4 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -43,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   // Support different auth flows
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createClient();
     let user = null;
     
     // 1. PKCE flow (authorization code)

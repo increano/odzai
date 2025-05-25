@@ -1,14 +1,87 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { cache } from 'react';
 import type { User } from '@supabase/supabase-js';
 
+export function createClient() {
+  const cookieStore = cookies()
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch (error) {
+            // The `delete` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
+}
+
 /**
- * Creates a Supabase client for server components
- * This is cached to avoid creating too many clients during the request lifecycle
+ * Creates a Supabase client for server-side operations
+ * This is cached to avoid creating multiple instances
  */
 export const createServerSupabaseClient = cache(() => {
-  return createServerComponentClient({ cookies });
+  const cookieStore = cookies()
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+        remove(name: string, options: CookieOptions) {
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch (error) {
+            // The `delete` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
+    }
+  )
+});
+
+/**
+ * Gets the current user from the server-side Supabase client
+ */
+export const getUser = cache(async (): Promise<User | null> => {
+  const supabase = createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
 });
 
 /**

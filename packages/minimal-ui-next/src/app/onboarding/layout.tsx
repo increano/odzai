@@ -1,5 +1,4 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Toaster } from 'sonner';
 import { Inter } from 'next/font/google';
@@ -13,8 +12,8 @@ export default async function OnboardingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Check session server-side
-  const supabase = createServerComponentClient({ cookies });
+  // Check session server-side using the new SSR client
+  const supabase = createClient();
   
   console.log('Onboarding layout - Checking session...');
   const { data: { user }, error } = await supabase.auth.getUser();

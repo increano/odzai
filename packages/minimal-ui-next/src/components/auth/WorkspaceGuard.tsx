@@ -1,5 +1,4 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
 interface WorkspaceGuardProps {
@@ -8,7 +7,7 @@ interface WorkspaceGuardProps {
 }
 
 export async function WorkspaceGuard({ children, workspaceId }: WorkspaceGuardProps) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = createClient();
 
   // This uses getUser() which is safe server-side
   const { data: { user }, error: userError } = await supabase.auth.getUser();

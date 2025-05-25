@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ClientWrapper } from '@/components/ClientWrapper'
 
 interface BankAccount {
   id: string
@@ -30,6 +31,14 @@ interface BankAccount {
 }
 
 export default function AccountSelectionPage() {
+  return (
+    <ClientWrapper>
+      <AccountSelectionContent />
+    </ClientWrapper>
+  );
+}
+
+function AccountSelectionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const requisitionId = searchParams.get('requisition_id')

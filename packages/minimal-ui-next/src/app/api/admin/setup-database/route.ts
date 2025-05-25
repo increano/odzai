@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createServerSupabaseClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { runDatabaseSetup } from '@/lib/migrations/setupDatabase';
 
 // Admin-only API route for setting up the database
 export async function POST(req: NextRequest) {
   try {
-    // Create server client with admin cookie to verify admin permissions
-    const cookieStore = cookies().toString();
-    const supabase = createServerSupabaseClient(cookieStore);
+    // Create server client to verify admin permissions
+    const supabase = createClient();
     
     // Verify admin permissions
     const { data: { user } } = await supabase.auth.getUser();

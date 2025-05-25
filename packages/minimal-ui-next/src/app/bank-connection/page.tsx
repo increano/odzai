@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ArrowLeft, Search, Building, Globe } from "lucide-react";
 import { toast } from "sonner";
+import { ClientWrapper } from "@/components/ClientWrapper";
 
 interface Country {
   id: string;
@@ -35,6 +36,14 @@ interface Bank {
 }
 
 export default function BankConnection() {
+  return (
+    <ClientWrapper>
+      <BankConnectionContent />
+    </ClientWrapper>
+  );
+}
+
+function BankConnectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const accountId = searchParams.get("accountId");

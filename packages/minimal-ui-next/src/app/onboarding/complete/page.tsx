@@ -1,70 +1,54 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { StepLayout } from '@/components/onboarding/StepLayout';
-import { CheckCircle } from 'lucide-react';
 
 export default async function CompletePage() {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = createClient();
+  
   const { data: { user }, error } = await supabase.auth.getUser();
-
+  
   if (error || !user) {
     redirect('/login');
   }
 
-  // Get user's name from metadata if available
-  const userMetadata = user?.user_metadata as Record<string, any> || {};
-  const userName = userMetadata.full_name || user?.email?.split('@')[0] || 'there';
+  // Mark onboarding as complete
+  await supabase
+    .from('user_preferences')
+    .upsert({
+      user_id: user.id,
+      data: {
+        onboarding: {
+          completed: true,
+          completedAt: new Date().toISOString()
+        }
+      },
+      updated_at: new Date().toISOString()
+    });
 
   return (
-    <StepLayout
-      title="You're All Set!"
-      description="Your account has been successfully configured"
-      currentStep="complete"
-      showBackButton={true}
-      nextButtonText="Go to Dashboard"
-      isLastStep={true}
-    >
-      <div className="space-y-8">
-        <div className="flex justify-center">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="h-12 w-12 text-green-600" />
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Setup Complete!
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            You're ready to start budgeting
+          </p>
         </div>
-        
-        <div className="text-center">
-          <p className="text-lg font-medium mb-4">
-            Thank you, {userName}!
+        <div className="mt-8 space-y-6">
+          <p className="text-center text-gray-700">
+            Congratulations! Your account is now set up and ready to use.
           </p>
-          
-          <p className="text-gray-700 mb-6">
-            You're all set up and ready to start using Odzai Budget. A default budget has been automatically created for you.
-          </p>
-          
-          <div className="rounded-md bg-blue-50 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">
-                  What's next?
-                </h3>
-                <div className="mt-2 text-sm text-blue-700">
-                  <ul className="list-disc pl-5 space-y-1">
-                    <li>Customize your profile in account settings</li>
-                    <li>Set up your categories and budget allocations</li>
-                    <li>Track your income and expenses</li>
-                    <li>Monitor your spending and savings</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+          <div>
+            <a
+              href="/budget"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Go to Budget Dashboard
+            </a>
           </div>
         </div>
       </div>
-    </StepLayout>
+    </div>
   );
 } 

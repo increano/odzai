@@ -1,19 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr'
 
 // Initialize the Supabase client with environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Create a singleton Supabase client for browser use
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    flowType: 'pkce', // Enable PKCE flow for enhanced security
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    // Using default Supabase v2 cookie behavior (HTTP-only)
-  }
-});
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+
+// Keep the old export for backward compatibility
+export const supabase = createClient()
 
 // Type definitions for user with role
 export type UserWithRole = {
@@ -43,20 +43,4 @@ export async function getCurrentUserWithRole() {
     role: userRole?.role || 'user',
     user_metadata: user.user_metadata
   } as UserWithRole;
-}
-
-// Create a server-side Supabase client for use in server components and API routes
-export function createServerSupabaseClient(cookieStore: string) {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      flowType: 'pkce',
-      autoRefreshToken: true,
-      persistSession: true,
-    },
-    global: {
-      headers: {
-        cookie: cookieStore
-      }
-    }
-  });
 } 
