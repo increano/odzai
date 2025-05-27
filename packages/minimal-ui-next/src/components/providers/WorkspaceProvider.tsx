@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
+import { createBrowserClient } from '@/lib/supabase/client';
 import { Workspace, UserPreferences } from '@/lib/supabase/workspace';
 import { storage } from '@/lib/storage';
 
@@ -45,7 +45,7 @@ export function WorkspaceProvider({ children, initialPreferences }: WorkspacePro
     initialPreferences?.default_workspace_id || null
   );
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createBrowserClient();
 
   const loadWorkspaceData = async (id: string) => {
     console.log('Loading workspace data for ID:', id);

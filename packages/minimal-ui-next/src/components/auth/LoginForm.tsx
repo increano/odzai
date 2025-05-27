@@ -44,7 +44,7 @@ export function LoginForm() {
           }
 
           const onboardingCompleted = preferences?.data?.onboarding?.completed;
-          const redirectUrl = onboardingCompleted ? '/budget' : '/onboarding/welcome';
+          const redirectUrl = onboardingCompleted ? '/' : '/onboarding/welcome';
           
           console.log('Redirecting to:', redirectUrl);
           router.push(redirectUrl);
@@ -104,7 +104,7 @@ export function LoginForm() {
         }
 
         const onboardingCompleted = preferences?.data?.onboarding?.completed;
-        const redirectUrl = onboardingCompleted ? '/budget' : '/onboarding/welcome';
+        const redirectUrl = onboardingCompleted ? '/' : '/onboarding/welcome';
         
         console.log('Redirecting to:', redirectUrl);
         router.push(redirectUrl);

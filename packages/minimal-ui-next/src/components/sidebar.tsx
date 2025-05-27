@@ -3,6 +3,8 @@
 import { useState, useEffect, MouseEvent } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
+import { User } from '@supabase/supabase-js'
 import { 
   LayoutDashboard, 
   Home, 
@@ -48,6 +50,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from 'sonner'
 import { useUser } from '@/hooks/useUser'
+import { SupabaseWorkspaceSelector } from '@/components/workspace/SupabaseWorkspaceSelector'
 
 // Key used for localStorage
 const SIDEBAR_STATE_KEY = 'odzai-sidebar-collapsed'
@@ -184,6 +187,35 @@ export function Sidebar({ className }: SidebarProps) {
   // State for tracking selected workspace when none is loaded
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('')
   const [loadingSelectedWorkspace, setLoadingSelectedWorkspace] = useState(false)
+
+  // Update Supabase profile state to match test page
+  const [supabaseProfile, setSupabaseProfile] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Fetch Supabase user profile using the same implementation as test page
+  useEffect(() => {
+    async function loadUserProfile() {
+      try {
+        setLoading(true)
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError) {
+          console.error('Error loading user profile:', userError)
+          return
+        }
+
+        if (user) {
+          setSupabaseProfile(user)
+        }
+      } catch (error) {
+        console.error('Error in loadUserProfile:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadUserProfile()
+  }, [])
 
   // Add a useEffect to automatically open the dropdowns on the home page
   useEffect(() => {
@@ -589,9 +621,16 @@ export function Sidebar({ className }: SidebarProps) {
     </div>
   )
 
+  // Add the Supabase workspace selector after the existing workspace selector
+  const handleSupabaseWorkspaceSelect = (workspace: any) => {
+    console.log('Selected Supabase workspace:', workspace);
+    // Add any additional handling here
+  };
+
   // Component for workspace selector
   const WorkspaceSelector = ({ collapsed }: { collapsed: boolean }) => (
-    <div className="flex-none px-2 py-2">
+    <div className="flex-none">
+      <div className="px-2 py-2">
       <div className="overflow-hidden">
         <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
           <DropdownMenuTrigger asChild>
@@ -706,12 +745,19 @@ export function Sidebar({ className }: SidebarProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      </div>
+      <div className="border-t border-border/50 my-1" />
+      <SupabaseWorkspaceSelector 
+        collapsed={collapsed}
+        onWorkspaceSelect={handleSupabaseWorkspaceSelect}
+        onSettingsClick={() => openSettingsModal?.("general")}
+      />
     </div>
   )
   
   // Mobile workspace selector
   const MobileWorkspaceSelector = () => (
-    <div className="flex flex-col px-4 py-3 border-b">
+    <div className="flex flex-col px-4 py-3">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-medium">
           {isWorkspaceLoaded 
@@ -846,28 +892,72 @@ export function Sidebar({ className }: SidebarProps) {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[240px] sm:w[300px] p-0">
-          <div className="h-full flex flex-col bg-background rounded-r-lg shadow-lg">
-            <div className="border-b py-4 px-6">
-              <button 
-                onClick={() => openSettingsModal("account")} 
-                className="flex items-center bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full hover:bg-accent"
+        <SheetContent side="left" className="p-0 flex flex-col">
+          {/* User profile */}
+          {user && (
+            <div className="flex-none px-2 py-2">
+              <div className="flex flex-col gap-2">
+                {/* Original profile button */}
+                <Button
+                  variant="ghost"
+                  className="flex-1 text-left flex items-center gap-2 py-2"
+                  onClick={openAccountSettings}
               >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2">
-                  <span className="font-medium text-sm">{userData.initials}</span>
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                    {user.email?.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <p className="font-medium">{userData.name}</p>
-                  <p className="text-xs text-muted-foreground">{userData.email}</p>
+                  <div className="flex flex-1 flex-col gap-0">
+                    <span className="text-sm font-medium">{user.email}</span>
+                    <span className="text-xs text-muted-foreground">View profile</span>
                 </div>
-              </button>
+                </Button>
+
+                {/* Supabase profile button */}
+                {loading ? (
+                  <div className="flex items-center gap-2 px-2 py-2">
+                    <div className="h-6 w-6 rounded-full bg-primary/10 animate-pulse" />
+                    <div className="flex flex-col gap-1">
+                      <div className="h-4 w-32 bg-primary/10 rounded animate-pulse" />
+                      <div className="h-3 w-24 bg-primary/10 rounded animate-pulse" />
             </div>
-            <MobileWorkspaceSelector />
+                  </div>
+                ) : supabaseProfile && (
+                  <Button
+                    variant="ghost"
+                    className="flex-1 text-left flex items-center gap-2 py-2"
+                    onClick={openAccountSettings}
+                  >
+                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
+                      {supabaseProfile.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className="flex flex-1 flex-col gap-0">
+                      <span className="text-sm font-medium">{supabaseProfile.email}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {supabaseProfile.user_metadata?.name || 'Supabase profile'}
+                      </span>
+                    </div>
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="border-t border-border/50" />
+          
+          {/* Supabase workspace selector */}
+          <SupabaseWorkspaceSelector 
+            onWorkspaceSelect={handleSupabaseWorkspaceSelect}
+            onSettingsClick={() => openSettingsModal?.("general")}
+          />
+
+          {/* Navigation */}
             <div className="flex-1 overflow-auto py-4 px-2">
               {navigation.map((group) => (
                 <MobileNavGroup key={group.title} group={group} />
               ))}
             </div>
+
+          {/* Settings */}
             <div className="mt-auto border-t p-4">
               <div className="mb-2 px-1">
                 <h3 className="text-xs font-semibold text-muted-foreground tracking-wider">
@@ -907,58 +997,121 @@ export function Sidebar({ className }: SidebarProps) {
                   )
                 ))}
               </nav>
-            </div>
           </div>
         </SheetContent>
       </Sheet>
 
       {/* Desktop sidebar */}
-      <div className={cn(
-        "hidden h-[calc(100vh-32px)] my-4 ml-4 rounded-lg border bg-background md:flex flex-col transition-all duration-300 ease-in-out shadow-md",
-        collapsed ? "w-[90px]" : "w-[260px]",
+      <aside className={cn(
+        "fixed left-0 top-0 z-30 h-screen w-[var(--sidebar-width)] transition-all duration-300 ease-in-out md:relative md:left-auto md:top-auto md:z-auto",
         className
       )}>
+        <div className="relative flex h-full flex-col overflow-hidden border-r bg-background">
+          {/* User profile and collapse button */}
+          {user && (
+            <div className="flex-none px-2 py-2">
+              <div className="flex flex-col gap-2">
+                {/* Original profile button */}
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex-1 text-left flex items-center gap-2 py-2",
+                      { "justify-center": collapsed }
+                    )}
+                    onClick={openAccountSettings}
+                  >
         <div className={cn(
-          "flex h-14 items-center px-4 transition-all duration-300 ease-in-out",
-          collapsed ? "justify-center" : "justify-between"
+                      "h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium",
+                      { "mx-auto": collapsed }
         )}>
+                      {user.email?.charAt(0).toUpperCase()}
+                    </div>
           <div className={cn(
-            "overflow-hidden transition-all duration-300 ease-in-out whitespace-nowrap",
-            collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                      "flex flex-1 flex-col gap-0 whitespace-nowrap transition-all duration-300 ease-in-out",
+                      collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"
           )}>
-            <button 
-              onClick={() => openSettingsModal("account")}
-              className="flex items-center bg-accent/50 py-1 px-2 rounded-md transition-colors text-left w-full hover:bg-accent"
-            >
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center mr-2">
-                <span className="font-medium text-xs">{userData.initials}</span>
+                      <span className="text-sm font-medium">{user.email}</span>
+                      <span className="text-xs text-muted-foreground">View profile</span>
               </div>
-              <div>
-                <p className="font-medium text-sm">{userData.name}</p>
-                <p className="text-xs text-muted-foreground">{userData.email}</p>
-              </div>
-            </button>
-          </div>
+                  </Button>
           <Button
             variant="ghost"
             size="icon"
+                    className="h-9 w-9"
             onClick={toggleSidebar}
-            className="transition-all duration-300 ease-in-out"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <PanelLeft className={cn(
-              "h-5 w-5 transition-transform duration-300",
+                      "h-4 w-4 transition-transform",
               collapsed ? "rotate-180" : "rotate-0"
             )} />
-            <span className="sr-only">Toggle Sidebar</span>
           </Button>
         </div>
-        <WorkspaceSelector collapsed={collapsed} />
+
+                {/* Supabase profile button */}
+                {loading ? (
+                  <div className={cn(
+                    "flex items-center gap-2 px-2 py-2",
+                    { "justify-center": collapsed }
+                  )}>
+                    <div className={cn(
+                      "h-6 w-6 rounded-full bg-primary/10 animate-pulse",
+                      { "mx-auto": collapsed }
+                    )} />
+                    {!collapsed && (
+                      <div className="flex flex-col gap-1">
+                        <div className="h-4 w-32 bg-primary/10 rounded animate-pulse" />
+                        <div className="h-3 w-24 bg-primary/10 rounded animate-pulse" />
+                      </div>
+                    )}
+                  </div>
+                ) : supabaseProfile && (
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex-1 text-left flex items-center gap-2 py-2",
+                      { "justify-center": collapsed }
+                    )}
+                    onClick={openAccountSettings}
+                  >
+                    <div className={cn(
+                      "h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium",
+                      { "mx-auto": collapsed }
+                    )}>
+                      {supabaseProfile.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div className={cn(
+                      "flex flex-1 flex-col gap-0 whitespace-nowrap transition-all duration-300 ease-in-out",
+                      collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"
+                    )}>
+                      <span className="text-sm font-medium">{supabaseProfile.email}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {supabaseProfile.user_metadata?.name || 'Supabase profile'}
+                      </span>
+                    </div>
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="border-t border-border/50 my-1" />
+          
+          {/* Supabase workspace selector */}
+          <SupabaseWorkspaceSelector 
+            collapsed={collapsed}
+            onWorkspaceSelect={handleSupabaseWorkspaceSelect}
+            onSettingsClick={() => openSettingsModal?.("general")}
+          />
+
+          {/* Navigation content */}
         <div className="flex-1 overflow-y-auto py-4 px-2">
           {navigation.map((group) => (
             <NavGroup key={group.title} group={group} collapsed={collapsed} />
           ))}
         </div>
+
+          {/* Settings navigation */}
         <div className="mt-auto border-t p-4">
           {!collapsed && (
             <div className="mb-2 px-1">
@@ -1014,6 +1167,7 @@ export function Sidebar({ className }: SidebarProps) {
           </nav>
         </div>
       </div>
+      </aside>
     </>
   )
 } 

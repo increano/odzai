@@ -7,7 +7,7 @@ export default async function ConfirmPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (user) {
-    redirect('/budget');
+    redirect('/');
   }
 
     return (

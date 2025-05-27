@@ -24,10 +24,10 @@ export default function SignupPage() {
       
       // Step 2: Show visual feedback briefly before redirect
       const redirectTimer = setTimeout(() => {
-        console.log('Redirecting from signup page to /budget');
+        console.log('Redirecting from signup page to /');
         
         // Step 3: Perform actual navigation after visual transition
-        router.push('/budget');
+        router.push('/');
       }, 1000); // Delay to ensure cookies are properly set
       
       return () => clearTimeout(redirectTimer);
