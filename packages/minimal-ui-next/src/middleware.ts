@@ -2,9 +2,20 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Get pathname for auth page check
+  const pathname = request.nextUrl.pathname
+  const isAuthPage = pathname === '/login' || 
+                    pathname === '/signup' || 
+                    pathname.startsWith('/onboarding')
+
+  // Initialize response headers with the pathname
+  const responseHeaders = new Headers(request.headers)
+  responseHeaders.set('x-pathname', pathname)
+
+  // Create response object
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: responseHeaders
     },
   })
 
@@ -34,9 +45,27 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getSession()
+  try {
+    // Use getUser instead of getSession as recommended by Supabase
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-  return response
+    // If we're on an auth page and user is logged in, redirect to home
+    if (user && isAuthPage) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    // If we're not on an auth page and user is not logged in, redirect to login
+    if (!user && !isAuthPage) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // For all other cases, proceed with the request
+    return response
+  } catch (error) {
+    console.error('Auth error in middleware:', error)
+    // On error, redirect to login for safety
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 }
 
 export const config = {

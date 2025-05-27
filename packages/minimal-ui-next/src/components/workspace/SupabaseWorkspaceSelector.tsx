@@ -29,10 +29,8 @@ export function SupabaseWorkspaceSelector({
   const supabase = createBrowserClient();
 
   useEffect(() => {
-    if (!initialWorkspaces.length) {
-      fetchWorkspaces();
-    }
-  }, [initialWorkspaces]);
+    fetchWorkspaces();
+  }, []);
 
   const fetchWorkspaces = async () => {
     try {

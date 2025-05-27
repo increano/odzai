@@ -51,6 +51,8 @@ import {
 import { toast } from 'sonner'
 import { useUser } from '@/hooks/useUser'
 import { SupabaseWorkspaceSelector } from '@/components/workspace/SupabaseWorkspaceSelector'
+import { createBrowserClient } from '@/lib/supabase/client'
+import type { Workspace } from '@/lib/supabase/workspace'
 
 // Key used for localStorage
 const SIDEBAR_STATE_KEY = 'odzai-sidebar-collapsed'
@@ -100,7 +102,8 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
 }
 
 interface SidebarProps {
-  className?: string
+  className?: string;
+  initialWorkspaces?: Workspace[];
 }
 
 // Create a type for navigation items with optional section
@@ -159,7 +162,7 @@ const getCleanWorkspaceName = (name: string): string => {
   return name;
 };
 
-export function Sidebar({ className }: SidebarProps) {
+export function Sidebar({ className, initialWorkspaces = [] }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   // Use our custom hook with a default value of false (expanded)
@@ -394,11 +397,20 @@ export function Sidebar({ className }: SidebarProps) {
       // Show loading toast
       toast.loading('Signing out...')
       
-      // Call the signOut method from SupabaseAuthProvider
-      await signOut()
-      
-      // Success toast will be shown after redirect completes
-      // (The signOut method already handles redirection to login page)
+      // Call the server-side logout endpoint
+      const response = await fetch('/auth/signout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to sign out')
+      }
+
+      // The server will handle the redirect to /login
+      toast.success('Signed out successfully')
     } catch (error) {
       console.error('Logout error:', error)
       toast.error('Failed to sign out. Please try again.')
@@ -622,135 +634,44 @@ export function Sidebar({ className }: SidebarProps) {
   )
 
   // Add the Supabase workspace selector after the existing workspace selector
-  const handleSupabaseWorkspaceSelect = (workspace: any) => {
-    console.log('Selected Supabase workspace:', workspace);
-    // Add any additional handling here
+  const handleSupabaseWorkspaceSelect = async (workspace: Workspace) => {
+    try {
+      // Update user preferences with the new default workspace
+      const supabase = createBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error('You must be logged in to select a workspace');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: user.id,
+          default_workspace_id: workspace.id,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
+      toast.success('Workspace selected successfully');
+      router.refresh();
+    } catch (error) {
+      console.error('Error selecting workspace:', error);
+      toast.error('Failed to select workspace');
+    }
   };
 
   // Component for workspace selector
   const WorkspaceSelector = ({ collapsed }: { collapsed: boolean }) => (
-    <div className="flex-none">
-      <div className="px-2 py-2">
-      <div className="overflow-hidden">
-        <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              className={cn(
-                "w-full text-left flex items-center gap-2 py-2",
-                { "justify-center": collapsed }
-              )} 
-              size="sm"
-            >
-              {isWorkspaceLoaded && currentWorkspace ? (
-                <>
-                  <div 
-                    className={cn(
-                      "h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative",
-                      { "mx-auto": collapsed }
-                    )}
-                    style={{ backgroundColor: currentWorkspace.color || '#FF7043' }}
-                  >
-                    {(currentWorkspace.displayName || getStoredDisplayName(currentWorkspace.id) || getCleanWorkspaceName(currentWorkspace.name)).charAt(0)}
-                    {isDefaultWorkspace(currentWorkspace.id) && (
-                      <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
-                    )}
-                  </div>
-                  <div className={cn(
-                    "flex flex-1 flex-col gap-0 whitespace-nowrap transition-all duration-300 ease-in-out",
-                    collapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100"
-                  )}>
-                    <span className="text-sm font-medium">{currentWorkspace.displayName || getStoredDisplayName(currentWorkspace.id) || getCleanWorkspaceName(currentWorkspace.name)}</span>
-                    <span className="text-xs text-muted-foreground flex items-center">
-                      Workspace
-                      {isDefaultWorkspace(currentWorkspace.id) && (
-                        <span className="ml-1 text-xs text-green-600 font-medium flex items-center">
-                          · Default <Check className="h-3 w-3 ml-0.5" />
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={cn(
-                    "h-6 w-6 rounded-md bg-primary/20 animate-pulse",
-                    { "mx-auto": collapsed }
-                  )}></div>
-                  {!collapsed && (
-                    <div className="flex flex-col gap-0">
-                      <div className="h-3 w-24 bg-primary/20 rounded-sm animate-pulse"></div>
-                      <div className="h-3 w-16 bg-primary/20 rounded-sm animate-pulse mt-1"></div>
-                    </div>
-                  )}
-                </>
-              )}
-              <ChevronDown className={cn(
-                "h-4 w-4 ml-auto transition-transform duration-300",
-                dropdownOpen ? "rotate-180" : "rotate-0",
-                collapsed ? "hidden" : "block"
-              )} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[220px]" forceMount={true}>
-            <div className="px-2 py-1.5">
-              <h3 className="text-sm font-medium mb-1">
-                {isWorkspaceLoaded ? "Switch workspace" : "Select a workspace"}
-              </h3>
-              <p className="text-xs text-muted-foreground mb-2">Your available workspaces</p>
-            </div>
-            {isLoadingWorkspaces ? (
-              <DropdownMenuItem disabled>
-                <span className="text-sm">Loading workspaces...</span>
-              </DropdownMenuItem>
-            ) : availableWorkspaces.length === 0 ? (
-              <DropdownMenuItem disabled>
-                <span className="text-sm">No workspaces found</span>
-              </DropdownMenuItem>
-            ) : (
-              <div className="max-h-[135px] overflow-y-auto pr-1 py-1">
-                {availableWorkspaces.map(workspace => (
-                  <DropdownMenuItem 
-                    key={workspace.id}
-                    className="flex items-center gap-2 py-2"
-                    onClick={() => switchWorkspace(workspace)}
-                  >
-                    <div 
-                      className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-medium relative"
-                      style={{ backgroundColor: workspace.color }}
-                    >
-                      {(workspace.displayName || getStoredDisplayName(workspace.id) || workspace.name).charAt(0)}
-                      {isDefaultWorkspace(workspace.id) && (
-                        <div className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-green-500 border border-white"></div>
-                      )}
-                    </div>
-                    <span className="text-sm">{workspace.displayName || getStoredDisplayName(workspace.id) || workspace.name}</span>
-                    {isDefaultWorkspace(workspace.id) && (
-                      <span className="ml-auto text-xs text-green-600 font-medium flex items-center gap-0.5">
-                        Default <Check className="h-3 w-3" />
-                      </span>
-                    )}
-                    {isWorkspaceLoaded && currentWorkspace && workspace.id === currentWorkspace.id && !isDefaultWorkspace(workspace.id) && (
-                      <div className="ml-auto h-2 w-2 rounded-full bg-primary"></div>
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            )}
-            <div className="border-t mt-1 pt-1">
-              <DropdownMenuItem onClick={() => openWorkspaceSettings()}>
-                <span className="text-sm">Manage workspaces</span>
-              </DropdownMenuItem>
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      </div>
-      <div className="border-t border-border/50 my-1" />
+    <div className="flex flex-col">
       <SupabaseWorkspaceSelector 
         collapsed={collapsed}
         onWorkspaceSelect={handleSupabaseWorkspaceSelect}
-        onSettingsClick={() => openSettingsModal?.("general")}
+        initialWorkspaces={initialWorkspaces}
       />
     </div>
   )
@@ -945,10 +866,7 @@ export function Sidebar({ className }: SidebarProps) {
           <div className="border-t border-border/50" />
           
           {/* Supabase workspace selector */}
-          <SupabaseWorkspaceSelector 
-            onWorkspaceSelect={handleSupabaseWorkspaceSelect}
-            onSettingsClick={() => openSettingsModal?.("general")}
-          />
+          <WorkspaceSelector collapsed={collapsed} />
 
           {/* Navigation */}
             <div className="flex-1 overflow-auto py-4 px-2">
@@ -1098,11 +1016,7 @@ export function Sidebar({ className }: SidebarProps) {
           <div className="border-t border-border/50 my-1" />
           
           {/* Supabase workspace selector */}
-          <SupabaseWorkspaceSelector 
-            collapsed={collapsed}
-            onWorkspaceSelect={handleSupabaseWorkspaceSelect}
-            onSettingsClick={() => openSettingsModal?.("general")}
-          />
+        <WorkspaceSelector collapsed={collapsed} />
 
           {/* Navigation content */}
         <div className="flex-1 overflow-y-auto py-4 px-2">
