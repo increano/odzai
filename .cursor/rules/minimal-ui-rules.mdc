@@ -14,3 +14,9 @@ or
 cd packages/minimal-ui-next && yarn start:all
 ```
 
+You will assume that the environment setup .env.local has all required variables present. 
+
+Use async function when using supabase.
+
+Data fetching should always occurs server-side.
+
