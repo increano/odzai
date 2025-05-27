@@ -15,7 +15,6 @@ import {
   CreditCard, 
   Receipt,
   Target,
-  Building2,
   Clock,
   Bell,
   Calendar
@@ -99,32 +98,6 @@ export default async function HomePage() {
     >
       <DashboardLayout>
         <DashboardContent title="Financial Dashboard" subtitle="Welcome back! Here's your financial overview.">
-          {/* Workspace Info */}
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="h-10 w-10 rounded-lg flex items-center justify-center text-white text-sm font-medium"
-                    style={{ backgroundColor: workspaceData.defaultWorkspace.color || '#FF7043' }}
-                  >
-                    {workspaceData.defaultWorkspace.name.charAt(0)}
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{workspaceData.defaultWorkspace.name}</CardTitle>
-                    <CardDescription>
-                      Active workspace • {workspaceData.workspaces.length} total workspace{workspaceData.workspaces.length !== 1 ? 's' : ''}
-                    </CardDescription>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Building2 className="h-3 w-3" />
-                  {workspaceData.defaultWorkspace.access_level || 'Owner'}
-                </Badge>
-              </div>
-            </CardHeader>
-          </Card>
-
           {/* Financial Overview Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <StatCard

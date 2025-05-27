@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { WorkspaceSelectorWrapper } from './WorkspaceSelectorWrapper';
+import { ProfileButtonWrapper } from './ProfileButtonWrapper';
 import type { Workspace } from '@/lib/supabase/workspace';
 
 export default async function TestWorkspaceSelectorPage() {
@@ -52,30 +53,9 @@ export default async function TestWorkspaceSelectorPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-8">Workspace Selector Test Page</h1>
-        
-        <WorkspaceSelectorWrapper initialWorkspaces={transformedWorkspaces} />
-
-        {/* Debug Information */}
-        <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-4">Debug Information</h2>
-          <pre className="bg-gray-50 p-4 rounded overflow-auto">
-            {JSON.stringify({ 
-              user: {
-                id: user.id,
-                email: user.email,
-                created_at: user.created_at,
-                last_sign_in_at: user.last_sign_in_at,
-                user_metadata: user.user_metadata
-              },
-              workspaces: transformedWorkspaces,
-              preferences
-            }, null, 2)}
-          </pre>
-        </div>
-      </div>
+    <div className="container mx-auto py-8 space-y-6">
+      <WorkspaceSelectorWrapper initialWorkspaces={transformedWorkspaces} />
+      <ProfileButtonWrapper user={user} />
     </div>
   );
 } 
